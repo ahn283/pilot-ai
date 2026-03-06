@@ -14,11 +14,11 @@
 ## Phase 1: MVP
 
 ### 1.1 Config & Keychain
-- [ ] `~/.pilot/` 디렉토리 자동 생성
-- [ ] `config/schema.ts` - 설정 스키마 정의 (zod 등)
-- [ ] `config/store.ts` - config.json 읽기/쓰기
-- [ ] `config/keychain.ts` - macOS Keychain 연동 (토큰/키 암호화 저장)
-- [ ] `chmod 600` 파일 퍼미션 자동 설정
+- [x] `~/.pilot/` 디렉토리 자동 생성
+- [x] `config/schema.ts` - 설정 스키마 정의 (zod 등)
+- [x] `config/store.ts` - config.json 읽기/쓰기
+- [x] `config/keychain.ts` - macOS Keychain 연동 (토큰/키 암호화 저장)
+- [x] `chmod 600` 파일 퍼미션 자동 설정
 
 ### 1.2 Claude Code CLI 연동
 - [ ] `agent/claude.ts` - `claude -p` subprocess 호출 기본 구현
