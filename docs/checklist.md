@@ -3,11 +3,11 @@
 ## Phase 0: Project Setup
 
 ### 프로젝트 초기화
-- [ ] npm 패키지 초기화 (`package.json`, `tsconfig.json`)
-- [ ] TypeScript + ESLint + Prettier 설정
-- [ ] 프로젝트 디렉토리 구조 생성 (`src/`, `tests/`, `guides/`)
-- [ ] bin 엔트리 설정 (`npx pilot` 명령어 동작)
-- [ ] 기본 빌드 & 실행 파이프라인 확인
+- [x] npm 패키지 초기화 (`package.json`, `tsconfig.json`)
+- [x] TypeScript + ESLint + Prettier 설정
+- [x] 프로젝트 디렉토리 구조 생성 (`src/`, `tests/`, `guides/`)
+- [x] bin 엔트리 설정 (`npx pilot-ai` / `pilot-ai` 명령어 동작)
+- [x] 기본 빌드 & 실행 파이프라인 확인
 
 ---
 
@@ -110,10 +110,10 @@
   - [ ] 프로젝트 이름 매칭 (정확 → 경로 → fuzzy → 질문)
   - [ ] 새 프로젝트 생성 시 자동 등록
 - [ ] `cli/project.ts` - CLI 명령어
-  - [ ] `npx pilot project add <name> <path>`
-  - [ ] `npx pilot project list`
-  - [ ] `npx pilot project scan <root-dirs...>`
-  - [ ] `npx pilot project remove <name>`
+  - [ ] `npx pilot-ai project add <name> <path>`
+  - [ ] `npx pilot-ai project list`
+  - [ ] `npx pilot-ai project scan <root-dirs...>`
+  - [ ] `npx pilot-ai project remove <name>`
 
 ### 1.9 Persistent Memory
 - [ ] `agent/memory.ts` - 메모리 관리

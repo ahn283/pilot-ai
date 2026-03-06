@@ -4,7 +4,7 @@
   "description": "Personal AI agent that controls your macOS via Slack or Telegram",
   "type": "module",
   "bin": {
-    "pilot": "./dist/index.js"
+    "pilot-ai": "./dist/index.js"
   },
   "scripts": {
     "build": "tsc",
