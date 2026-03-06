@@ -1,0 +1,43 @@
+{
+  "name": "pilot-ai",
+  "version": "0.1.0",
+  "description": "Personal AI agent that controls your macOS via Slack or Telegram",
+  "type": "module",
+  "bin": {
+    "pilot": "./dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "lint": "eslint src/",
+    "format": "prettier --write 'src/**/*.ts'",
+    "test": "vitest"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "keywords": [
+    "ai",
+    "agent",
+    "automation",
+    "macos",
+    "slack",
+    "telegram"
+  ],
+  "license": "MIT",
+  "files": [
+    "dist/"
+  ],
+  "dependencies": {
+    "commander": "^14.0.3"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.3",
+    "@types/node": "^25.3.5",
+    "eslint": "^9.39.3",
+    "prettier": "^3.8.1",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.56.1",
+    "vitest": "^3.2.4"
+  }
+}

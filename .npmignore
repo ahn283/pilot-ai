@@ -1,0 +1,7 @@
+docs/
+tests/
+src/
+.eslintrc.json
+.prettierrc
+tsconfig.json
+.github/
