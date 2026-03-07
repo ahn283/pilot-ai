@@ -48,21 +48,21 @@
   - [x] Inline Keyboard 버튼 (승인/거부)
 
 ### 1.4 Security (기본)
-- [ ] `security/auth.ts` - User ID / Chat ID 화이트리스트
-- [ ] 인가되지 않은 사용자 메시지 무시 (응답 없음)
-- [ ] Slack request signing 검증
-- [ ] `security/sandbox.ts` - Filesystem path 제한
-  - [ ] 허용 경로 화이트리스트
-  - [ ] 차단 경로 (`~/.pilot`, `~/.ssh`, `~/.gnupg`, `~/.aws`)
-  - [ ] Path traversal 방지 (경로 정규화 후 검증)
-- [ ] Shell 명령어 블랙리스트 (`rm -rf /`, `curl|sh` 등)
-- [ ] subprocess 환경변수 격리
-- [ ] `security/prompt-guard.ts` - 프롬프트 인젝션 방어
-  - [ ] System prompt에 외부 데이터 지시 무시 명시
-  - [ ] 사용자 명령과 도구 결과 분리 태깅
-- [ ] `security/audit.ts` - 감사 로그
-  - [ ] 모든 명령/실행/결과를 `~/.pilot/logs/audit.jsonl`에 기록
-  - [ ] 토큰/키 마스킹 처리
+- [x] `security/auth.ts` - User ID / Chat ID 화이트리스트
+- [x] 인가되지 않은 사용자 메시지 무시 (응답 없음)
+- [x] Slack request signing 검증
+- [x] `security/sandbox.ts` - Filesystem path 제한
+  - [x] 허용 경로 화이트리스트
+  - [x] 차단 경로 (`~/.pilot`, `~/.ssh`, `~/.gnupg`, `~/.aws`)
+  - [x] Path traversal 방지 (경로 정규화 후 검증)
+- [x] Shell 명령어 블랙리스트 (`rm -rf /`, `curl|sh` 등)
+- [x] subprocess 환경변수 격리
+- [x] `security/prompt-guard.ts` - 프롬프트 인젝션 방어
+  - [x] System prompt에 외부 데이터 지시 무시 명시
+  - [x] 사용자 명령과 도구 결과 분리 태깅
+- [x] `security/audit.ts` - 감사 로그
+  - [x] 모든 명령/실행/결과를 `~/.pilot/logs/audit.jsonl`에 기록
+  - [x] 토큰/키 마스킹 처리
 
 ### 1.5 Agent Core
 - [ ] `agent/core.ts` - 메인 에이전트 루프
