@@ -12,6 +12,7 @@ import { analyzeProjectIfNew } from './project-analyzer.js';
 import { buildSkillsContext } from './skills.js';
 import { buildToolDescriptions } from './tool-descriptions.js';
 import { getMcpConfigPathIfExists } from '../tools/figma-mcp.js';
+import { detectPermissionError, PermissionWatcher } from '../security/permissions.js';
 
 function log(message: string): void {
   console.log(`[${new Date().toISOString()}] ${message}`);
@@ -21,11 +22,22 @@ export class AgentCore {
   private messenger: MessengerAdapter;
   private config: PilotConfig;
   private approvalManager: ApprovalManager;
+  private permissionWatcher: PermissionWatcher;
 
   constructor(messenger: MessengerAdapter, config: PilotConfig) {
     this.messenger = messenger;
     this.config = config;
     this.approvalManager = new ApprovalManager();
+    this.permissionWatcher = new PermissionWatcher((message) => {
+      log(`Permission: ${message}`);
+      // Notify the first allowed user on the configured platform
+      const users = config.messenger.platform === 'slack'
+        ? config.security.allowedUsers.slack
+        : config.security.allowedUsers.telegram;
+      if (users.length > 0) {
+        this.messenger.sendText(users[0], `🔐 ${message}`).catch(() => {});
+      }
+    });
 
     this.setupHandlers();
   }
@@ -41,9 +53,12 @@ export class AgentCore {
     log('Connecting to messenger...');
     await this.messenger.start();
     log('Messenger connected. Waiting for messages...');
+    await this.permissionWatcher.start();
+    log('Permission watcher started.');
   }
 
   async stop(): Promise<void> {
+    this.permissionWatcher.stop();
     log('Stopping messenger...');
     await this.messenger.stop();
   }
@@ -126,9 +141,13 @@ export class AgentCore {
         log(`Claude error: ${errorMsg}`);
         await this.messenger.removeReaction?.(msg.channelId, incomingTs, 'gear');
         await this.messenger.addReaction?.(msg.channelId, incomingTs, 'x');
-        await this.messenger.updateText(
-          msg.channelId, statusMsgId, `❌ Error: ${errorMsg}`,
-        );
+
+        // Check if this is a macOS permission error and provide actionable guidance
+        const permissionHint = detectPermissionError(errorMsg);
+        const displayMsg = permissionHint
+          ? `❌ ${permissionHint}`
+          : `❌ Error: ${errorMsg}`;
+        await this.messenger.updateText(msg.channelId, statusMsgId, displayMsg);
 
         await writeAuditLog({
           timestamp: new Date().toISOString(),
@@ -167,7 +186,18 @@ export class AgentCore {
     const toolDescriptions = buildToolDescriptions();
 
     const systemParts: string[] = [];
-    systemParts.push('You are Pilot-AI, a personal AI agent. Work autonomously to complete the user\'s request. Think step by step, use tools to investigate and act, and keep going until the task is fully done. Do not give up early.');
+    systemParts.push(`You are Pilot-AI, a personal AI agent running on the user's macOS machine.
+
+CORE PRINCIPLE: You are an AGENT, not a chatbot. NEVER ask the user a question you could answer yourself by using tools. Think harder.
+
+RULES:
+1. INVESTIGATE FIRST — Before responding, use Bash, Read, Glob, Grep, WebSearch, and WebFetch to gather information. Run "ls", "find", "gh", "git log", "cat" etc. to explore the filesystem and projects.
+2. NEVER ASK CLARIFYING QUESTIONS if you can figure it out yourself. If the user says "fridgify 배포 내역", search ~/Github for a fridgify repo, then run "gh release list" or "git log --oneline" there. Do NOT ask "which repo?".
+3. CHAIN MULTIPLE TOOLS — One tool call is rarely enough. Read a file, then grep for context, then run a command. Keep going until you have the full answer.
+4. USE THE RIGHT TOOL — For GitHub: use "gh" CLI. For files: use "ls", "cat", "find". For web info: use WebSearch. For Notion: use the Notion API. Think about what tool fits before defaulting to asking the user.
+5. THINK STEP BY STEP — Before acting, plan your approach. "The user wants X. To find X, I need to check Y, which means I should run Z."
+6. COMPLETE THE TASK — Do not stop halfway. If a command fails, try another approach. If you need more info, search for it. Only respond to the user when you have a concrete answer or have completed the action.
+7. BE CONCISE — Report results directly. No filler, no "I'd be happy to help", no restating the question.`);
     if (memoryContext) systemParts.push(memoryContext);
     if (skillsContext) systemParts.push(skillsContext);
     if (toolDescriptions) systemParts.push(toolDescriptions);

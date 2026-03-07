@@ -8,6 +8,7 @@ import type { PilotConfig } from '../config/schema.js';
 import { defaultConfig } from '../config/schema.js';
 import { testSlackConnection, testTelegramConnection } from './connection-test.js';
 import { registerFigmaMcp } from '../tools/figma-mcp.js';
+import { requestPermissions } from '../security/permissions.js';
 
 const execFileAsync = promisify(execFile);
 
@@ -28,7 +29,10 @@ export async function runInit(): Promise<void> {
   // 4. Playwright browser install
   await installPlaywright();
 
-  // 5. Save config with allowedUsers
+  // 5. macOS permissions
+  await requestPermissions();
+
+  // 6. Save config with allowedUsers
   const config: Partial<PilotConfig> = {
     ...defaultConfig,
     claude: claudeConfig,

@@ -1,6 +1,6 @@
 {
   "name": "pilot-ai",
-  "version": "0.3.12",
+  "version": "0.3.13",
   "description": "Personal AI agent that controls your macOS via Slack or Telegram",
   "type": "module",
   "bin": {
@@ -29,6 +29,7 @@
     "dist/"
   ],
   "dependencies": {
+    "@anthropic-ai/claude-agent-sdk": "^0.2.71",
     "@anthropic-ai/sdk": "^0.78.0",
     "@notionhq/client": "^5.11.1",
     "@slack/bolt": "^4.6.0",
