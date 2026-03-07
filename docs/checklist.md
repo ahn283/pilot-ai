@@ -365,4 +365,4 @@
 - [x] Email 연동 테스트
 - [x] Calendar 연동 테스트
 - [x] Voice I/O 테스트
-- [ ] Multi-Agent 통합 테스트
+- [x] Multi-Agent 통합 테스트
