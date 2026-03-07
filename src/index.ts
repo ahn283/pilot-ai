@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import { Command } from 'commander';
+import { createProjectCommand } from './cli/project.js';
 
 const program = new Command();
 
@@ -45,34 +46,6 @@ program
     console.log('pilot-ai logs - coming soon');
   });
 
-const projectCmd = program.command('project').description('Manage projects');
-
-projectCmd
-  .command('add <name> <path>')
-  .description('Register a project')
-  .action(async (name: string, path: string) => {
-    console.log(`pilot-ai project add ${name} ${path} - coming soon`);
-  });
-
-projectCmd
-  .command('list')
-  .description('List registered projects')
-  .action(async () => {
-    console.log('pilot-ai project list - coming soon');
-  });
-
-projectCmd
-  .command('scan <dirs...>')
-  .description('Auto-detect projects in directories')
-  .action(async (dirs: string[]) => {
-    console.log(`pilot-ai project scan ${dirs.join(' ')} - coming soon`);
-  });
-
-projectCmd
-  .command('remove <name>')
-  .description('Remove a project from registry')
-  .action(async (name: string) => {
-    console.log(`pilot-ai project remove ${name} - coming soon`);
-  });
+program.addCommand(createProjectCommand());
 
 program.parse();

@@ -103,17 +103,17 @@
   - [x] 대기 중 작업 취소
 
 ### 1.8 Multi-Project Management
-- [ ] `agent/project.ts` - 프로젝트 레지스트리
-  - [ ] `~/.pilot/projects.json` 읽기/쓰기
-  - [ ] 프로젝트 등록 (이름 + 경로)
-  - [ ] 루트 디렉토리 자동 스캔 (package.json, .git 등 감지)
-  - [ ] 프로젝트 이름 매칭 (정확 → 경로 → fuzzy → 질문)
-  - [ ] 새 프로젝트 생성 시 자동 등록
-- [ ] `cli/project.ts` - CLI 명령어
-  - [ ] `npx pilot-ai project add <name> <path>`
-  - [ ] `npx pilot-ai project list`
-  - [ ] `npx pilot-ai project scan <root-dirs...>`
-  - [ ] `npx pilot-ai project remove <name>`
+- [x] `agent/project.ts` - 프로젝트 레지스트리
+  - [x] `~/.pilot/projects.json` 읽기/쓰기
+  - [x] 프로젝트 등록 (이름 + 경로)
+  - [x] 루트 디렉토리 자동 스캔 (package.json, .git 등 감지)
+  - [x] 프로젝트 이름 매칭 (정확 → 경로 → fuzzy → 질문)
+  - [x] 새 프로젝트 생성 시 자동 등록
+- [x] `cli/project.ts` - CLI 명령어
+  - [x] `npx pilot-ai project add <name> <path>`
+  - [x] `npx pilot-ai project list`
+  - [x] `npx pilot-ai project scan <root-dirs...>`
+  - [x] `npx pilot-ai project remove <name>`
 
 ### 1.9 Persistent Memory
 - [ ] `agent/memory.ts` - 메모리 관리
