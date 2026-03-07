@@ -8,17 +8,17 @@ export function createMessengerAdapter(config: PilotConfig): MessengerAdapter {
 
   if (platform === 'slack') {
     if (!config.messenger.slack) {
-      throw new Error('Slack 설정이 없습니다. "npx pilot-ai init"으로 설정하세요.');
+      throw new Error('Slack configuration not found. Run "npx pilot-ai init" to set up.');
     }
     return new SlackAdapter(config.messenger.slack);
   }
 
   if (platform === 'telegram') {
     if (!config.messenger.telegram) {
-      throw new Error('Telegram 설정이 없습니다. "npx pilot-ai init"으로 설정하세요.');
+      throw new Error('Telegram configuration not found. Run "npx pilot-ai init" to set up.');
     }
     return new TelegramAdapter(config.messenger.telegram);
   }
 
-  throw new Error(`지원하지 않는 메신저 플랫폼: ${platform}`);
+  throw new Error(`Unsupported messenger platform: ${platform}`);
 }

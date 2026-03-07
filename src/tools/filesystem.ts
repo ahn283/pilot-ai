@@ -6,7 +6,7 @@ import type { PilotConfig } from '../config/schema.js';
 function assertAllowed(targetPath: string, config: PilotConfig): string {
   const resolved = path.resolve(targetPath);
   if (!isPathAllowed(resolved, config)) {
-    throw new Error(`접근이 차단된 경로입니다: ${resolved}`);
+    throw new Error(`Access denied: blocked path: ${resolved}`);
   }
   return resolved;
 }

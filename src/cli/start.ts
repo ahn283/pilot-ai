@@ -49,14 +49,14 @@ export function buildPlist(nodePath: string, scriptPath: string, logDir: string)
 
 export async function runStart(): Promise<void> {
   if (!(await configExists())) {
-    console.error('설정이 없습니다. 먼저 "npx pilot-ai init"을 실행하세요.');
+    console.error('No configuration found. Run "npx pilot-ai init" first.');
     process.exitCode = 1;
     return;
   }
 
   // Check if already running
   if (await isLoaded()) {
-    console.log('에이전트가 이미 실행 중입니다.');
+    console.log('Agent is already running.');
     return;
   }
 
@@ -77,10 +77,10 @@ export async function runStart(): Promise<void> {
 
   try {
     await execFileAsync('launchctl', ['load', getPlistPath()]);
-    console.log('에이전트가 시작되었습니다.');
-    console.log(`  로그: ${logDir}/agent.log`);
+    console.log('Agent started.');
+    console.log(`  Logs: ${logDir}/agent.log`);
   } catch (err) {
-    console.error('launchctl load 실패:', (err as Error).message);
+    console.error('launchctl load failed:', (err as Error).message);
     process.exitCode = 1;
   }
 }

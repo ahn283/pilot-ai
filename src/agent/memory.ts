@@ -22,7 +22,7 @@ function getHistoryPath(date?: Date): string {
   return path.join(getMemoryDir(), 'history', `${dateStr}.md`);
 }
 
-// --- MEMORY.md (사용자 선호) ---
+// --- MEMORY.md (user preferences) ---
 
 export async function readUserMemory(): Promise<string> {
   try {
@@ -45,7 +45,7 @@ export async function appendUserMemory(entry: string): Promise<void> {
   await writeUserMemory(updated);
 }
 
-// --- 프로젝트 메모리 ---
+// --- Project memory ---
 
 export async function readProjectMemory(projectName: string): Promise<string> {
   try {
@@ -61,13 +61,13 @@ export async function writeProjectMemory(projectName: string, content: string): 
   await fs.writeFile(memPath, content);
 }
 
-// --- 히스토리 ---
+// --- History ---
 
 export async function appendHistory(entry: string): Promise<void> {
   const histPath = getHistoryPath();
   await fs.mkdir(path.dirname(histPath), { recursive: true });
 
-  const timestamp = new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
+  const timestamp = new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
   const line = `- ${timestamp}: ${entry}\n`;
 
   await fs.appendFile(histPath, line);
@@ -98,7 +98,7 @@ export async function getRecentHistory(days: number = 3): Promise<string> {
   return entries.join('\n\n');
 }
 
-// --- 프롬프트용 메모리 조립 ---
+// --- Assemble memory context for prompts ---
 
 export async function buildMemoryContext(projectName?: string): Promise<string> {
   const parts: string[] = [];
@@ -123,7 +123,7 @@ export async function buildMemoryContext(projectName?: string): Promise<string> 
   return parts.join('\n\n');
 }
 
-// --- 메모리 초기화 ---
+// --- Reset memory ---
 
 export async function resetMemory(): Promise<void> {
   const memDir = getMemoryDir();

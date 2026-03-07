@@ -13,8 +13,8 @@ export interface ExecutionPlan {
 }
 
 /**
- * Claude의 응답을 실행 계획으로 파싱한다.
- * Claude에게 구조화된 계획을 요청하고 결과를 파싱한다.
+ * Parses Claude's response into an execution plan.
+ * Requests a structured plan from Claude and parses the result.
  */
 export function parsePlan(claudeResponse: string): ExecutionPlan {
   const steps: PlanStep[] = [];
@@ -25,7 +25,7 @@ export function parsePlan(claudeResponse: string): ExecutionPlan {
   for (const line of lines) {
     const trimmed = line.trim();
 
-    // "1. [tool] description" 형태 파싱
+    // Parse "1. [tool] description" format
     const stepMatch = trimmed.match(/^\d+\.\s*\[(\w+)\]\s*(.+)$/);
     if (stepMatch) {
       const tool = stepMatch[1];
@@ -38,21 +38,21 @@ export function parsePlan(claudeResponse: string): ExecutionPlan {
       continue;
     }
 
-    // 첫 번째 비어있지 않은 줄이 summary
+    // First non-empty line becomes the summary
     if (!summary && trimmed && !trimmed.startsWith('#')) {
       summary = trimmed;
     }
   }
 
   return {
-    summary: summary || '작업 실행',
+    summary: summary || 'Execute task',
     steps,
     hasDangerousSteps: steps.some((s) => s.safetyLevel === 'dangerous'),
   };
 }
 
 /**
- * 계획을 사람이 읽을 수 있는 형태로 포맷한다.
+ * Formats the plan into a human-readable form.
  */
 export function formatPlanForUser(plan: ExecutionPlan): string {
   const lines = [`**${plan.summary}**\n`];
@@ -66,7 +66,7 @@ export function formatPlanForUser(plan: ExecutionPlan): string {
   }
 
   if (plan.hasDangerousSteps) {
-    lines.push('\n⚠️ 위험한 작업이 포함되어 있습니다. 승인이 필요합니다.');
+    lines.push('\n⚠️ Contains dangerous operations. Approval required.');
   }
 
   return lines.join('\n');

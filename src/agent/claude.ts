@@ -26,10 +26,10 @@ export interface ClaudeJsonMessage {
   [key: string]: unknown;
 }
 
-const DEFAULT_TIMEOUT_MS = 5 * 60 * 1000; // 5분
+const DEFAULT_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes
 
 /**
- * claude CLI 바이너리가 설치되어 있는지 확인한다.
+ * Checks whether the Claude CLI binary is installed.
  */
 export async function checkClaudeCli(binary: string = 'claude'): Promise<boolean> {
   try {
@@ -41,8 +41,8 @@ export async function checkClaudeCli(binary: string = 'claude'): Promise<boolean
 }
 
 /**
- * Claude Code CLI를 subprocess로 호출한다.
- * `claude -p --output-format json` 형태로 실행하여 JSON 응답을 파싱한다.
+ * Invokes the Claude Code CLI as a subprocess.
+ * Runs `claude -p --output-format json` and parses the JSON response.
  */
 export async function invokeClaudeCli(options: ClaudeCliOptions): Promise<ClaudeCliResult> {
   const { prompt, cwd, allowedTools, mcpConfigPath, timeoutMs = DEFAULT_TIMEOUT_MS } = options;
@@ -83,14 +83,14 @@ export async function invokeClaudeCli(options: ClaudeCliOptions): Promise<Claude
     });
 
     child.on('error', (err) => {
-      reject(new Error(`Claude CLI 실행 실패: ${err.message}`));
+      reject(new Error(`Claude CLI execution failed: ${err.message}`));
     });
 
     child.on('close', (code) => {
       const exitCode = code ?? 1;
 
       if (exitCode !== 0 && !stdout) {
-        reject(new Error(`Claude CLI 에러 (exit ${exitCode}): ${stderr || '알 수 없는 오류'}`));
+        reject(new Error(`Claude CLI error (exit ${exitCode}): ${stderr || 'Unknown error'}`));
         return;
       }
 
@@ -101,8 +101,8 @@ export async function invokeClaudeCli(options: ClaudeCliOptions): Promise<Claude
 }
 
 /**
- * Claude CLI의 JSON 출력을 파싱하여 최종 텍스트 결과를 추출한다.
- * --output-format json은 JSONL 형태로 여러 메시지를 출력한다.
+ * Parses Claude CLI JSON output and extracts the final text result.
+ * --output-format json outputs multiple messages in JSONL format.
  */
 export function parseClaudeJsonOutput(output: string): string {
   const lines = output.trim().split('\n').filter(Boolean);
@@ -112,7 +112,7 @@ export function parseClaudeJsonOutput(output: string): string {
     try {
       const msg: ClaudeJsonMessage = JSON.parse(line);
 
-      // assistant 메시지에서 텍스트 추출
+      // Extract text from assistant messages
       if (msg.type === 'assistant' && Array.isArray(msg.content)) {
         for (const block of msg.content) {
           if (block.type === 'text' && block.text) {
@@ -121,12 +121,12 @@ export function parseClaudeJsonOutput(output: string): string {
         }
       }
 
-      // result 메시지
+      // Result message
       if (msg.type === 'result' && typeof msg.result === 'string') {
         texts.push(msg.result);
       }
     } catch {
-      // JSON 파싱 실패 시 원문 텍스트로 처리
+      // On JSON parse failure, treat as raw text
       texts.push(line);
     }
   }
@@ -135,7 +135,7 @@ export function parseClaudeJsonOutput(output: string): string {
 }
 
 /**
- * Anthropic API를 직접 호출하는 fallback 모드.
+ * Fallback mode that directly calls the Anthropic API.
  */
 export async function invokeClaudeApi(options: {
   prompt: string;

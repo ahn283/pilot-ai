@@ -3,7 +3,7 @@ import os from 'node:os';
 import type { PilotConfig } from '../config/schema.js';
 
 /**
- * ~ 를 실제 홈 디렉토리로 확장한다.
+ * Expands ~ to the actual home directory path.
  */
 function expandHome(p: string): string {
   if (p.startsWith('~/') || p === '~') {
@@ -13,17 +13,17 @@ function expandHome(p: string): string {
 }
 
 /**
- * 주어진 경로가 sandbox 범위 내에 있는지 검증한다.
- * - 경로를 정규화하여 path traversal 방지
- * - 허용 경로 화이트리스트 확인
- * - 차단 경로 블랙리스트 확인
+ * Validates whether a given path is within the sandbox scope.
+ * - Normalizes the path to prevent path traversal attacks
+ * - Checks against the allowed paths whitelist
+ * - Checks against the blocked paths blacklist
  */
 export function isPathAllowed(targetPath: string, config: PilotConfig): boolean {
   const resolved = path.resolve(expandHome(targetPath));
 
   const { allowedPaths, blockedPaths } = config.security.filesystemSandbox;
 
-  // 차단 경로 확인 (우선)
+  // Check blocked paths (takes priority)
   for (const blocked of blockedPaths) {
     const resolvedBlocked = path.resolve(expandHome(blocked));
     if (resolved === resolvedBlocked || resolved.startsWith(resolvedBlocked + path.sep)) {
@@ -31,7 +31,7 @@ export function isPathAllowed(targetPath: string, config: PilotConfig): boolean 
     }
   }
 
-  // 허용 경로 확인
+  // Check allowed paths
   for (const allowed of allowedPaths) {
     const resolvedAllowed = path.resolve(expandHome(allowed));
     if (resolved === resolvedAllowed || resolved.startsWith(resolvedAllowed + path.sep)) {
@@ -43,15 +43,15 @@ export function isPathAllowed(targetPath: string, config: PilotConfig): boolean 
 }
 
 /**
- * Shell 명령어가 블랙리스트에 해당하는지 검사한다.
+ * Checks whether a shell command matches the blocklist.
  */
 const BLOCKED_PATTERNS: RegExp[] = [
-  /rm\s+(-[a-zA-Z]*f[a-zA-Z]*\s+|.*-rf\s+)[\/~]/,  // rm -rf / 또는 rm -rf ~
+  /rm\s+(-[a-zA-Z]*f[a-zA-Z]*\s+|.*-rf\s+)[\/~]/,  // rm -rf / or rm -rf ~
   /curl\s.*\|\s*(?:ba)?sh/,                           // curl | sh, curl | bash
   /wget\s.*\|\s*(?:ba)?sh/,                           // wget | sh
   /chmod\s+777/,                                       // chmod 777
-  />\s*\/dev\//,                                       // > /dev/ 디바이스 파일 조작
-  /mkfs\./,                                            // mkfs 파일시스템 포맷
+  />\s*\/dev\//,                                       // > /dev/ device file manipulation
+  /mkfs\./,                                            // mkfs filesystem format
   /dd\s+.*of=\/dev\//,                                 // dd of=/dev/
   /:(){ :\|:& };:/,                                    // fork bomb
 ];
@@ -61,8 +61,8 @@ export function isCommandBlocked(command: string): boolean {
 }
 
 /**
- * subprocess 실행 시 사용할 격리된 환경변수를 생성한다.
- * 민감한 환경변수를 제거한다.
+ * Creates an isolated environment variable set for subprocess execution.
+ * Removes sensitive environment variables.
  */
 const SENSITIVE_ENV_KEYS = [
   'SLACK_BOT_TOKEN',

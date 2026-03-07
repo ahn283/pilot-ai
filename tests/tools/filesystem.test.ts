@@ -86,6 +86,6 @@ describe('filesystem', () => {
 
   it('차단된 경로에 접근하면 에러를 던진다', async () => {
     const secretPath = path.join(testDir, 'secret', 'data.txt');
-    await expect(writeFile(secretPath, 'secret', blockedConfig)).rejects.toThrow('접근이 차단된 경로');
+    await expect(writeFile(secretPath, 'secret', blockedConfig)).rejects.toThrow('Access denied: blocked path');
   });
 });

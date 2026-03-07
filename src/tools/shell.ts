@@ -7,15 +7,15 @@ export interface ShellResult {
   exitCode: number;
 }
 
-const DEFAULT_TIMEOUT_MS = 60_000; // 1분
+const DEFAULT_TIMEOUT_MS = 60_000; // 1 minute
 
 export async function executeShell(
   command: string,
   options?: { cwd?: string; timeoutMs?: number },
 ): Promise<ShellResult> {
-  // 명령어 블랙리스트 검증
+  // Validate against command blocklist
   if (isCommandBlocked(command)) {
-    throw new Error(`차단된 명령어입니다: ${command}`);
+    throw new Error(`Blocked command: ${command}`);
   }
 
   const { cwd, timeoutMs = DEFAULT_TIMEOUT_MS } = options ?? {};
@@ -40,7 +40,7 @@ export async function executeShell(
     });
 
     child.on('error', (err) => {
-      reject(new Error(`Shell 실행 실패: ${err.message}`));
+      reject(new Error(`Shell execution failed: ${err.message}`));
     });
 
     child.on('close', (code) => {

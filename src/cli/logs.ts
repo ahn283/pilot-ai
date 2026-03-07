@@ -13,7 +13,7 @@ export async function runLogs(options: { follow?: boolean } = {}): Promise<void>
   try {
     await fs.access(logPath);
   } catch {
-    console.log('로그 파일이 아직 없습니다.');
+    console.log('No log files found.');
     return;
   }
 

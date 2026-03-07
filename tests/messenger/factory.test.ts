@@ -40,11 +40,11 @@ describe('createMessengerAdapter', () => {
   it('Slack 설정 없이 slack 플랫폼이면 에러를 던진다', () => {
     const config = makeConfig({ platform: 'slack' });
     delete (config.messenger as Record<string, unknown>).slack;
-    expect(() => createMessengerAdapter(config)).toThrow('Slack 설정이 없습니다');
+    expect(() => createMessengerAdapter(config)).toThrow('Slack configuration not found');
   });
 
   it('Telegram 설정 없이 telegram 플랫폼이면 에러를 던진다', () => {
     const config = makeConfig({ platform: 'telegram' });
-    expect(() => createMessengerAdapter(config)).toThrow('Telegram 설정이 없습니다');
+    expect(() => createMessengerAdapter(config)).toThrow('Telegram configuration not found');
   });
 });

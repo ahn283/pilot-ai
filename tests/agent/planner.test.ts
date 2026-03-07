@@ -30,7 +30,7 @@ describe('parsePlan', () => {
 
   it('빈 응답은 기본 plan을 반환한다', () => {
     const plan = parsePlan('');
-    expect(plan.summary).toBe('작업 실행');
+    expect(plan.summary).toBe('Execute task');
     expect(plan.steps).toHaveLength(0);
   });
 });
@@ -44,6 +44,6 @@ describe('formatPlanForUser', () => {
     const formatted = formatPlanForUser(plan);
     expect(formatted).toContain('🟢'); // safe
     expect(formatted).toContain('🔴'); // dangerous
-    expect(formatted).toContain('승인이 필요합니다');
+    expect(formatted).toContain('Approval required');
   });
 });

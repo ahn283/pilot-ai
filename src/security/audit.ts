@@ -12,7 +12,7 @@ export interface AuditEntry {
 }
 
 /**
- * 민감한 정보를 마스킹한다.
+ * Masks sensitive information in text.
  */
 const SECRET_PATTERNS = [
   /xoxb-[a-zA-Z0-9-]+/g,       // Slack bot token
@@ -35,8 +35,8 @@ export function maskSecrets(text: string): string {
 }
 
 /**
- * 감사 로그에 엔트리를 기록한다.
- * ~/.pilot/logs/audit.jsonl에 한 줄씩 JSON으로 추가.
+ * Writes an entry to the audit log.
+ * Appends one JSON line per entry to ~/.pilot/logs/audit.jsonl.
  */
 export async function writeAuditLog(entry: AuditEntry, shouldMask: boolean = true): Promise<void> {
   const logDir = path.join(getPilotDir(), 'logs');

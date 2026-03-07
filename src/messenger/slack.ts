@@ -27,10 +27,10 @@ export class SlackAdapter implements MessengerAdapter {
   }
 
   private setupListeners(): void {
-    // 일반 메시지 수신
+    // Receive incoming messages
     this.app.message(async ({ message }) => {
       if (!this.messageHandler) return;
-      if (message.subtype) return; // bot messages, edits 등 무시
+      if (message.subtype) return; // Ignore bot messages, edits, etc.
 
       const msg = message as {
         user?: string;
@@ -69,7 +69,7 @@ export class SlackAdapter implements MessengerAdapter {
       });
     });
 
-    // 승인/거부 버튼 액션
+    // Approve/Reject button actions
     this.app.action('approve_task', async ({ action, ack, body }) => {
       await ack();
       if (!this.approvalHandler) return;
@@ -130,14 +130,14 @@ export class SlackAdapter implements MessengerAdapter {
           elements: [
             {
               type: 'button',
-              text: { type: 'plain_text', text: '승인' },
+              text: { type: 'plain_text', text: 'Approve' },
               style: 'primary',
               action_id: 'approve_task',
               value: taskId,
             },
             {
               type: 'button',
-              text: { type: 'plain_text', text: '거부' },
+              text: { type: 'plain_text', text: 'Reject' },
               style: 'danger',
               action_id: 'reject_task',
               value: taskId,

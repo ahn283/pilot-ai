@@ -1,7 +1,7 @@
 export type SafetyLevel = 'safe' | 'moderate' | 'dangerous';
 
 /**
- * 작업 계획의 위험도를 분류한다.
+ * Classifies the risk level of a task plan.
  */
 
 const DANGEROUS_PATTERNS = [
@@ -50,7 +50,7 @@ export function classifySafety(action: string): SafetyLevel {
 }
 
 /**
- * 승인 대기 상태를 관리한다.
+ * Manages pending approval state.
  */
 export interface PendingApproval {
   taskId: string;
@@ -63,13 +63,13 @@ export class ApprovalManager {
   private pending = new Map<string, PendingApproval>();
 
   /**
-   * 승인을 요청하고, 승인/거부/타임아웃까지 대기한다.
+   * Requests approval and waits for approve/reject/timeout.
    */
   requestApproval(taskId: string, action: string, timeoutMs: number): Promise<boolean> {
     return new Promise<boolean>((resolve) => {
       const timer = setTimeout(() => {
         this.pending.delete(taskId);
-        resolve(false); // 타임아웃 → 거부 처리
+        resolve(false); // Timeout -> treated as rejection
       }, timeoutMs);
 
       this.pending.set(taskId, { taskId, action, resolve, timer });
@@ -77,7 +77,7 @@ export class ApprovalManager {
   }
 
   /**
-   * 사용자의 승인/거부 응답을 처리한다.
+   * Handles a user's approve/reject response.
    */
   handleResponse(taskId: string, approved: boolean): boolean {
     const entry = this.pending.get(taskId);

@@ -33,7 +33,7 @@ describe('runLogs', () => {
     const spy = vi.spyOn(console, 'log').mockImplementation(() => {});
     const { runLogs } = await import('../../src/cli/logs.js');
     await runLogs();
-    expect(spy).toHaveBeenCalledWith('로그 파일이 아직 없습니다.');
+    expect(spy).toHaveBeenCalledWith('No log files found.');
     spy.mockRestore();
   });
 

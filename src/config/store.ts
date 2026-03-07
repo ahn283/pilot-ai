@@ -28,12 +28,12 @@ export async function loadConfig(): Promise<PilotConfig> {
     const content = await fs.readFile(getConfigPath(), 'utf-8');
     raw = JSON.parse(content);
   } catch {
-    throw new Error(`설정 파일을 찾을 수 없습니다. 먼저 "npx pilot-ai init"을 실행하세요.`);
+    throw new Error(`Configuration file not found. Run "npx pilot-ai init" first.`);
   }
 
   const result = configSchema.safeParse(raw);
   if (!result.success) {
-    throw new Error(`설정 파일이 올바르지 않습니다:\n${result.error.format()._errors.join('\n')}`);
+    throw new Error(`Invalid configuration file:\n${result.error.format()._errors.join('\n')}`);
   }
 
   return result.data;

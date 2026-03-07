@@ -12,23 +12,23 @@ import { registerFigmaMcp } from '../tools/figma-mcp.js';
 const execFileAsync = promisify(execFile);
 
 export async function runInit(): Promise<void> {
-  console.log('\n🚀 Pilot-AI 셋업을 시작합니다.\n');
+  console.log('\nStarting Pilot-AI setup.\n');
 
   await ensurePilotDir();
 
-  // 1. Claude 연결
+  // 1. Claude connection
   const claudeConfig = await setupClaude();
 
-  // 2. 메신저 선택 및 설정
+  // 2. Messenger setup
   const messengerConfig = await setupMessenger();
 
-  // 3. 선택적 통합 서비스 설정
+  // 3. Optional integrations
   const integrationConfig = await setupIntegrations();
 
-  // 4. Playwright 브라우저 설치
+  // 4. Playwright browser install
   await installPlaywright();
 
-  // 5. 설정 저장
+  // 5. Save config
   const config: Partial<PilotConfig> = {
     ...defaultConfig,
     claude: claudeConfig,
@@ -38,22 +38,22 @@ export async function runInit(): Promise<void> {
 
   await saveConfig(config);
 
-  console.log('\n✅ 설정 완료! "npx pilot-ai start"로 에이전트를 시작하세요.\n');
+  console.log('\nSetup complete! Run "npx pilot-ai start" to start the agent.\n');
 }
 
 async function setupClaude(): Promise<PilotConfig['claude']> {
-  console.log('── Claude 연결 ──\n');
+  console.log('── Claude Connection ──\n');
 
   const cliExists = await checkClaudeCli();
 
   if (cliExists) {
-    console.log('✅ Claude Code CLI가 설치되어 있습니다.\n');
+    console.log('Claude Code CLI is installed.\n');
 
     const { useApi } = await inquirer.prompt([
       {
         type: 'confirm',
         name: 'useApi',
-        message: 'API Key 모드를 대신 사용하시겠습니까? (기본: CLI 모드)',
+        message: 'Use API Key mode instead? (default: CLI mode)',
         default: false,
       },
     ]);
@@ -62,17 +62,17 @@ async function setupClaude(): Promise<PilotConfig['claude']> {
       return { mode: 'cli', cliBinary: 'claude', apiKey: null };
     }
   } else {
-    console.log('⚠️  Claude Code CLI를 찾을 수 없습니다. API Key 모드로 설정합니다.\n');
-    console.log('  CLI 설치: npm install -g @anthropic-ai/claude-code\n');
+    console.log('Claude Code CLI not found. Configuring API Key mode.\n');
+    console.log('  Install CLI: npm install -g @anthropic-ai/claude-code\n');
   }
 
   const { apiKey } = await inquirer.prompt([
     {
       type: 'password',
       name: 'apiKey',
-      message: 'Anthropic API Key를 입력하세요:',
+      message: 'Enter your Anthropic API Key:',
       mask: '*',
-      validate: (input: string) => input.startsWith('sk-') || 'sk-로 시작하는 유효한 API Key를 입력하세요.',
+      validate: (input: string) => input.startsWith('sk-') || 'Please enter a valid API Key starting with sk-.',
     },
   ]);
 
@@ -81,13 +81,13 @@ async function setupClaude(): Promise<PilotConfig['claude']> {
 }
 
 async function setupMessenger(): Promise<PilotConfig['messenger']> {
-  console.log('\n── 메신저 설정 ──\n');
+  console.log('\n── Messenger Setup ──\n');
 
   const { platform } = await inquirer.prompt([
     {
       type: 'list',
       name: 'platform',
-      message: '사용할 메신저를 선택하세요:',
+      message: 'Select messenger platform:',
       choices: [
         { name: 'Slack', value: 'slack' },
         { name: 'Telegram', value: 'telegram' },
@@ -102,12 +102,12 @@ async function setupMessenger(): Promise<PilotConfig['messenger']> {
 }
 
 async function setupSlack(): Promise<PilotConfig['messenger']> {
-  console.log('\n📋 Slack App 설정 가이드:');
-  console.log('  1. https://api.slack.com/apps 에서 새 App 생성');
-  console.log('  2. Socket Mode 활성화');
-  console.log('  3. Event Subscriptions → message.im 추가');
-  console.log('  4. OAuth & Permissions → chat:write, im:history 추가');
-  console.log('  5. App을 워크스페이스에 설치\n');
+  console.log('\n📋 Slack App Setup Guide:');
+  console.log('  1. Create a new App at https://api.slack.com/apps');
+  console.log('  2. Enable Socket Mode');
+  console.log('  3. Event Subscriptions: add message.im');
+  console.log('  4. OAuth & Permissions: add chat:write, im:history');
+  console.log('  5. Install the App to your workspace\n');
 
   const answers = await inquirer.prompt([
     {
@@ -115,14 +115,14 @@ async function setupSlack(): Promise<PilotConfig['messenger']> {
       name: 'botToken',
       message: 'Bot Token (xoxb-...):',
       mask: '*',
-      validate: (input: string) => input.startsWith('xoxb-') || 'xoxb-로 시작하는 토큰을 입력하세요.',
+      validate: (input: string) => input.startsWith('xoxb-') || 'Please enter a token starting with xoxb-.',
     },
     {
       type: 'password',
       name: 'appToken',
       message: 'App-Level Token (xapp-...):',
       mask: '*',
-      validate: (input: string) => input.startsWith('xapp-') || 'xapp-로 시작하는 토큰을 입력하세요.',
+      validate: (input: string) => input.startsWith('xapp-') || 'Please enter a token starting with xapp-.',
     },
     {
       type: 'password',
@@ -133,8 +133,8 @@ async function setupSlack(): Promise<PilotConfig['messenger']> {
     {
       type: 'input',
       name: 'userId',
-      message: '허용할 Slack User ID (본인):',
-      validate: (input: string) => input.startsWith('U') || 'U로 시작하는 User ID를 입력하세요.',
+      message: 'Your Slack User ID:',
+      validate: (input: string) => input.startsWith('U') || 'Please enter a User ID starting with U.',
     },
   ]);
 
@@ -163,10 +163,10 @@ async function setupSlack(): Promise<PilotConfig['messenger']> {
 }
 
 async function setupTelegram(): Promise<PilotConfig['messenger']> {
-  console.log('\n📋 Telegram Bot 설정 가이드:');
-  console.log('  1. Telegram에서 @BotFather에게 /newbot 명령');
-  console.log('  2. Bot 이름과 username 설정');
-  console.log('  3. 발급된 Bot Token 복사\n');
+  console.log('\n📋 Telegram Bot Setup Guide:');
+  console.log('  1. Send /newbot to @BotFather on Telegram');
+  console.log('  2. Set the bot name and username');
+  console.log('  3. Copy the issued Bot Token\n');
 
   const answers = await inquirer.prompt([
     {
@@ -174,13 +174,13 @@ async function setupTelegram(): Promise<PilotConfig['messenger']> {
       name: 'botToken',
       message: 'Bot Token:',
       mask: '*',
-      validate: (input: string) => /^\d+:/.test(input) || '유효한 Telegram Bot Token을 입력하세요.',
+      validate: (input: string) => /^\d+:/.test(input) || 'Please enter a valid Telegram Bot Token.',
     },
     {
       type: 'input',
       name: 'chatId',
-      message: '허용할 Telegram Chat ID (본인):',
-      validate: (input: string) => /^\d+$/.test(input) || '숫자로 된 Chat ID를 입력하세요.',
+      message: 'Your Telegram Chat ID:',
+      validate: (input: string) => /^\d+$/.test(input) || 'Please enter a numeric Chat ID.',
     },
   ]);
 
@@ -204,20 +204,20 @@ async function setupTelegram(): Promise<PilotConfig['messenger']> {
 }
 
 async function setupIntegrations(): Promise<Partial<PilotConfig>> {
-  console.log('\n── 통합 서비스 설정 (선택) ──\n');
+  console.log('\n── Integration Setup (optional) ──\n');
 
   const result: Partial<PilotConfig> = {};
 
   // Notion
   const { setupNotion } = await inquirer.prompt([
-    { type: 'confirm', name: 'setupNotion', message: 'Notion Integration을 설정하시겠습니까?', default: false },
+    { type: 'confirm', name: 'setupNotion', message: 'Set up Notion Integration?', default: false },
   ]);
   if (setupNotion) {
-    console.log('\n📋 Notion Integration 가이드:');
-    console.log('  1. https://www.notion.so/my-integrations 에서 새 Integration 생성');
-    console.log('  2. 이름 설정 후 "Submit" 클릭');
-    console.log('  3. Internal Integration Secret 복사');
-    console.log('  4. 연동할 페이지/DB에서 "Connections"로 Integration 추가\n');
+    console.log('\n📋 Notion Integration Guide:');
+    console.log('  1. Create a new Integration at https://www.notion.so/my-integrations');
+    console.log('  2. Set a name and click "Submit"');
+    console.log('  3. Copy the Internal Integration Secret');
+    console.log('  4. Add the Integration via "Connections" on the pages/DBs you want to use\n');
 
     const { notionApiKey } = await inquirer.prompt([
       {
@@ -235,14 +235,14 @@ async function setupIntegrations(): Promise<Partial<PilotConfig>> {
 
   // Obsidian
   const { setupObsidian } = await inquirer.prompt([
-    { type: 'confirm', name: 'setupObsidian', message: 'Obsidian vault를 설정하시겠습니까?', default: false },
+    { type: 'confirm', name: 'setupObsidian', message: 'Set up Obsidian vault?', default: false },
   ]);
   if (setupObsidian) {
     const { vaultPath } = await inquirer.prompt([
       {
         type: 'input',
         name: 'vaultPath',
-        message: 'Obsidian vault 경로 (예: ~/Documents/MyVault):',
+        message: 'Obsidian vault path (e.g. ~/Documents/MyVault):',
         validate: (input: string) => input.length > 0 || 'Path required.',
       },
     ]);
@@ -252,12 +252,12 @@ async function setupIntegrations(): Promise<Partial<PilotConfig>> {
 
   // Figma
   const { setupFigma } = await inquirer.prompt([
-    { type: 'confirm', name: 'setupFigma', message: 'Figma를 설정하시겠습니까?', default: false },
+    { type: 'confirm', name: 'setupFigma', message: 'Set up Figma?', default: false },
   ]);
   if (setupFigma) {
-    console.log('\n📋 Figma Personal Access Token 가이드:');
+    console.log('\n📋 Figma Personal Access Token Guide:');
     console.log('  1. Figma > Account Settings > Personal access tokens');
-    console.log('  2. "Generate new token" 클릭 후 복사\n');
+    console.log('  2. Click "Generate new token" and copy it\n');
 
     const { figmaToken } = await inquirer.prompt([
       {
@@ -276,12 +276,12 @@ async function setupIntegrations(): Promise<Partial<PilotConfig>> {
 
   // Linear
   const { setupLinear } = await inquirer.prompt([
-    { type: 'confirm', name: 'setupLinear', message: 'Linear를 설정하시겠습니까?', default: false },
+    { type: 'confirm', name: 'setupLinear', message: 'Set up Linear?', default: false },
   ]);
   if (setupLinear) {
-    console.log('\n📋 Linear API Key 가이드:');
+    console.log('\n📋 Linear API Key Guide:');
     console.log('  1. Linear > Settings > API > Personal API keys');
-    console.log('  2. "Create key" 클릭 후 복사\n');
+    console.log('  2. Click "Create key" and copy it\n');
 
     const { linearApiKey } = await inquirer.prompt([
       {
@@ -289,7 +289,7 @@ async function setupIntegrations(): Promise<Partial<PilotConfig>> {
         name: 'linearApiKey',
         message: 'Linear API Key:',
         mask: '*',
-        validate: (input: string) => input.startsWith('lin_api_') || 'lin_api_로 시작하는 키를 입력하세요.',
+        validate: (input: string) => input.startsWith('lin_api_') || 'Please enter a key starting with lin_api_.',
       },
     ]);
     await setSecret('linear-api-key', linearApiKey);
@@ -305,7 +305,7 @@ async function installPlaywright(): Promise<void> {
     {
       type: 'confirm',
       name: 'install',
-      message: 'Playwright Chromium 브라우저를 설치하시겠습니까? (브라우저 자동화에 필요)',
+      message: 'Install Playwright Chromium browser? (required for browser automation)',
       default: true,
     },
   ]);

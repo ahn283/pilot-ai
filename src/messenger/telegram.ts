@@ -70,7 +70,7 @@ export class TelegramAdapter implements MessengerAdapter {
       });
     });
 
-    // 승인/거부 Inline Keyboard 콜백
+    // Approve/Reject inline keyboard callback
     this.bot.on('callback_query', async (ctx) => {
       if (!this.approvalHandler) return;
 
@@ -82,16 +82,16 @@ export class TelegramAdapter implements MessengerAdapter {
 
       if (action === 'approve') {
         this.approvalHandler(taskId, true);
-        await ctx.answerCbQuery('승인됨');
+        await ctx.answerCbQuery('Approved');
       } else if (action === 'reject') {
         this.approvalHandler(taskId, false);
-        await ctx.answerCbQuery('거부됨');
+        await ctx.answerCbQuery('Rejected');
       }
     });
   }
 
   async start(): Promise<void> {
-    // Long Polling 시작 (non-blocking)
+    // Start long polling (non-blocking)
     this.bot.launch();
   }
 
@@ -123,8 +123,8 @@ export class TelegramAdapter implements MessengerAdapter {
       reply_markup: {
         inline_keyboard: [
           [
-            { text: '승인', callback_data: `approve:${taskId}` },
-            { text: '거부', callback_data: `reject:${taskId}` },
+            { text: 'Approve', callback_data: `approve:${taskId}` },
+            { text: 'Reject', callback_data: `reject:${taskId}` },
           ],
         ],
       },

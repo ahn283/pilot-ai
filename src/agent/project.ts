@@ -58,7 +58,7 @@ export async function listProjects(): Promise<Record<string, ProjectEntry>> {
 }
 
 /**
- * 지정된 루트 디렉토리들을 스캔하여 프로젝트를 자동 감지한다.
+ * Scans specified root directories to auto-detect projects.
  */
 export async function scanProjects(roots: string[]): Promise<Record<string, string>> {
   const registry = await loadRegistry();
@@ -87,7 +87,7 @@ export async function scanProjects(roots: string[]): Promise<Record<string, stri
       }
     }
 
-    // scanRoots에 추가
+    // Add to scanRoots
     if (!registry.scanRoots.includes(resolvedRoot)) {
       registry.scanRoots.push(resolvedRoot);
     }
@@ -103,31 +103,31 @@ async function detectProject(dirPath: string, markers: string[]): Promise<boolea
       await fs.access(path.join(dirPath, marker));
       return true;
     } catch {
-      // 다음 마커 시도
+      // Try next marker
     }
   }
   return false;
 }
 
 /**
- * 사용자 메시지에서 프로젝트를 매칭한다.
- * 우선순위: 정확한 이름 → 절대경로 → fuzzy match
+ * Resolves a project from a user message.
+ * Priority: exact name -> absolute path -> fuzzy match
  */
 export async function resolveProject(query: string): Promise<{ name: string; path: string } | null> {
   const registry = await loadRegistry();
   const projects = registry.projects;
 
-  // 1. 정확한 이름 매칭
+  // 1. Exact name match
   if (query in projects) {
     return { name: query, path: projects[query].path };
   }
 
-  // 2. 절대경로 포함 여부
+  // 2. Absolute path check
   if (query.startsWith('/') || query.startsWith('~')) {
     return { name: path.basename(query), path: path.resolve(query) };
   }
 
-  // 3. Fuzzy match (부분 문자열)
+  // 3. Fuzzy match (substring)
   const lowerQuery = query.toLowerCase();
   for (const [name, entry] of Object.entries(projects)) {
     if (name.toLowerCase().includes(lowerQuery) || lowerQuery.includes(name.toLowerCase())) {

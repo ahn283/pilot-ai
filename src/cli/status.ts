@@ -39,11 +39,11 @@ export async function runStatus(): Promise<void> {
   const status = await getAgentStatus();
 
   if (status.running) {
-    console.log(`에이전트 상태: 실행 중 (PID: ${status.pid})`);
+    console.log(`Agent status: running (PID: ${status.pid})`);
   } else {
-    console.log('에이전트 상태: 중지됨');
+    console.log('Agent status: stopped');
     if (status.lastExitStatus !== null) {
-      console.log(`  마지막 종료 코드: ${status.lastExitStatus}`);
+      console.log(`  Last exit code: ${status.lastExitStatus}`);
     }
   }
 }
