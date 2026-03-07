@@ -21,13 +21,13 @@
 - [x] `chmod 600` 파일 퍼미션 자동 설정
 
 ### 1.2 Claude Code CLI 연동
-- [ ] `agent/claude.ts` - `claude -p` subprocess 호출 기본 구현
-- [ ] `--cwd` 옵션으로 작업 디렉토리 지정
-- [ ] `--output-format json` 응답 파싱
-- [ ] `--allowedTools` 옵션 연동
-- [ ] CLI 바이너리 존재 여부 확인 (`which claude`)
-- [ ] API Key fallback 모드 구현 (`@anthropic-ai/sdk`)
-- [ ] 타임아웃 및 에러 핸들링
+- [x] `agent/claude.ts` - `claude -p` subprocess 호출 기본 구현
+- [x] `--cwd` 옵션으로 작업 디렉토리 지정
+- [x] `--output-format json` 응답 파싱
+- [x] `--allowedTools` 옵션 연동
+- [x] CLI 바이너리 존재 여부 확인 (`which claude`)
+- [x] API Key fallback 모드 구현 (`@anthropic-ai/sdk`)
+- [x] 타임아웃 및 에러 핸들링
 
 ### 1.3 Messenger Adapter
 - [ ] `messenger/adapter.ts` - MessengerAdapter 인터페이스 정의

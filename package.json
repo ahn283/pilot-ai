@@ -29,6 +29,7 @@
     "dist/"
   ],
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.78.0",
     "commander": "^14.0.3",
     "zod": "^4.3.6"
   },
