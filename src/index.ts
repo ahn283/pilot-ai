@@ -79,6 +79,34 @@ program
     process.on('SIGINT', shutdown);
   });
 
+program
+  .command('adduser')
+  .description('Add an authorized user')
+  .argument('<platform>', 'Platform: slack or telegram')
+  .argument('<userId>', 'User ID to authorize')
+  .action(async (platform: string, userId: string) => {
+    const { addUser } = await import('./cli/user.js');
+    await addUser(platform, userId);
+  });
+
+program
+  .command('removeuser')
+  .description('Remove an authorized user')
+  .argument('<platform>', 'Platform: slack or telegram')
+  .argument('<userId>', 'User ID to remove')
+  .action(async (platform: string, userId: string) => {
+    const { removeUser } = await import('./cli/user.js');
+    await removeUser(platform, userId);
+  });
+
+program
+  .command('listusers')
+  .description('List all authorized users')
+  .action(async () => {
+    const { listUsers } = await import('./cli/user.js');
+    await listUsers();
+  });
+
 program.addCommand(createProjectCommand());
 
 program.parse();

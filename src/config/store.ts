@@ -87,6 +87,11 @@ async function resolveKeychainSecrets(config: PilotConfig): Promise<PilotConfig>
   return resolved;
 }
 
+export async function loadRawConfig(): Promise<Record<string, unknown>> {
+  const content = await fs.readFile(getConfigPath(), 'utf-8');
+  return JSON.parse(content) as Record<string, unknown>;
+}
+
 export async function saveConfig(config: Partial<PilotConfig>): Promise<void> {
   await ensurePilotDir();
 
