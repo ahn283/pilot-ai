@@ -220,11 +220,13 @@
 - [ ] 스킬 관련 자연어 명령은 LLM이 해석 → skills CRUD 함수 호출 (tool 연동)
 
 ### 2.6 Webhook / HTTP API Endpoint
-- [ ] `api/server.ts` - Express/Fastify 로컬 HTTP 서버
-  - [ ] `POST /api/command` 엔드포인트
-  - [ ] Bearer token 인증 (Keychain 저장)
-  - [ ] localhost 전용 바인딩
-  - [ ] Rate limiting
+- [x] `api/server.ts` - node:http 로컬 HTTP 서버 (외부 의존성 없음)
+  - [x] `POST /api/command` 엔드포인트
+  - [x] `GET /health` 헬스체크
+  - [x] Bearer token 인증
+  - [x] localhost 전용 바인딩 (127.0.0.1)
+  - [x] Rate limiting (30 req/min)
+  - [x] `ApiServer.generateToken()` 랜덤 토큰 생성
 - [ ] Apple Shortcuts 연동 가이드 작성
 - [ ] Raycast extension 예제
 
