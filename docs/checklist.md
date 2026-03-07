@@ -279,7 +279,7 @@
 - [x] 온보딩에 Linear API 키 입력 추가
 
 ### 2.13 Figma Integration
-- [ ] Figma MCP 서버 연동 (claude -p에 MCP 설정 전달)
+- [x] Figma MCP 서버 연동 (claude -p에 MCP 설정 전달)
 - [x] `tools/figma.ts` - REST API 래퍼
   - [x] 파일/프레임/컴포넌트 조회
   - [x] 이미지 내보내기 (PNG/SVG)

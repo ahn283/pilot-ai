@@ -11,6 +11,7 @@ import { detectAndSavePreference } from './preference-detector.js';
 import { analyzeProjectIfNew } from './project-analyzer.js';
 import { buildSkillsContext } from './skills.js';
 import { buildToolDescriptions } from './tool-descriptions.js';
+import { getMcpConfigPathIfExists } from '../tools/figma-mcp.js';
 
 export class AgentCore {
   private messenger: MessengerAdapter;
@@ -138,9 +139,11 @@ export class AgentCore {
       });
     }
 
+    const mcpConfigPath = await getMcpConfigPathIfExists() ?? undefined;
     const result = await invokeClaudeCli({
       prompt,
       cwd: projectPath,
+      mcpConfigPath,
     });
     return result.result;
   }

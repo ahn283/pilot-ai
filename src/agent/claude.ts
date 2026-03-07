@@ -9,6 +9,7 @@ export interface ClaudeCliOptions {
   prompt: string;
   cwd?: string;
   allowedTools?: string[];
+  mcpConfigPath?: string;
   timeoutMs?: number;
 }
 
@@ -44,7 +45,7 @@ export async function checkClaudeCli(binary: string = 'claude'): Promise<boolean
  * `claude -p --output-format json` 형태로 실행하여 JSON 응답을 파싱한다.
  */
 export async function invokeClaudeCli(options: ClaudeCliOptions): Promise<ClaudeCliResult> {
-  const { prompt, cwd, allowedTools, timeoutMs = DEFAULT_TIMEOUT_MS } = options;
+  const { prompt, cwd, allowedTools, mcpConfigPath, timeoutMs = DEFAULT_TIMEOUT_MS } = options;
 
   const args = ['-p', '--output-format', 'json'];
 
@@ -56,6 +57,10 @@ export async function invokeClaudeCli(options: ClaudeCliOptions): Promise<Claude
     for (const tool of allowedTools) {
       args.push('--allowedTools', tool);
     }
+  }
+
+  if (mcpConfigPath) {
+    args.push('--mcp-config', mcpConfigPath);
   }
 
   args.push(prompt);

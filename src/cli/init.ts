@@ -7,6 +7,7 @@ import { setSecret } from '../config/keychain.js';
 import type { PilotConfig } from '../config/schema.js';
 import { defaultConfig } from '../config/schema.js';
 import { testSlackConnection, testTelegramConnection } from './connection-test.js';
+import { registerFigmaMcp } from '../tools/figma-mcp.js';
 
 const execFileAsync = promisify(execFile);
 
@@ -268,8 +269,9 @@ async function setupIntegrations(): Promise<Partial<PilotConfig>> {
       },
     ]);
     await setSecret('figma-personal-access-token', figmaToken);
+    await registerFigmaMcp(figmaToken);
     result.figma = { personalAccessToken: '***keychain***' };
-    console.log('  Figma configured.\n');
+    console.log('  Figma configured (MCP server registered).\n');
   }
 
   // Linear
