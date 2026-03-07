@@ -226,12 +226,63 @@
   - [ ] "새 스킬 만들어줘 - ~~" → 스킬 파일 생성
   - [ ] "~~ 스킬 보여줘" → 스킬 내용 전송
 
-### 2.6 통합 테스트 (Phase 2)
+### 2.6 Webhook / HTTP API Endpoint
+- [ ] `api/server.ts` - Express/Fastify 로컬 HTTP 서버
+  - [ ] `POST /api/command` 엔드포인트
+  - [ ] Bearer token 인증 (Keychain 저장)
+  - [ ] localhost 전용 바인딩
+  - [ ] Rate limiting
+- [ ] Apple Shortcuts 연동 가이드 작성
+- [ ] Raycast extension 예제
+
+### 2.7 GitHub Integration
+- [ ] `tools/github.ts` - `gh` CLI 래퍼
+  - [ ] PR 생성/조회/머지
+  - [ ] 이슈 생성/조회/닫기
+  - [ ] CI 상태 확인
+  - [ ] diff 조회 및 리뷰
+
+### 2.8 Clipboard / Screenshot
+- [ ] `tools/clipboard.ts` - macOS 클립보드 연동
+  - [ ] `pbpaste` 읽기
+  - [ ] `pbcopy` 쓰기
+  - [ ] `screencapture` 스크린샷
+  - [ ] Claude Vision으로 이미지 분석
+
+### 2.9 Multi-modal Input
+- [ ] 메신저 어댑터 이미지 수신 지원
+  - [ ] Slack: files:read로 이미지 다운로드
+  - [ ] Telegram: getFile API로 이미지 다운로드
+  - [ ] Base64 인코딩 → Claude Vision API
+
+### 2.10 macOS Notifications
+- [ ] `tools/notification.ts` - osascript 알림
+  - [ ] 작업 완료/실패 시 데스크톱 알림
+  - [ ] terminal-notifier 클릭 액션 (선택)
+
+### 2.11 Obsidian Integration
+- [ ] Obsidian vault 경로 config 등록
+  - [ ] 마크다운 파일 읽기/쓰기 (filesystem 도구 활용)
+  - [ ] Daily note 자동 생성/업데이트
+  - [ ] 노트 검색
+
+### 2.12 Linear / Jira Integration
+- [ ] `tools/linear.ts` - Linear GraphQL API
+  - [ ] 이슈 생성/조회/수정
+  - [ ] 상태 변경
+  - [ ] 백로그 조회
+- [ ] 온보딩에 Linear API 키 입력 추가
+
+### 2.13 통합 테스트 (Phase 2)
 - [ ] 브라우저 자동화 E2E (페이지 탐색, 폼 입력, 스크린샷)
 - [ ] Notion CRUD 테스트
 - [ ] 병렬 실행 테스트 (다른 프로젝트 동시 작업)
 - [ ] Heartbeat 스케줄 실행 테스트
 - [ ] 스킬 매칭 & 실행 테스트
+- [ ] Webhook 엔드포인트 테스트
+- [ ] GitHub CLI 연동 테스트
+- [ ] 클립보드/스크린샷 테스트
+- [ ] 이미지 멀티모달 테스트
 
 ---
 
@@ -264,8 +315,38 @@
   - [ ] 예: "Linear 이슈 가져와서 → Notion에 정리 → 메신저로 링크 공유"
 - [ ] 작업 간 데이터 전달 파이프라인
 
-### 3.5 통합 테스트 (Phase 3)
+### 3.5 Email Integration
+- [ ] `tools/email.ts` - Gmail / Outlook 연동
+  - [ ] OAuth2 인증 플로우
+  - [ ] 이메일 목록 조회 / 검색
+  - [ ] 이메일 내용 읽기 / 요약
+  - [ ] 이메일 초안 작성
+  - [ ] [Dangerous] 이메일 전송
+  - [ ] 토큰 자동 refresh
+
+### 3.6 Calendar Management
+- [ ] `tools/calendar.ts` - Google Calendar / Apple Calendar
+  - [ ] 일정 조회 (오늘/내일/이번 주)
+  - [ ] 일정 생성/수정/삭제
+  - [ ] 시간대 자동 처리
+  - [ ] 빈 시간 검색 (focus block 자동 생성)
+
+### 3.7 Voice Input/Output
+- [ ] TTS: macOS `say` 명령 또는 ElevenLabs API
+- [ ] STT: Whisper API 또는 Apple Speech
+- [ ] Apple Shortcuts Dictate Text → Webhook 연동
+
+### 3.8 Multi-Agent Orchestration
+- [ ] 역할 기반 서브 에이전트 분업
+  - [ ] Research / Planning / Coding / Review Agent
+  - [ ] 공유 컨텍스트 관리
+  - [ ] 에러 복구 및 재시도
+
+### 3.9 통합 테스트 (Phase 3)
 - [ ] VSCode 연동 테스트
 - [ ] Worktree 병렬 실행 & PR 생성 테스트
 - [ ] Semantic Search 정확도 테스트
 - [ ] 복합 작업 E2E 테스트
+- [ ] Email 연동 테스트
+- [ ] Calendar 연동 테스트
+- [ ] Voice I/O 테스트
