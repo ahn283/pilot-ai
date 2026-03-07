@@ -81,16 +81,16 @@
   - [x] 승인 타임아웃 (기본 30분)
 
 ### 1.6 Tools (기본)
-- [ ] `tools/filesystem.ts` - 파일/폴더 CRUD
-  - [ ] 읽기, 쓰기, 생성, 삭제, 이동, 복사
-  - [ ] 파일 검색 (이름, 내용)
-  - [ ] 디렉토리 구조 탐색
-  - [ ] sandbox 경로 검증 연동
-- [ ] `tools/shell.ts` - Shell 명령 실행
-  - [ ] 명령어 블랙리스트 검증 연동
-  - [ ] stdout/stderr 캡처
-  - [ ] 타임아웃 설정
-  - [ ] 환경변수 격리
+- [x] `tools/filesystem.ts` - 파일/폴더 CRUD
+  - [x] 읽기, 쓰기, 생성, 삭제, 이동, 복사
+  - [x] 파일 검색 (이름, 내용)
+  - [x] 디렉토리 구조 탐색
+  - [x] sandbox 경로 검증 연동
+- [x] `tools/shell.ts` - Shell 명령 실행
+  - [x] 명령어 블랙리스트 검증 연동
+  - [x] stdout/stderr 캡처
+  - [x] 타임아웃 설정
+  - [x] 환경변수 격리
 
 ### 1.7 Task Queue
 - [ ] `agent/queue.ts` - 순차 실행 큐 (FIFO)
