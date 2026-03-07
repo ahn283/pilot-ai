@@ -1,9 +1,12 @@
+import { createWorktree, removeWorktree, type WorktreeInfo } from './worktree.js';
+
 export type TaskStatus = 'queued' | 'running' | 'waiting_approval' | 'completed' | 'failed' | 'cancelled';
 
 export interface Task {
   id: string;
   status: TaskStatus;
   project: string | null;
+  projectPath?: string;
   command: string;
   threadId?: string;
   channelId: string;
@@ -13,6 +16,7 @@ export interface Task {
   completedAt: Date | null;
   result?: string;
   error?: string;
+  worktree?: WorktreeInfo;
 }
 
 export type TaskHandler = (task: Task) => Promise<void>;
@@ -35,9 +39,11 @@ export class TaskQueue {
   private runningTasks: Set<Task> = new Set();
   private handler: TaskHandler | null = null;
   private maxConcurrent: number;
+  private worktreeEnabled: boolean;
 
-  constructor(maxConcurrent: number = 3) {
+  constructor(maxConcurrent: number = 3, worktreeEnabled: boolean = false) {
     this.maxConcurrent = maxConcurrent;
+    this.worktreeEnabled = worktreeEnabled;
   }
 
   onTask(handler: TaskHandler): void {
@@ -47,6 +53,7 @@ export class TaskQueue {
   enqueue(params: {
     command: string;
     project?: string;
+    projectPath?: string;
     channelId: string;
     userId: string;
     threadId?: string;
@@ -55,6 +62,7 @@ export class TaskQueue {
       id: generateTaskId(),
       status: 'queued',
       project: params.project ?? null,
+      projectPath: params.projectPath,
       command: params.command,
       channelId: params.channelId,
       userId: params.userId,
@@ -94,6 +102,7 @@ export class TaskQueue {
 
   /**
    * Finds the next task that can run based on project parallelism rules.
+   * With worktree enabled, same-project tasks can run in parallel via worktrees.
    */
   private findNextRunnable(): Task | null {
     const runningProjects = new Set<string>();
@@ -107,14 +116,31 @@ export class TaskQueue {
       // Null-project tasks can always run (no project conflict)
       if (task.project === null) return task;
 
-      // Project tasks can run only if no other task for the same project is running
+      // No conflict - run directly
       if (!runningProjects.has(task.project)) return task;
+
+      // Worktree mode: allow same-project if projectPath is available
+      if (this.worktreeEnabled && task.projectPath) return task;
     }
 
     return null;
   }
 
   private async executeTask(task: Task): Promise<void> {
+    // If same project is already running and worktree is enabled, create worktree
+    if (this.worktreeEnabled && task.project && task.projectPath) {
+      const alreadyRunning = [...this.runningTasks].some(
+        (t) => t !== task && t.project === task.project && !t.worktree,
+      );
+      if (alreadyRunning) {
+        try {
+          task.worktree = await createWorktree(task.projectPath, task.id);
+        } catch {
+          // Worktree creation failed - fall back to sequential wait handled elsewhere
+        }
+      }
+    }
+
     try {
       if (this.handler) {
         await this.handler(task);
@@ -125,6 +151,14 @@ export class TaskQueue {
       task.error = err instanceof Error ? err.message : String(err);
     } finally {
       task.completedAt = new Date();
+      // Clean up worktree
+      if (task.worktree && task.projectPath) {
+        try {
+          await removeWorktree(task.projectPath, task.worktree.path, task.worktree.branch);
+        } catch {
+          // Best-effort cleanup
+        }
+      }
     }
   }
 

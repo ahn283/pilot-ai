@@ -303,64 +303,66 @@
 ## Phase 3
 
 ### 3.1 VSCode Integration
-- [ ] `tools/vscode.ts` - VSCode CLI 연동
-  - [ ] `code` CLI 존재 확인
-  - [ ] 파일/폴더 열기
-  - [ ] 터미널 명령 실행
-  - [ ] Git 작업 (commit, push, PR 생성)
+- [x] `tools/vscode.ts` - VSCode CLI 연동
+  - [x] `code` CLI 존재 확인
+  - [x] 파일/폴더 열기
+  - [x] 터미널 명령 실행
+  - [x] Git 작업 (commit, push, PR 생성)
 
 ### 3.2 동일 프로젝트 Worktree 병렬
-- [ ] `agent/queue.ts` 업데이트
-  - [ ] 같은 프로젝트 동시 작업 요청 시 git worktree 생성
-  - [ ] 각 worktree에서 독립 실행
-  - [ ] 완료 후 PR 생성
-  - [ ] worktree 자동 정리
+- [x] `agent/worktree.ts` - Git worktree 관리
+  - [x] 같은 프로젝트 동시 작업 요청 시 git worktree 생성
+  - [x] 각 worktree에서 독립 실행
+  - [x] 완료 후 PR 생성
+  - [x] worktree 자동 정리
+- [x] `agent/queue.ts` 업데이트 (worktree 연동)
 
 ### 3.3 Semantic Search
-- [ ] 임베딩 모델 선택 (로컬 모델 또는 API)
-- [ ] 메모리/히스토리 Markdown 청크 분할
-- [ ] 청크별 임베딩 벡터 생성
-- [ ] SQLite + vector extension 로컬 인덱스
-- [ ] 사용자 질문 → 유사도 검색 → 관련 메모리 반환
-- [ ] 메모리 변경 시 인덱스 자동 업데이트
+- [x] TF-IDF 코사인 유사도 기반 검색 (네이티브 의존성 없음)
+- [x] 메모리/히스토리 Markdown 청크 분할
+- [x] 청크별 토큰화 및 TF-IDF 벡터 생성
+- [x] JSON 기반 로컬 인덱스 (`search-index.json`)
+- [x] 사용자 질문 → 유사도 검색 → 관련 메모리 반환
+- [x] 메모리 변경 시 인덱스 자동 리빌드
 
 ### 3.4 복합 작업
-- [ ] 여러 도구를 조합한 멀티스텝 작업 지원
-  - [ ] 예: "Linear 이슈 가져와서 → Notion에 정리 → 메신저로 링크 공유"
-- [ ] 작업 간 데이터 전달 파이프라인
+- [x] 여러 도구를 조합한 멀티스텝 작업 지원
+  - [x] 예: "Linear 이슈 가져와서 → Notion에 정리 → 메신저로 링크 공유"
+- [x] 작업 간 데이터 전달 파이프라인 (`agent/pipeline.ts`)
 
 ### 3.5 Email Integration
-- [ ] `tools/email.ts` - Gmail / Outlook 연동
-  - [ ] OAuth2 인증 플로우
-  - [ ] 이메일 목록 조회 / 검색
-  - [ ] 이메일 내용 읽기 / 요약
-  - [ ] 이메일 초안 작성
-  - [ ] [Dangerous] 이메일 전송
-  - [ ] 토큰 자동 refresh
+- [x] `tools/email.ts` - Gmail OAuth2 연동
+  - [x] OAuth2 인증 플로우
+  - [x] 이메일 목록 조회 / 검색
+  - [x] 이메일 내용 읽기 / 요약
+  - [x] 이메일 초안 작성
+  - [x] [Dangerous] 이메일 전송
+  - [x] 토큰 자동 refresh
 
 ### 3.6 Calendar Management
-- [ ] `tools/calendar.ts` - Google Calendar / Apple Calendar
-  - [ ] 일정 조회 (오늘/내일/이번 주)
-  - [ ] 일정 생성/수정/삭제
-  - [ ] 시간대 자동 처리
-  - [ ] 빈 시간 검색 (focus block 자동 생성)
+- [x] `tools/calendar.ts` - macOS Apple Calendar (AppleScript)
+  - [x] 일정 조회 (오늘/내일/이번 주)
+  - [x] 일정 생성/삭제
+  - [x] 시간대 자동 처리
+  - [x] 빈 시간 검색 (focus block 자동 생성)
 
 ### 3.7 Voice Input/Output
-- [ ] TTS: macOS `say` 명령 또는 ElevenLabs API
-- [ ] STT: Whisper API 또는 Apple Speech
-- [ ] Apple Shortcuts Dictate Text → Webhook 연동
+- [x] TTS: macOS `say` 명령 (voice, rate, output file)
+- [x] STT: Whisper API 연동
+- [x] 오디오 녹음 (sox / ffmpeg fallback)
 
 ### 3.8 Multi-Agent Orchestration
-- [ ] 역할 기반 서브 에이전트 분업
-  - [ ] Research / Planning / Coding / Review Agent
-  - [ ] 공유 컨텍스트 관리
-  - [ ] 에러 복구 및 재시도
+- [x] 역할 기반 서브 에이전트 분업
+  - [x] Research / Planning / Coding / Review Agent
+  - [x] 공유 컨텍스트 관리 (SharedContext)
+  - [x] 에러 복구 및 재시도
 
 ### 3.9 통합 테스트 (Phase 3)
-- [ ] VSCode 연동 테스트
-- [ ] Worktree 병렬 실행 & PR 생성 테스트
-- [ ] Semantic Search 정확도 테스트
-- [ ] 복합 작업 E2E 테스트
-- [ ] Email 연동 테스트
-- [ ] Calendar 연동 테스트
-- [ ] Voice I/O 테스트
+- [x] VSCode 연동 테스트
+- [x] Worktree 병렬 실행 & PR 생성 테스트
+- [x] Semantic Search 정확도 테스트
+- [x] 복합 작업 E2E 테스트
+- [x] Email 연동 테스트
+- [x] Calendar 연동 테스트
+- [x] Voice I/O 테스트
+- [ ] Multi-Agent 통합 테스트
