@@ -246,14 +246,19 @@
   - [ ] Claude Vision으로 이미지 분석
 
 ### 2.9 Multi-modal Input
-- [ ] 메신저 어댑터 이미지 수신 지원
-  - [ ] Slack: files:read로 이미지 다운로드
-  - [ ] Telegram: getFile API로 이미지 다운로드
-  - [ ] Base64 인코딩 → Claude Vision API
+- [x] `IncomingMessage`에 `images?: ImageAttachment[]` 필드 추가
+- [x] `tools/image.ts` - 이미지 다운로드/변환 유틸
+  - [x] URL → 로컬 파일 다운로드
+  - [x] 파일 → Base64 변환
+  - [x] 파일 → Data URL 변환 (Claude Vision용)
+- [ ] Slack: files:read로 이미지 다운로드 (어댑터 연동)
+- [ ] Telegram: getFile API로 이미지 다운로드 (어댑터 연동)
 
 ### 2.10 macOS Notifications
-- [ ] `tools/notification.ts` - osascript 알림
-  - [ ] 작업 완료/실패 시 데스크톱 알림
+- [x] `tools/notification.ts` - osascript 알림
+  - [x] 작업 완료/실패 시 데스크톱 알림
+  - [x] 커스텀 title/subtitle/sound
+  - [x] AppleScript 특수문자 이스케이프
   - [ ] terminal-notifier 클릭 액션 (선택)
 
 ### 2.11 Obsidian Integration

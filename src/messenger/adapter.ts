@@ -1,9 +1,16 @@
+export interface ImageAttachment {
+  url: string;
+  mimeType: string;
+  filename?: string;
+}
+
 export interface IncomingMessage {
   platform: 'slack' | 'telegram';
   userId: string;
   channelId: string;
   threadId?: string;
   text: string;
+  images?: ImageAttachment[];
   timestamp: Date;
 }
 
