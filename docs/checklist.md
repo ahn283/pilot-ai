@@ -211,16 +211,13 @@
 - [ ] 스케줄 관련 자연어 명령은 LLM이 해석 → heartbeat CRUD 함수 호출 (tool 연동)
 
 ### 2.5 Skills System
-- [ ] `agent/skills.ts` - 스킬 관리
-  - [ ] `~/.pilot/skills/` 디렉토리 스캔
-  - [ ] 스킬 Markdown 파싱 (트리거, 절차, 참고)
-  - [ ] 사용자 메시지와 트리거 매칭
-  - [ ] 매칭된 스킬 절차를 Claude 프롬프트에 주입
-  - [ ] 매칭 안 되면 일반 추론으로 fallback
-- [ ] 메신저 명령 연동
-  - [ ] "스킬 목록" → 전체 조회
-  - [ ] "새 스킬 만들어줘 - ~~" → 스킬 파일 생성
-  - [ ] "~~ 스킬 보여줘" → 스킬 내용 전송
+- [x] `agent/skills.ts` - 스킬 엔진
+  - [x] `~/.pilot/skills/` 디렉토리 스캔
+  - [x] 스킬 Markdown 파싱 (트리거, 절차, 참고)
+  - [x] 스킬 CRUD (create, get, list, delete)
+  - [x] `buildSkillsContext()` - 전체 스킬을 XML로 Claude 프롬프트에 주입
+  - [x] LLM이 trigger 기반으로 매칭 판단 (regex 매칭 없음)
+- [ ] 스킬 관련 자연어 명령은 LLM이 해석 → skills CRUD 함수 호출 (tool 연동)
 
 ### 2.6 Webhook / HTTP API Endpoint
 - [ ] `api/server.ts` - Express/Fastify 로컬 HTTP 서버
