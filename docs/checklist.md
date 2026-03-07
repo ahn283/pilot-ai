@@ -262,16 +262,20 @@
   - [ ] terminal-notifier 클릭 액션 (선택)
 
 ### 2.11 Obsidian Integration
-- [ ] Obsidian vault 경로 config 등록
-  - [ ] 마크다운 파일 읽기/쓰기 (filesystem 도구 활용)
-  - [ ] Daily note 자동 생성/업데이트
-  - [ ] 노트 검색
+- [x] `tools/obsidian.ts` - Obsidian vault 로컬 파일 연동
+  - [x] 마크다운 노트 읽기/쓰기/추가
+  - [x] Daily note 자동 생성/업데이트 (로컬 타임존)
+  - [x] 노트 검색 (텍스트 매칭)
+  - [x] 노트 목록 조회 (재귀 스캔)
+  - [x] Path traversal 방지
+- [ ] Obsidian vault 경로 config/온보딩 등록
 
 ### 2.12 Linear / Jira Integration
-- [ ] `tools/linear.ts` - Linear GraphQL API
-  - [ ] 이슈 생성/조회/수정
-  - [ ] 상태 변경
-  - [ ] 백로그 조회
+- [x] `tools/linear.ts` - Linear GraphQL API
+  - [x] 이슈 생성/조회/수정
+  - [x] 상태 변경 (updateIssueState)
+  - [x] 내 이슈 목록 (listMyIssues)
+  - [x] 팀/워크플로우 상태 조회
 - [ ] 온보딩에 Linear API 키 입력 추가
 
 ### 2.13 Figma Integration
