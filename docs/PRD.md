@@ -745,7 +745,54 @@ Gmail / Outlook 연동으로 이메일 관리.
 - 공유 컨텍스트 관리, 에러 복구
 - 단일 에이전트가 안정적일 때 도입 (Phase 3)
 
-### 5.23 Safety & Approval System
+### 5.23 Figma Integration (Phase 2)
+
+Figma 디자인 파일을 읽고 조작하는 기능. 공식 Figma MCP 서버를 활용한다.
+
+#### 접근 방식
+
+**Figma MCP Server (권장)**
+- Figma 공식 MCP 서버가 존재하며 Claude Code와 직접 연동 가능
+- `claude plugin install figma@claude-plugins-official`로 설치
+- MCP 프로토콜을 통해 디자인 파일, 컴포넌트, 디자인 토큰에 접근
+- 읽기/쓰기 모두 가능
+
+**REST API (읽기 전용 보조)**
+- 파일/프레임/컴포넌트 구조 조회
+- 이미지 내보내기 (PNG/SVG/PDF)
+- 코멘트 읽기/쓰기
+- 디자인 토큰/변수 조회
+- OpenAPI 스펙 제공 (`figma/rest-api-spec`)
+
+**Plugin API (쓰기 — Figma 앱 내부)**
+- 노드 생성/수정/삭제
+- 레이어 조작, 텍스트 변경
+- 컴포넌트 프로퍼티 수정
+- 단, Figma 데스크톱/웹 앱 내부에서만 실행 가능
+
+#### 활용 시나리오
+
+```
+사용자: "Figma에서 로그인 화면 디자인 가져와서 코드로 만들어줘"
+사용자: "Figma 디자인 토큰 추출해서 CSS 변수로 만들어줘"
+사용자: "현재 코드를 Figma 디자인으로 변환해줘"
+사용자: "Figma 파일에서 사용된 컬러 팔레트 정리해줘"
+```
+
+#### 구현 계획
+
+1. Figma MCP 서버 연동 (`claude -p`에 MCP 설정 전달)
+2. REST API 래퍼 (`tools/figma.ts`) — 파일 조회, 이미지 내보내기
+3. 온보딩에 Figma Personal Access Token 입력 추가
+4. 디자인 → 코드, 코드 → 디자인 양방향 워크플로우
+
+#### 제약사항
+
+- REST API는 읽기 전용 (노드 생성/수정 불가)
+- 디자인 파일 직접 수정은 Figma MCP 서버 또는 Plugin API를 통해서만 가능
+- Figma MCP 서버는 Claude Code CLI 모드에서만 사용 가능 (API 모드 미지원)
+
+### 5.24 Safety & Approval System
 
 위험도에 따라 작업을 분류:
 

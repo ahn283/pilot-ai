@@ -266,7 +266,16 @@
   - [ ] 백로그 조회
 - [ ] 온보딩에 Linear API 키 입력 추가
 
-### 2.13 통합 테스트 (Phase 2)
+### 2.13 Figma Integration
+- [ ] Figma MCP 서버 연동 (claude -p에 MCP 설정 전달)
+- [ ] `tools/figma.ts` - REST API 래퍼
+  - [ ] 파일/프레임/컴포넌트 조회
+  - [ ] 이미지 내보내기 (PNG/SVG)
+  - [ ] 디자인 토큰/변수 조회
+  - [ ] 코멘트 읽기/쓰기
+- [ ] 온보딩에 Figma Personal Access Token 입력 추가
+
+### 2.14 통합 테스트 (Phase 2)
 - [ ] 브라우저 자동화 E2E (페이지 탐색, 폼 입력, 스크린샷)
 - [ ] Notion CRUD 테스트
 - [ ] 병렬 실행 테스트 (다른 프로젝트 동시 작업)
