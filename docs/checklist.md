@@ -65,20 +65,20 @@
   - [x] 토큰/키 마스킹 처리
 
 ### 1.5 Agent Core
-- [ ] `agent/core.ts` - 메인 에이전트 루프
-  - [ ] 메신저에서 메시지 수신
-  - [ ] 인증 검증
-  - [ ] Claude에 프롬프트 전달 (메모리 컨텍스트 포함)
-  - [ ] 응답 파싱 및 도구 실행 판단
-  - [ ] 결과를 메신저로 전송
-- [ ] `agent/planner.ts` - 작업 계획 수립
-  - [ ] Claude에게 실행 계획 요청
-  - [ ] 계획의 위험도 분류
-- [ ] `agent/safety.ts` - 위험도 판단
-  - [ ] Safe / Moderate / Dangerous 분류 로직
-  - [ ] Dangerous 작업 시 메신저로 승인 요청
-  - [ ] 승인/거부 콜백 처리
-  - [ ] 승인 타임아웃 (기본 30분)
+- [x] `agent/core.ts` - 메인 에이전트 루프
+  - [x] 메신저에서 메시지 수신
+  - [x] 인증 검증
+  - [x] Claude에 프롬프트 전달 (메모리 컨텍스트 포함)
+  - [x] 응답 파싱 및 도구 실행 판단
+  - [x] 결과를 메신저로 전송
+- [x] `agent/planner.ts` - 작업 계획 수립
+  - [x] Claude에게 실행 계획 요청
+  - [x] 계획의 위험도 분류
+- [x] `agent/safety.ts` - 위험도 판단
+  - [x] Safe / Moderate / Dangerous 분류 로직
+  - [x] Dangerous 작업 시 메신저로 승인 요청
+  - [x] 승인/거부 콜백 처리
+  - [x] 승인 타임아웃 (기본 30분)
 
 ### 1.6 Tools (기본)
 - [ ] `tools/filesystem.ts` - 파일/폴더 CRUD
