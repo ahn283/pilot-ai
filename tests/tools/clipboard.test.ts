@@ -5,7 +5,12 @@ vi.mock('../../src/tools/shell.js', () => ({
   executeShell: (...args: unknown[]) => mockExecuteShell(...args),
 }));
 
-const { readClipboard, writeClipboard, takeScreenshot, takeWindowScreenshot } =
+const mockImageToDataUrl = vi.fn().mockResolvedValue('data:image/png;base64,abc123');
+vi.mock('../../src/tools/image.js', () => ({
+  imageToDataUrl: (...args: unknown[]) => mockImageToDataUrl(...args),
+}));
+
+const { readClipboard, writeClipboard, takeScreenshot, takeWindowScreenshot, captureScreenForVision, captureWindowForVision } =
   await import('../../src/tools/clipboard.js');
 
 beforeEach(() => {
@@ -65,5 +70,23 @@ describe('takeWindowScreenshot', () => {
     const filepath = await takeWindowScreenshot();
     expect(filepath).toContain('pilot-window');
     expect(mockExecuteShell).toHaveBeenCalledWith(expect.stringContaining('-w'));
+  });
+});
+
+describe('captureScreenForVision', () => {
+  it('takes a screenshot and returns data URL', async () => {
+    mockExecuteShell.mockResolvedValue({ exitCode: 0, stdout: '', stderr: '' });
+    const dataUrl = await captureScreenForVision();
+    expect(dataUrl).toContain('data:image/png;base64');
+    expect(mockImageToDataUrl).toHaveBeenCalled();
+  });
+});
+
+describe('captureWindowForVision', () => {
+  it('takes a window screenshot and returns data URL', async () => {
+    mockExecuteShell.mockResolvedValue({ exitCode: 0, stdout: '', stderr: '' });
+    const dataUrl = await captureWindowForVision();
+    expect(dataUrl).toContain('data:image/png;base64');
+    expect(mockImageToDataUrl).toHaveBeenCalled();
   });
 });

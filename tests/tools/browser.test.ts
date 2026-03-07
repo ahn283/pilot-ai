@@ -1,4 +1,10 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import fs from 'node:fs/promises';
+import path from 'node:path';
+
+vi.mock('../../src/config/store.js', () => ({
+  getPilotDir: () => '/tmp/pilot-browser-test',
+}));
 
 // Mock playwright
 const mockPage = {
@@ -19,6 +25,7 @@ const mockPage = {
 const mockContext = {
   newPage: vi.fn().mockResolvedValue(mockPage),
   close: vi.fn().mockResolvedValue(undefined),
+  storageState: vi.fn().mockResolvedValue({ cookies: [], origins: [] }),
 };
 
 const mockBrowser = {
@@ -46,10 +53,13 @@ const {
   getCurrentUrl,
   isBrowserRunning,
   waitForLoad,
+  saveStorageState,
 } = await import('../../src/tools/browser.js');
 
-beforeEach(() => {
+beforeEach(async () => {
   vi.clearAllMocks();
+  await fs.mkdir('/tmp/pilot-browser-test/browser-profile', { recursive: true });
+  try { await fs.unlink('/tmp/pilot-browser-test/browser-profile/session.enc'); } catch {}
 });
 
 describe('browser lifecycle', () => {
@@ -158,6 +168,40 @@ describe('utility', () => {
     await launchBrowser();
     await waitForLoad('networkidle');
     expect(mockPage.waitForLoadState).toHaveBeenCalledWith('networkidle', expect.any(Object));
+    await closeBrowser();
+  });
+});
+
+describe('session persistence', () => {
+  it('saves encrypted session state on close', async () => {
+    await launchBrowser();
+    await closeBrowser();
+
+    expect(mockContext.storageState).toHaveBeenCalled();
+    const sessionPath = path.join('/tmp/pilot-browser-test/browser-profile', 'session.enc');
+    const stat = await fs.stat(sessionPath);
+    expect(stat.size).toBeGreaterThan(0);
+  });
+
+  it('restores session state on launch if file exists', async () => {
+    // First session: save
+    await launchBrowser();
+    await closeBrowser();
+
+    // Second session: should pass storageState to newContext
+    mockBrowser.newContext.mockClear();
+    await launchBrowser();
+    expect(mockBrowser.newContext).toHaveBeenCalledWith(
+      expect.objectContaining({ storageState: expect.any(Object) }),
+    );
+    await closeBrowser();
+  });
+
+  it('launches without session file', async () => {
+    await launchBrowser();
+    expect(mockBrowser.newContext).toHaveBeenCalledWith(
+      expect.objectContaining({ userAgent: 'PilotAI/1.0' }),
+    );
     await closeBrowser();
   });
 });

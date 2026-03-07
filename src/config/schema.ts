@@ -26,6 +26,21 @@ export const configSchema = z.object({
       apiKey: z.string(),
     })
     .optional(),
+  obsidian: z
+    .object({
+      vaultPath: z.string(),
+    })
+    .optional(),
+  linear: z
+    .object({
+      apiKey: z.string(),
+    })
+    .optional(),
+  figma: z
+    .object({
+      personalAccessToken: z.string(),
+    })
+    .optional(),
   safety: z.object({
     dangerousActionsRequireApproval: z.boolean().default(true),
     approvalTimeoutMinutes: z.number().default(30),

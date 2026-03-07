@@ -1,5 +1,7 @@
 import { chromium, type Browser, type BrowserContext, type Page } from 'playwright';
 import path from 'node:path';
+import fs from 'node:fs/promises';
+import crypto from 'node:crypto';
 import { getPilotDir } from '../config/store.js';
 
 let browser: Browser | null = null;
@@ -14,25 +16,77 @@ function getDownloadDir(): string {
   return path.join(getPilotDir(), 'downloads');
 }
 
+function getSessionPath(): string {
+  return path.join(getUserDataDir(), 'session.enc');
+}
+
+// Derive encryption key from machine-specific seed
+function deriveKey(): Buffer {
+  const seed = `pilot-ai-session-${process.env.USER ?? 'default'}-${getPilotDir()}`;
+  return crypto.createHash('sha256').update(seed).digest();
+}
+
+function encryptData(data: string): Buffer {
+  const key = deriveKey();
+  const iv = crypto.randomBytes(16);
+  const cipher = crypto.createCipheriv('aes-256-cbc', key, iv);
+  const encrypted = Buffer.concat([cipher.update(data, 'utf-8'), cipher.final()]);
+  return Buffer.concat([iv, encrypted]);
+}
+
+function decryptData(encrypted: Buffer): string {
+  const key = deriveKey();
+  const iv = encrypted.subarray(0, 16);
+  const data = encrypted.subarray(16);
+  const decipher = crypto.createDecipheriv('aes-256-cbc', key, iv);
+  return Buffer.concat([decipher.update(data), decipher.final()]).toString('utf-8');
+}
+
+async function loadStorageState(): Promise<object | undefined> {
+  try {
+    const encrypted = await fs.readFile(getSessionPath());
+    const json = decryptData(encrypted);
+    return JSON.parse(json);
+  } catch {
+    return undefined;
+  }
+}
+
+export async function saveStorageState(): Promise<void> {
+  if (!context) return;
+  const state = await context.storageState();
+  const encrypted = encryptData(JSON.stringify(state));
+  await fs.mkdir(getUserDataDir(), { recursive: true });
+  await fs.writeFile(getSessionPath(), encrypted, { mode: 0o600 });
+}
+
 /**
  * Launches a Chromium browser with an isolated profile.
+ * Restores session cookies/localStorage from encrypted storage if available.
  */
 export async function launchBrowser(): Promise<void> {
   if (browser) return;
 
   browser = await chromium.launch({ headless: true });
-  context = await browser.newContext({
+
+  const stored = await loadStorageState();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const contextOptions: any = {
     userAgent: 'PilotAI/1.0',
     acceptDownloads: true,
-  });
+  };
+  if (stored) contextOptions.storageState = stored;
+  context = await browser.newContext(contextOptions);
   page = await context.newPage();
 }
 
 /**
  * Closes the browser and cleans up.
+ * Saves session cookies/localStorage to encrypted storage before closing.
  */
 export async function closeBrowser(): Promise<void> {
   if (context) {
+    await saveStorageState();
     await context.close();
     context = null;
   }

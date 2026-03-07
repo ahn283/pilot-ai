@@ -1,6 +1,8 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
+import crypto from 'node:crypto';
 import { getPilotDir } from '../config/store.js';
+import { classifySafety } from './safety.js';
 
 export interface CronJob {
   id: number;
@@ -13,7 +15,29 @@ export interface CronJob {
   lastError?: string;
 }
 
-export type JobExecutor = (job: CronJob) => Promise<void>;
+export type JobExecutor = (job: CronJob) => Promise<string>;
+
+export interface HeartbeatReporter {
+  sendText(channelId: string, text: string): Promise<string>;
+  sendApproval(channelId: string, text: string, taskId: string): Promise<void>;
+}
+
+export interface HeartbeatApprovalRequest {
+  requestApproval(taskId: string, action: string, timeoutMs: number): Promise<boolean>;
+}
+
+let reporter: HeartbeatReporter | null = null;
+let approvalManager: HeartbeatApprovalRequest | null = null;
+let reportChannelId: string | null = null;
+
+export function setHeartbeatReporter(r: HeartbeatReporter, channelId: string): void {
+  reporter = r;
+  reportChannelId = channelId;
+}
+
+export function setHeartbeatApproval(a: HeartbeatApprovalRequest): void {
+  approvalManager = a;
+}
 
 function getCronJobsPath(): string {
   return path.join(getPilotDir(), 'cron-jobs.json');
@@ -209,17 +233,54 @@ export async function tick(now?: Date): Promise<CronJob[]> {
       createdAt: '',
     };
 
+    // Check dangerous actions and request approval
+    const safety = classifySafety(cronJob.command);
+    if (safety === 'dangerous' && approvalManager && reporter && reportChannelId) {
+      const taskId = `heartbeat-${cronJob.id}-${crypto.randomUUID().slice(0, 8)}`;
+      await reporter.sendApproval(
+        reportChannelId,
+        `⚠️ Scheduled task requires approval:\n\`${cronJob.command}\`\nCron: ${cronJob.cron}`,
+        taskId,
+      );
+      const approved = await approvalManager.requestApproval(taskId, cronJob.command, 30 * 60 * 1000);
+      if (!approved) {
+        if (entry.job) {
+          entry.job.lastRunAt = date.toISOString();
+          entry.job.lastError = 'Approval denied or timed out';
+        }
+        executedJobs.push(cronJob);
+        continue;
+      }
+    }
+
     if (executor) {
       try {
-        await executor(cronJob);
+        const result = await executor(cronJob);
         if (entry.job) {
           entry.job.lastRunAt = date.toISOString();
           entry.job.lastError = undefined;
         }
+        // Report result via messenger
+        if (reporter && reportChannelId) {
+          const proj = cronJob.project ? ` [${cronJob.project}]` : '';
+          const summary = result.length > 500 ? result.slice(0, 500) + '...' : result;
+          await reporter.sendText(
+            reportChannelId,
+            `✅ Scheduled task completed${proj}:\n\`${cronJob.command}\`\n${summary}`,
+          ).catch(() => {});
+        }
       } catch (err) {
+        const errorMsg = err instanceof Error ? err.message : String(err);
         if (entry.job) {
           entry.job.lastRunAt = date.toISOString();
-          entry.job.lastError = err instanceof Error ? err.message : String(err);
+          entry.job.lastError = errorMsg;
+        }
+        // Report error via messenger
+        if (reporter && reportChannelId) {
+          await reporter.sendText(
+            reportChannelId,
+            `❌ Scheduled task failed:\n\`${cronJob.command}\`\nError: ${errorMsg}`,
+          ).catch(() => {});
         }
       }
     }

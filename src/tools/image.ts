@@ -11,7 +11,11 @@ export async function downloadImage(attachment: ImageAttachment): Promise<string
   const filename = attachment.filename ?? `pilot-image-${Date.now()}${ext}`;
   const filepath = path.join(os.tmpdir(), filename);
 
-  const response = await fetch(attachment.url);
+  const headers: Record<string, string> = {};
+  if (attachment.authHeader) {
+    headers['Authorization'] = attachment.authHeader;
+  }
+  const response = await fetch(attachment.url, { headers });
   if (!response.ok) throw new Error(`Failed to download image: ${response.status}`);
 
   const buffer = Buffer.from(await response.arrayBuffer());

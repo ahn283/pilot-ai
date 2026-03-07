@@ -41,4 +41,21 @@ describe('sendNotification', () => {
     await sendNotification({ message: 'He said "hello"' });
     expect(mockExecuteShell).toHaveBeenCalledWith(expect.stringContaining('\\"hello\\"'));
   });
+
+  it('uses terminal-notifier for click URL when available', async () => {
+    mockExecuteShell
+      .mockResolvedValueOnce({ exitCode: 0, stdout: '/usr/local/bin/terminal-notifier', stderr: '' }) // which
+      .mockResolvedValueOnce({ exitCode: 0, stdout: '', stderr: '' }); // terminal-notifier
+    await sendNotification({ message: 'Click me', clickUrl: 'https://example.com' });
+    expect(mockExecuteShell).toHaveBeenCalledWith(expect.stringContaining('terminal-notifier'));
+    expect(mockExecuteShell).toHaveBeenCalledWith(expect.stringContaining('-open'));
+  });
+
+  it('falls back to osascript if terminal-notifier not found', async () => {
+    mockExecuteShell
+      .mockResolvedValueOnce({ exitCode: 1, stdout: '', stderr: 'not found' }) // which fails
+      .mockResolvedValueOnce({ exitCode: 0, stdout: '', stderr: '' }); // osascript
+    await sendNotification({ message: 'Fallback', clickUrl: 'https://example.com' });
+    expect(mockExecuteShell).toHaveBeenCalledWith(expect.stringContaining('osascript'));
+  });
 });

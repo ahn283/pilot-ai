@@ -1,5 +1,5 @@
 import { App, type LogLevel } from '@slack/bolt';
-import type { MessengerAdapter, IncomingMessage } from './adapter.js';
+import type { MessengerAdapter, IncomingMessage, ImageAttachment } from './adapter.js';
 
 export interface SlackConfig {
   botToken: string;
@@ -9,10 +9,12 @@ export interface SlackConfig {
 
 export class SlackAdapter implements MessengerAdapter {
   private app: App;
+  private botToken: string;
   private messageHandler?: (msg: IncomingMessage) => void;
   private approvalHandler?: (taskId: string, approved: boolean) => void;
 
   constructor(config: SlackConfig) {
+    this.botToken = config.botToken;
     this.app = new App({
       token: config.botToken,
       appToken: config.appToken,
@@ -30,15 +32,39 @@ export class SlackAdapter implements MessengerAdapter {
       if (!this.messageHandler) return;
       if (message.subtype) return; // bot messages, edits 등 무시
 
-      const msg = message as { user?: string; channel?: string; thread_ts?: string; text?: string; ts?: string };
-      if (!msg.user || !msg.text) return;
+      const msg = message as {
+        user?: string;
+        channel?: string;
+        thread_ts?: string;
+        text?: string;
+        ts?: string;
+        files?: Array<{ url_private: string; mimetype: string; name: string }>;
+      };
+      if (!msg.user) return;
+      if (!msg.text && !msg.files?.length) return;
+
+      // Extract image attachments from Slack files (requires files:read scope)
+      const images: ImageAttachment[] = [];
+      if (msg.files) {
+        for (const file of msg.files) {
+          if (file.mimetype?.startsWith('image/')) {
+            images.push({
+              url: file.url_private,
+              mimeType: file.mimetype,
+              filename: file.name,
+              authHeader: `Bearer ${this.botToken}`,
+            });
+          }
+        }
+      }
 
       this.messageHandler({
         platform: 'slack',
         userId: msg.user,
         channelId: msg.channel ?? '',
         threadId: msg.thread_ts,
-        text: msg.text,
+        text: msg.text ?? '',
+        images: images.length > 0 ? images : undefined,
         timestamp: new Date(parseFloat(msg.ts ?? '0') * 1000),
       });
     });

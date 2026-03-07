@@ -26,6 +26,11 @@ vi.mock('../../src/agent/claude.js', () => ({
   checkClaudeCli: vi.fn(),
 }));
 
+// Mock child_process for Playwright install
+vi.mock('node:child_process', () => ({
+  execFile: vi.fn((_cmd: string, _args: string[], _opts: object, cb: (err: Error | null) => void) => { cb(null); }),
+}));
+
 import inquirer from 'inquirer';
 import { setSecret } from '../../src/config/keychain.js';
 import { checkClaudeCli } from '../../src/agent/claude.js';
@@ -56,7 +61,12 @@ describe('runInit - CLI mode with Slack', () => {
         appToken: 'xapp-test',
         signingSecret: 'secret123',
         userId: 'U12345',
-      });
+      })
+      .mockResolvedValueOnce({ setupNotion: false })
+      .mockResolvedValueOnce({ setupObsidian: false })
+      .mockResolvedValueOnce({ setupFigma: false })
+      .mockResolvedValueOnce({ setupLinear: false })
+      .mockResolvedValueOnce({ install: false });
 
     await runInit();
 
@@ -80,7 +90,12 @@ describe('runInit - API mode with Telegram', () => {
       .mockResolvedValueOnce({
         botToken: '123456:ABC-DEF',
         chatId: '99999',
-      });
+      })
+      .mockResolvedValueOnce({ setupNotion: false })
+      .mockResolvedValueOnce({ setupObsidian: false })
+      .mockResolvedValueOnce({ setupFigma: false })
+      .mockResolvedValueOnce({ setupLinear: false })
+      .mockResolvedValueOnce({ install: false });
 
     await runInit();
 
@@ -104,7 +119,12 @@ describe('runInit - CLI exists but choose API', () => {
       .mockResolvedValueOnce({
         botToken: '111:TOKEN',
         chatId: '12345',
-      });
+      })
+      .mockResolvedValueOnce({ setupNotion: false })
+      .mockResolvedValueOnce({ setupObsidian: false })
+      .mockResolvedValueOnce({ setupFigma: false })
+      .mockResolvedValueOnce({ setupLinear: false })
+      .mockResolvedValueOnce({ install: false });
 
     await runInit();
 

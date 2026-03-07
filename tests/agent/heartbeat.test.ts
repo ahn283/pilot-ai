@@ -15,6 +15,8 @@ import {
   stopScheduler,
   isSchedulerRunning,
   formatCronJobs,
+  setHeartbeatReporter,
+  setHeartbeatApproval,
   type CronJob,
 } from '../../src/agent/heartbeat.js';
 
@@ -140,7 +142,7 @@ describe('CronJob CRUD', () => {
 describe('tick', () => {
   it('executes matching jobs', async () => {
     const executed: string[] = [];
-    onJobExecute(async (job) => { executed.push(job.command); });
+    onJobExecute(async (job) => { executed.push(job.command); return 'done'; });
 
     await addCronJob({ cron: '0 9 * * *', command: 'morning task' });
     await addCronJob({ cron: '0 18 * * *', command: 'evening task' });
@@ -154,7 +156,7 @@ describe('tick', () => {
 
   it('skips disabled jobs', async () => {
     const executed: string[] = [];
-    onJobExecute(async (job) => { executed.push(job.command); });
+    onJobExecute(async (job) => { executed.push(job.command); return 'done'; });
 
     await addCronJob({ cron: '0 9 * * *', command: 'disabled-job' });
     await toggleCronJob(1); // disable
@@ -166,7 +168,7 @@ describe('tick', () => {
 
   it('reads HEARTBEAT.md jobs', async () => {
     const executed: string[] = [];
-    onJobExecute(async (job) => { executed.push(job.command); });
+    onJobExecute(async (job) => { executed.push(job.command); return 'done'; });
 
     await fs.writeFile('/tmp/pilot-heartbeat-test/HEARTBEAT.md', '0 9 * * * | heartbeat job\n');
 
@@ -176,7 +178,7 @@ describe('tick', () => {
   });
 
   it('records lastError on failure', async () => {
-    onJobExecute(async () => { throw new Error('task failed'); });
+    onJobExecute(async (): Promise<string> => { throw new Error('task failed'); });
 
     await addCronJob({ cron: '0 9 * * *', command: 'failing-task' });
     await tick(new Date(2026, 2, 7, 9, 0));
@@ -218,5 +220,93 @@ describe('formatCronJobs', () => {
     expect(output).toContain('#1 [ON]');
     expect(output).toContain('[api]');
     expect(output).toContain('#2 [OFF]');
+  });
+});
+
+describe('messenger reporting', () => {
+  it('reports successful execution to messenger', async () => {
+    const sent: string[] = [];
+    const mockReporter = {
+      sendText: vi.fn(async (_ch: string, text: string) => { sent.push(text); return 'ts'; }),
+      sendApproval: vi.fn(async () => {}),
+    };
+    setHeartbeatReporter(mockReporter, 'C123');
+    onJobExecute(async () => 'Build succeeded');
+
+    await addCronJob({ cron: '0 9 * * *', command: 'npm run build' });
+    await tick(new Date(2026, 2, 7, 9, 0));
+
+    expect(mockReporter.sendText).toHaveBeenCalled();
+    expect(sent[0]).toContain('Scheduled task completed');
+    expect(sent[0]).toContain('Build succeeded');
+
+    // Clean up
+    setHeartbeatReporter(null as any, '');
+  });
+
+  it('reports errors to messenger', async () => {
+    const sent: string[] = [];
+    const mockReporter = {
+      sendText: vi.fn(async (_ch: string, text: string) => { sent.push(text); return 'ts'; }),
+      sendApproval: vi.fn(async () => {}),
+    };
+    setHeartbeatReporter(mockReporter, 'C123');
+    onJobExecute(async (): Promise<string> => { throw new Error('build failed'); });
+
+    await addCronJob({ cron: '0 9 * * *', command: 'npm run build' });
+    await tick(new Date(2026, 2, 7, 9, 0));
+
+    expect(sent[0]).toContain('Scheduled task failed');
+    expect(sent[0]).toContain('build failed');
+
+    setHeartbeatReporter(null as any, '');
+  });
+});
+
+describe('dangerous action approval', () => {
+  it('requests approval for dangerous scheduled tasks', async () => {
+    const mockReporter = {
+      sendText: vi.fn(async () => 'ts'),
+      sendApproval: vi.fn(async () => {}),
+    };
+    const mockApproval = {
+      requestApproval: vi.fn(async () => true),
+    };
+    setHeartbeatReporter(mockReporter, 'C123');
+    setHeartbeatApproval(mockApproval);
+    onJobExecute(async () => 'deployed');
+
+    await addCronJob({ cron: '0 9 * * *', command: 'deploy to production' });
+    await tick(new Date(2026, 2, 7, 9, 0));
+
+    expect(mockReporter.sendApproval).toHaveBeenCalled();
+    expect(mockApproval.requestApproval).toHaveBeenCalled();
+
+    setHeartbeatReporter(null as any, '');
+    setHeartbeatApproval(null as any);
+  });
+
+  it('skips execution when approval denied', async () => {
+    const executed: string[] = [];
+    const mockReporter = {
+      sendText: vi.fn(async () => 'ts'),
+      sendApproval: vi.fn(async () => {}),
+    };
+    const mockApproval = {
+      requestApproval: vi.fn(async () => false),
+    };
+    setHeartbeatReporter(mockReporter, 'C123');
+    setHeartbeatApproval(mockApproval);
+    onJobExecute(async (job) => { executed.push(job.command); return 'done'; });
+
+    await addCronJob({ cron: '0 9 * * *', command: 'git push --force' });
+    await tick(new Date(2026, 2, 7, 9, 0));
+
+    expect(executed).toHaveLength(0);
+    const jobs = await loadCronJobs();
+    expect(jobs[0].lastError).toContain('Approval denied');
+
+    setHeartbeatReporter(null as any, '');
+    setHeartbeatApproval(null as any);
   });
 });

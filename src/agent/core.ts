@@ -9,6 +9,8 @@ import { resolveProject, touchProject } from './project.js';
 import { handleMemoryCommand } from './memory-commands.js';
 import { detectAndSavePreference } from './preference-detector.js';
 import { analyzeProjectIfNew } from './project-analyzer.js';
+import { buildSkillsContext } from './skills.js';
+import { buildToolDescriptions } from './tool-descriptions.js';
 
 export class AgentCore {
   private messenger: MessengerAdapter;
@@ -115,10 +117,18 @@ export class AgentCore {
       await analyzeProjectIfNew(projectName, projectPath);
     }
 
-    // Build memory context
+    // Build memory context, skills context, and tool descriptions
     const memoryContext = await buildMemoryContext(projectName);
-    const prompt = memoryContext
-      ? `${memoryContext}\n\n<USER_COMMAND>\n${msg.text}\n</USER_COMMAND>`
+    const skillsContext = await buildSkillsContext();
+    const toolDescriptions = buildToolDescriptions();
+
+    const contextParts: string[] = [];
+    if (memoryContext) contextParts.push(memoryContext);
+    if (skillsContext) contextParts.push(skillsContext);
+    if (toolDescriptions) contextParts.push(toolDescriptions);
+
+    const prompt = contextParts.length > 0
+      ? `${contextParts.join('\n\n')}\n\n<USER_COMMAND>\n${msg.text}\n</USER_COMMAND>`
       : msg.text;
 
     if (this.config.claude.mode === 'api' && this.config.claude.apiKey) {

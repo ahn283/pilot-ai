@@ -2,6 +2,7 @@ export interface ImageAttachment {
   url: string;
   mimeType: string;
   filename?: string;
+  authHeader?: string;
 }
 
 export interface IncomingMessage {

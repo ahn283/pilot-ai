@@ -180,8 +180,8 @@
   - [x] 스크린샷 캡처 → 메신저로 전송
   - [x] 파일 다운로드 관리
   - [x] 브라우저 프로필 격리 (기본 프로필과 분리)
-  - [ ] 세션/쿠키 관리 (암호화 저장)
-- [ ] 온보딩에 Playwright 브라우저 자동 설치 추가
+  - [x] 세션/쿠키 관리 (암호화 저장)
+- [x] 온보딩에 Playwright 브라우저 자동 설치 추가
 
 ### 2.2 Notion Integration
 - [x] `tools/notion.ts` - @notionhq/client 연동
@@ -189,7 +189,7 @@
   - [x] 데이터베이스 조회
   - [x] 페이지 검색
   - [x] 콘텐츠 블록 추가/읽기
-- [ ] 온보딩에 Notion Integration 가이드 + API 키 입력 추가
+- [x] 온보딩에 Notion Integration 가이드 + API 키 입력 추가
 
 ### 2.3 프로젝트 간 병렬 실행
 - [x] `agent/queue.ts` 업데이트
@@ -206,9 +206,9 @@
   - [x] cron 표현식 파싱 (5-field: min, hour, dom, mon, dow)
   - [x] 각 예약 작업을 독립 세션으로 실행 (tick → executor)
   - [x] 실패 시 lastError 기록
-  - [ ] 실행 결과 메신저로 보고 (요약)
-  - [ ] Dangerous 작업은 실행 전 승인 요청
-- [ ] 스케줄 관련 자연어 명령은 LLM이 해석 → heartbeat CRUD 함수 호출 (tool 연동)
+  - [x] 실행 결과 메신저로 보고 (요약)
+  - [x] Dangerous 작업은 실행 전 승인 요청
+- [x] 스케줄 관련 자연어 명령은 LLM이 해석 → heartbeat CRUD 함수 호출 (tool 연동)
 
 ### 2.5 Skills System
 - [x] `agent/skills.ts` - 스킬 엔진
@@ -217,7 +217,7 @@
   - [x] 스킬 CRUD (create, get, list, delete)
   - [x] `buildSkillsContext()` - 전체 스킬을 XML로 Claude 프롬프트에 주입
   - [x] LLM이 trigger 기반으로 매칭 판단 (regex 매칭 없음)
-- [ ] 스킬 관련 자연어 명령은 LLM이 해석 → skills CRUD 함수 호출 (tool 연동)
+- [x] 스킬 관련 자연어 명령은 LLM이 해석 → skills CRUD 함수 호출 (tool 연동)
 
 ### 2.6 Webhook / HTTP API Endpoint
 - [x] `api/server.ts` - node:http 로컬 HTTP 서버 (외부 의존성 없음)
@@ -227,8 +227,8 @@
   - [x] localhost 전용 바인딩 (127.0.0.1)
   - [x] Rate limiting (30 req/min)
   - [x] `ApiServer.generateToken()` 랜덤 토큰 생성
-- [ ] Apple Shortcuts 연동 가이드 작성
-- [ ] Raycast extension 예제
+- [x] Apple Shortcuts 연동 가이드 작성
+- [x] Raycast extension 예제
 
 ### 2.7 GitHub Integration
 - [x] `tools/github.ts` - `gh` CLI 래퍼
@@ -243,7 +243,7 @@
   - [x] `pbcopy` 쓰기
   - [x] `screencapture -x` 전체 스크린샷
   - [x] `screencapture -x -w` 윈도우 스크린샷
-  - [ ] Claude Vision으로 이미지 분석
+  - [x] Claude Vision으로 이미지 분석
 
 ### 2.9 Multi-modal Input
 - [x] `IncomingMessage`에 `images?: ImageAttachment[]` 필드 추가
@@ -251,15 +251,15 @@
   - [x] URL → 로컬 파일 다운로드
   - [x] 파일 → Base64 변환
   - [x] 파일 → Data URL 변환 (Claude Vision용)
-- [ ] Slack: files:read로 이미지 다운로드 (어댑터 연동)
-- [ ] Telegram: getFile API로 이미지 다운로드 (어댑터 연동)
+- [x] Slack: files:read로 이미지 다운로드 (어댑터 연동)
+- [x] Telegram: getFile API로 이미지 다운로드 (어댑터 연동)
 
 ### 2.10 macOS Notifications
 - [x] `tools/notification.ts` - osascript 알림
   - [x] 작업 완료/실패 시 데스크톱 알림
   - [x] 커스텀 title/subtitle/sound
   - [x] AppleScript 특수문자 이스케이프
-  - [ ] terminal-notifier 클릭 액션 (선택)
+  - [x] terminal-notifier 클릭 액션 (선택)
 
 ### 2.11 Obsidian Integration
 - [x] `tools/obsidian.ts` - Obsidian vault 로컬 파일 연동
@@ -268,7 +268,7 @@
   - [x] 노트 검색 (텍스트 매칭)
   - [x] 노트 목록 조회 (재귀 스캔)
   - [x] Path traversal 방지
-- [ ] Obsidian vault 경로 config/온보딩 등록
+- [x] Obsidian vault 경로 config/온보딩 등록
 
 ### 2.12 Linear / Jira Integration
 - [x] `tools/linear.ts` - Linear GraphQL API
@@ -276,27 +276,27 @@
   - [x] 상태 변경 (updateIssueState)
   - [x] 내 이슈 목록 (listMyIssues)
   - [x] 팀/워크플로우 상태 조회
-- [ ] 온보딩에 Linear API 키 입력 추가
+- [x] 온보딩에 Linear API 키 입력 추가
 
 ### 2.13 Figma Integration
 - [ ] Figma MCP 서버 연동 (claude -p에 MCP 설정 전달)
-- [ ] `tools/figma.ts` - REST API 래퍼
-  - [ ] 파일/프레임/컴포넌트 조회
-  - [ ] 이미지 내보내기 (PNG/SVG)
-  - [ ] 디자인 토큰/변수 조회
-  - [ ] 코멘트 읽기/쓰기
-- [ ] 온보딩에 Figma Personal Access Token 입력 추가
+- [x] `tools/figma.ts` - REST API 래퍼
+  - [x] 파일/프레임/컴포넌트 조회
+  - [x] 이미지 내보내기 (PNG/SVG)
+  - [x] 디자인 토큰/변수 조회
+  - [x] 코멘트 읽기/쓰기
+- [x] 온보딩에 Figma Personal Access Token 입력 추가
 
 ### 2.14 통합 테스트 (Phase 2)
-- [ ] 브라우저 자동화 E2E (페이지 탐색, 폼 입력, 스크린샷)
-- [ ] Notion CRUD 테스트
-- [ ] 병렬 실행 테스트 (다른 프로젝트 동시 작업)
-- [ ] Heartbeat 스케줄 실행 테스트
-- [ ] 스킬 매칭 & 실행 테스트
-- [ ] Webhook 엔드포인트 테스트
-- [ ] GitHub CLI 연동 테스트
-- [ ] 클립보드/스크린샷 테스트
-- [ ] 이미지 멀티모달 테스트
+- [x] 브라우저 자동화 E2E (페이지 탐색, 폼 입력, 스크린샷)
+- [x] Notion CRUD 테스트
+- [x] 병렬 실행 테스트 (다른 프로젝트 동시 작업)
+- [x] Heartbeat 스케줄 실행 테스트
+- [x] 스킬 매칭 & 실행 테스트
+- [x] Webhook 엔드포인트 테스트
+- [x] GitHub CLI 연동 테스트
+- [x] 클립보드/스크린샷 테스트
+- [x] 이미지 멀티모달 테스트
 
 ---
 

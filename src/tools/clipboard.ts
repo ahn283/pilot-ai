@@ -1,4 +1,5 @@
 import { executeShell } from './shell.js';
+import { imageToDataUrl } from './image.js';
 import path from 'node:path';
 import os from 'node:os';
 
@@ -28,4 +29,20 @@ export async function takeWindowScreenshot(outputPath?: string): Promise<string>
   const result = await executeShell(`screencapture -x -w ${filePath}`);
   if (result.exitCode !== 0) throw new Error(`Failed to take window screenshot: ${result.stderr}`);
   return filePath;
+}
+
+/**
+ * Takes a screenshot and returns it as a data URL for Claude Vision analysis.
+ */
+export async function captureScreenForVision(): Promise<string> {
+  const filePath = await takeScreenshot();
+  return imageToDataUrl(filePath);
+}
+
+/**
+ * Takes a window screenshot and returns it as a data URL for Claude Vision analysis.
+ */
+export async function captureWindowForVision(): Promise<string> {
+  const filePath = await takeWindowScreenshot();
+  return imageToDataUrl(filePath);
 }

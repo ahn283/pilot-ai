@@ -1,10 +1,14 @@
 import inquirer from 'inquirer';
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
 import { checkClaudeCli } from '../agent/claude.js';
 import { saveConfig, ensurePilotDir } from '../config/store.js';
 import { setSecret } from '../config/keychain.js';
 import type { PilotConfig } from '../config/schema.js';
 import { defaultConfig } from '../config/schema.js';
 import { testSlackConnection, testTelegramConnection } from './connection-test.js';
+
+const execFileAsync = promisify(execFile);
 
 export async function runInit(): Promise<void> {
   console.log('\n🚀 Pilot-AI 셋업을 시작합니다.\n');
@@ -17,11 +21,18 @@ export async function runInit(): Promise<void> {
   // 2. 메신저 선택 및 설정
   const messengerConfig = await setupMessenger();
 
-  // 3. 설정 저장
+  // 3. 선택적 통합 서비스 설정
+  const integrationConfig = await setupIntegrations();
+
+  // 4. Playwright 브라우저 설치
+  await installPlaywright();
+
+  // 5. 설정 저장
   const config: Partial<PilotConfig> = {
     ...defaultConfig,
     claude: claudeConfig,
     messenger: messengerConfig,
+    ...integrationConfig,
   };
 
   await saveConfig(config);
@@ -189,4 +200,125 @@ async function setupTelegram(): Promise<PilotConfig['messenger']> {
       botToken: '***keychain***',
     },
   };
+}
+
+async function setupIntegrations(): Promise<Partial<PilotConfig>> {
+  console.log('\n── 통합 서비스 설정 (선택) ──\n');
+
+  const result: Partial<PilotConfig> = {};
+
+  // Notion
+  const { setupNotion } = await inquirer.prompt([
+    { type: 'confirm', name: 'setupNotion', message: 'Notion Integration을 설정하시겠습니까?', default: false },
+  ]);
+  if (setupNotion) {
+    console.log('\n📋 Notion Integration 가이드:');
+    console.log('  1. https://www.notion.so/my-integrations 에서 새 Integration 생성');
+    console.log('  2. 이름 설정 후 "Submit" 클릭');
+    console.log('  3. Internal Integration Secret 복사');
+    console.log('  4. 연동할 페이지/DB에서 "Connections"로 Integration 추가\n');
+
+    const { notionApiKey } = await inquirer.prompt([
+      {
+        type: 'password',
+        name: 'notionApiKey',
+        message: 'Notion API Key (ntn_ or secret_...):',
+        mask: '*',
+        validate: (input: string) => input.length > 10 || 'Valid Notion API Key required.',
+      },
+    ]);
+    await setSecret('notion-api-key', notionApiKey);
+    result.notion = { apiKey: '***keychain***' };
+    console.log('  Notion configured.\n');
+  }
+
+  // Obsidian
+  const { setupObsidian } = await inquirer.prompt([
+    { type: 'confirm', name: 'setupObsidian', message: 'Obsidian vault를 설정하시겠습니까?', default: false },
+  ]);
+  if (setupObsidian) {
+    const { vaultPath } = await inquirer.prompt([
+      {
+        type: 'input',
+        name: 'vaultPath',
+        message: 'Obsidian vault 경로 (예: ~/Documents/MyVault):',
+        validate: (input: string) => input.length > 0 || 'Path required.',
+      },
+    ]);
+    result.obsidian = { vaultPath };
+    console.log('  Obsidian vault configured.\n');
+  }
+
+  // Figma
+  const { setupFigma } = await inquirer.prompt([
+    { type: 'confirm', name: 'setupFigma', message: 'Figma를 설정하시겠습니까?', default: false },
+  ]);
+  if (setupFigma) {
+    console.log('\n📋 Figma Personal Access Token 가이드:');
+    console.log('  1. Figma > Account Settings > Personal access tokens');
+    console.log('  2. "Generate new token" 클릭 후 복사\n');
+
+    const { figmaToken } = await inquirer.prompt([
+      {
+        type: 'password',
+        name: 'figmaToken',
+        message: 'Figma Personal Access Token:',
+        mask: '*',
+        validate: (input: string) => input.length > 10 || 'Valid Figma token required.',
+      },
+    ]);
+    await setSecret('figma-personal-access-token', figmaToken);
+    result.figma = { personalAccessToken: '***keychain***' };
+    console.log('  Figma configured.\n');
+  }
+
+  // Linear
+  const { setupLinear } = await inquirer.prompt([
+    { type: 'confirm', name: 'setupLinear', message: 'Linear를 설정하시겠습니까?', default: false },
+  ]);
+  if (setupLinear) {
+    console.log('\n📋 Linear API Key 가이드:');
+    console.log('  1. Linear > Settings > API > Personal API keys');
+    console.log('  2. "Create key" 클릭 후 복사\n');
+
+    const { linearApiKey } = await inquirer.prompt([
+      {
+        type: 'password',
+        name: 'linearApiKey',
+        message: 'Linear API Key:',
+        mask: '*',
+        validate: (input: string) => input.startsWith('lin_api_') || 'lin_api_로 시작하는 키를 입력하세요.',
+      },
+    ]);
+    await setSecret('linear-api-key', linearApiKey);
+    result.linear = { apiKey: '***keychain***' };
+    console.log('  Linear configured.\n');
+  }
+
+  return result;
+}
+
+async function installPlaywright(): Promise<void> {
+  const { install } = await inquirer.prompt([
+    {
+      type: 'confirm',
+      name: 'install',
+      message: 'Playwright Chromium 브라우저를 설치하시겠습니까? (브라우저 자동화에 필요)',
+      default: true,
+    },
+  ]);
+
+  if (!install) {
+    console.log('  Skipping Playwright install. Run "npx playwright install chromium" later.\n');
+    return;
+  }
+
+  console.log('  Installing Playwright Chromium...');
+  try {
+    await execFileAsync('npx', ['playwright', 'install', 'chromium'], { timeout: 300_000 });
+    console.log('  Playwright Chromium installed.\n');
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.log(`  Warning: Playwright install failed (${msg}). Run "npx playwright install chromium" manually.\n`);
+  }
 }

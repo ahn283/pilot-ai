@@ -1,5 +1,5 @@
-import { Telegraf, type Context } from 'telegraf';
-import type { MessengerAdapter, IncomingMessage } from './adapter.js';
+import { Telegraf } from 'telegraf';
+import type { MessengerAdapter, IncomingMessage, ImageAttachment } from './adapter.js';
 
 export interface TelegramConfig {
   botToken: string;
@@ -7,16 +7,37 @@ export interface TelegramConfig {
 
 export class TelegramAdapter implements MessengerAdapter {
   private bot: Telegraf;
+  private botToken: string;
   private messageHandler?: (msg: IncomingMessage) => void;
   private approvalHandler?: (taskId: string, approved: boolean) => void;
 
   constructor(config: TelegramConfig) {
+    this.botToken = config.botToken;
     this.bot = new Telegraf(config.botToken);
     this.setupListeners();
   }
 
+  private async getFileUrl(fileId: string): Promise<string> {
+    const res = await fetch(`https://api.telegram.org/bot${this.botToken}/getFile?file_id=${fileId}`);
+    const data = (await res.json()) as { ok: boolean; result?: { file_path: string } };
+    if (!data.ok || !data.result) throw new Error('Failed to get Telegram file');
+    return `https://api.telegram.org/file/bot${this.botToken}/${data.result.file_path}`;
+  }
+
+  private async extractImages(msg: { photo?: Array<{ file_id: string; width: number }> }): Promise<ImageAttachment[]> {
+    if (!msg.photo?.length) return [];
+    // Telegram sends multiple sizes; pick the largest
+    const largest = msg.photo.reduce((a, b) => (a.width > b.width ? a : b));
+    try {
+      const url = await this.getFileUrl(largest.file_id);
+      return [{ url, mimeType: 'image/jpeg', filename: `telegram-${Date.now()}.jpg` }];
+    } catch {
+      return [];
+    }
+  }
+
   private setupListeners(): void {
-    // 일반 텍스트 메시지 수신
+    // Text messages
     this.bot.on('text', (ctx) => {
       if (!this.messageHandler) return;
 
@@ -27,6 +48,24 @@ export class TelegramAdapter implements MessengerAdapter {
         channelId: String(msg.chat.id),
         threadId: msg.reply_to_message ? String(msg.reply_to_message.message_id) : undefined,
         text: msg.text,
+        timestamp: new Date(msg.date * 1000),
+      });
+    });
+
+    // Photo messages
+    this.bot.on('photo', async (ctx) => {
+      if (!this.messageHandler) return;
+
+      const msg = ctx.message;
+      const images = await this.extractImages(msg);
+
+      this.messageHandler({
+        platform: 'telegram',
+        userId: String(msg.from.id),
+        channelId: String(msg.chat.id),
+        threadId: msg.reply_to_message ? String(msg.reply_to_message.message_id) : undefined,
+        text: (msg as { caption?: string }).caption ?? '',
+        images: images.length > 0 ? images : undefined,
         timestamp: new Date(msg.date * 1000),
       });
     });
