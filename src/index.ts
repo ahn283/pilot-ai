@@ -51,6 +51,34 @@ program
     await runLogs(opts);
   });
 
+program
+  .command('daemon')
+  .description('Run agent in foreground (used by launchd)')
+  .action(async () => {
+    const { loadConfig } = await import('./config/store.js');
+    const { createMessengerAdapter } = await import('./messenger/factory.js');
+    const { AgentCore } = await import('./agent/core.js');
+    const { startScheduler } = await import('./agent/heartbeat.js');
+
+    const config = await loadConfig();
+    const messenger = createMessengerAdapter(config);
+    const agent = new AgentCore(messenger, config);
+
+    await agent.start();
+    startScheduler();
+
+    console.log(`[${new Date().toISOString()}] pilot-ai daemon started`);
+
+    // Graceful shutdown
+    const shutdown = async () => {
+      console.log(`[${new Date().toISOString()}] pilot-ai daemon stopping...`);
+      await agent.stop();
+      process.exit(0);
+    };
+    process.on('SIGTERM', shutdown);
+    process.on('SIGINT', shutdown);
+  });
+
 program.addCommand(createProjectCommand());
 
 program.parse();
