@@ -30,7 +30,7 @@ export class SlackAdapter implements MessengerAdapter {
     // Receive incoming messages
     this.app.message(async ({ message }) => {
       if (!this.messageHandler) return;
-      if (message.subtype) return; // Ignore bot messages, edits, etc.
+      if (message.subtype && message.subtype !== 'file_share') return; // Ignore bot messages, edits, etc. but allow file uploads
 
       const msg = message as {
         user?: string;

@@ -41,6 +41,20 @@ export async function checkClaudeCli(binary: string = 'claude'): Promise<boolean
 }
 
 /**
+ * Checks whether the Claude CLI is authenticated by running a simple prompt.
+ */
+export async function checkClaudeCliAuth(binary: string = 'claude'): Promise<boolean> {
+  try {
+    const { stdout } = await execFileAsync(binary, ['-p', '--output-format', 'json', 'Reply with OK'], {
+      timeout: 30_000,
+    });
+    return stdout.includes('result') || stdout.includes('OK');
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Invokes the Claude Code CLI as a subprocess.
  * Runs `claude -p --output-format json` and parses the JSON response.
  */

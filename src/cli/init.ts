@@ -1,7 +1,7 @@
 import inquirer from 'inquirer';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
-import { checkClaudeCli } from '../agent/claude.js';
+import { checkClaudeCli, checkClaudeCliAuth } from '../agent/claude.js';
 import { saveConfig, ensurePilotDir } from '../config/store.js';
 import { setSecret } from '../config/keychain.js';
 import type { PilotConfig } from '../config/schema.js';
@@ -55,19 +55,43 @@ async function setupClaude(): Promise<PilotConfig['claude']> {
   const cliExists = await checkClaudeCli();
 
   if (cliExists) {
-    console.log('Claude Code CLI is installed.\n');
+    console.log('Claude Code CLI is installed.');
+    console.log('  Checking authentication...');
 
-    const { useApi } = await inquirer.prompt([
-      {
-        type: 'confirm',
-        name: 'useApi',
-        message: 'Use API Key mode instead? (default: CLI mode)',
-        default: false,
-      },
-    ]);
+    const isAuthed = await checkClaudeCliAuth();
 
-    if (!useApi) {
-      return { mode: 'cli', cliBinary: 'claude', apiKey: null };
+    if (!isAuthed) {
+      console.log('\n  Claude CLI is not authenticated.');
+      console.log('  Please run "claude" in your terminal to log in first,');
+      console.log('  then re-run "npx pilot-ai init".\n');
+
+      const { continueAnyway } = await inquirer.prompt([
+        {
+          type: 'confirm',
+          name: 'continueAnyway',
+          message: 'Continue with API Key mode instead?',
+          default: false,
+        },
+      ]);
+
+      if (!continueAnyway) {
+        throw new Error('Claude CLI authentication required. Run "claude" to log in first.');
+      }
+    } else {
+      console.log('  Authenticated!\n');
+
+      const { useApi } = await inquirer.prompt([
+        {
+          type: 'confirm',
+          name: 'useApi',
+          message: 'Use API Key mode instead? (default: CLI mode)',
+          default: false,
+        },
+      ]);
+
+      if (!useApi) {
+        return { mode: 'cli', cliBinary: 'claude', apiKey: null };
+      }
     }
   } else {
     console.log('Claude Code CLI not found. Configuring API Key mode.\n');
