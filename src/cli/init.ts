@@ -105,9 +105,11 @@ async function setupSlack(): Promise<PilotConfig['messenger']> {
   console.log('\n📋 Slack App Setup Guide:');
   console.log('  1. Create a new App at https://api.slack.com/apps');
   console.log('  2. Enable Socket Mode');
-  console.log('  3. Event Subscriptions: add message.im');
-  console.log('  4. OAuth & Permissions: add chat:write, im:history');
-  console.log('  5. Install the App to your workspace\n');
+  console.log('  3. Event Subscriptions → Subscribe to bot events: message.im');
+  console.log('  4. OAuth & Permissions → Bot Token Scopes:');
+  console.log('     chat:write, im:history, im:read, im:write');
+  console.log('  5. App Home → Messages Tab: turn ON');
+  console.log('  6. Install the App to your workspace\n');
 
   const answers = await inquirer.prompt([
     {
