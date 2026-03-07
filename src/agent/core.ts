@@ -73,10 +73,21 @@ export class AgentCore {
     // 4. Detect user preferences (async, non-blocking)
     detectAndSavePreference(msg.text).catch(() => {});
 
-    // 5. Invoke Claude with context
+    // 5. Send thinking status and invoke Claude
+    const statusMsgId = await this.messenger.sendText(
+      msg.channelId, '🤔 Thinking...', msg.threadId,
+    );
+
     try {
-      const response = await this.invokeClaudeWithContext(msg);
-      await this.messenger.sendText(msg.channelId, response, msg.threadId);
+      const response = await this.invokeClaudeWithContext(msg, async (status: string) => {
+        try {
+          await this.messenger.updateText(msg.channelId, statusMsgId, status);
+        } catch {
+          // Ignore update failures (e.g. message already deleted)
+        }
+      });
+
+      await this.messenger.updateText(msg.channelId, statusMsgId, response);
 
       await writeAuditLog({
         timestamp: new Date().toISOString(),
@@ -87,10 +98,8 @@ export class AgentCore {
       });
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : String(err);
-      await this.messenger.sendText(
-        msg.channelId,
-        `Error: ${errorMsg}`,
-        msg.threadId,
+      await this.messenger.updateText(
+        msg.channelId, statusMsgId, `❌ Error: ${errorMsg}`,
       );
 
       await writeAuditLog({
@@ -106,7 +115,10 @@ export class AgentCore {
   /**
    * Resolves project from message, builds memory context, and invokes Claude.
    */
-  private async invokeClaudeWithContext(msg: IncomingMessage): Promise<string> {
+  private async invokeClaudeWithContext(
+    msg: IncomingMessage,
+    onStatus?: (status: string) => Promise<void>,
+  ): Promise<string> {
     // Resolve project from message text
     const project = await resolveProject(msg.text);
     const projectName = project?.name;
@@ -131,6 +143,8 @@ export class AgentCore {
     const prompt = contextParts.length > 0
       ? `${contextParts.join('\n\n')}\n\n<USER_COMMAND>\n${msg.text}\n</USER_COMMAND>`
       : msg.text;
+
+    await onStatus?.('⚙️ Processing...');
 
     if (this.config.claude.mode === 'api' && this.config.claude.apiKey) {
       return invokeClaudeApi({

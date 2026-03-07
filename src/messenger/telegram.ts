@@ -111,6 +111,16 @@ export class TelegramAdapter implements MessengerAdapter {
     return String(result.message_id);
   }
 
+  async updateText(channelId: string, messageId: string, text: string): Promise<void> {
+    await this.bot.telegram.editMessageText(
+      channelId,
+      parseInt(messageId, 10),
+      undefined,
+      text,
+      { parse_mode: 'Markdown' },
+    );
+  }
+
   async sendApproval(
     channelId: string,
     text: string,

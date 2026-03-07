@@ -36,19 +36,27 @@ function createMockMessenger(): MessengerAdapter & {
   triggerMessage: (msg: IncomingMessage) => Promise<void>;
   triggerApproval: (taskId: string, approved: boolean) => void;
   sentMessages: { channelId: string; text: string; threadId?: string }[];
+  updatedMessages: { channelId: string; messageId: string; text: string }[];
 } {
   let messageHandler: MessageHandler | null = null;
   let approvalHandler: ApprovalHandler | null = null;
   const sentMessages: { channelId: string; text: string; threadId?: string }[] = [];
+  const updatedMessages: { channelId: string; messageId: string; text: string }[] = [];
+  let msgCounter = 0;
 
   return {
     sentMessages,
+    updatedMessages,
     onMessage(handler: MessageHandler) { messageHandler = handler; },
     onApproval(handler: ApprovalHandler) { approvalHandler = handler; },
     async start() {},
     async stop() {},
     async sendText(channelId: string, text: string, threadId?: string) {
       sentMessages.push({ channelId, text, threadId });
+      return `msg-${++msgCounter}`;
+    },
+    async updateText(channelId: string, messageId: string, text: string) {
+      updatedMessages.push({ channelId, messageId, text });
     },
     async sendApprovalRequest() { return 'approval-msg-1'; },
     async triggerMessage(msg: IncomingMessage) {
@@ -93,9 +101,13 @@ describe('메신저 → Claude → 응답 전체 파이프라인', () => {
     });
 
     expect(invokeClaudeCli).toHaveBeenCalled();
+    // sendText sends the initial "Thinking..." status
     expect(messenger.sentMessages).toHaveLength(1);
-    expect(messenger.sentMessages[0].text).toBe('Claude 응답입니다.');
+    expect(messenger.sentMessages[0].text).toContain('Thinking');
     expect(messenger.sentMessages[0].threadId).toBe('T1');
+    // updateText delivers the final response
+    const finalUpdate = messenger.updatedMessages[messenger.updatedMessages.length - 1];
+    expect(finalUpdate.text).toBe('Claude 응답입니다.');
   });
 
   it('API 모드에서는 invokeClaudeApi를 호출한다', async () => {
@@ -113,7 +125,8 @@ describe('메신저 → Claude → 응답 전체 파이프라인', () => {
     });
 
     expect(invokeClaudeApi).toHaveBeenCalled();
-    expect(messenger.sentMessages[0].text).toBe('API 응답입니다.');
+    const finalUpdate = messenger.updatedMessages[messenger.updatedMessages.length - 1];
+    expect(finalUpdate.text).toBe('API 응답입니다.');
   });
 });
 
@@ -167,8 +180,10 @@ describe('에러 핸들링', () => {
       text: '작업 요청',
     });
 
+    // sendText sends "Thinking...", updateText delivers the error
     expect(messenger.sentMessages).toHaveLength(1);
-    expect(messenger.sentMessages[0].text).toContain('Error:');
-    expect(messenger.sentMessages[0].text).toContain('CLI timeout');
+    const finalUpdate = messenger.updatedMessages[messenger.updatedMessages.length - 1];
+    expect(finalUpdate.text).toContain('Error');
+    expect(finalUpdate.text).toContain('CLI timeout');
   });
 });

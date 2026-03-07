@@ -110,6 +110,14 @@ export class SlackAdapter implements MessengerAdapter {
     return result.ts ?? '';
   }
 
+  async updateText(channelId: string, messageId: string, text: string): Promise<void> {
+    await this.app.client.chat.update({
+      channel: channelId,
+      ts: messageId,
+      text,
+    });
+  }
+
   async sendApproval(
     channelId: string,
     text: string,

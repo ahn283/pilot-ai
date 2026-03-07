@@ -16,19 +16,22 @@ export interface IncomingMessage {
 }
 
 export interface MessengerAdapter {
-  /** 연결 시작 */
+  /** Start connection */
   start(): Promise<void>;
 
-  /** 연결 종료 */
+  /** Stop connection */
   stop(): Promise<void>;
 
-  /** 메시지 수신 콜백 등록 */
+  /** Register incoming message callback */
   onMessage(handler: (msg: IncomingMessage) => void): void;
 
-  /** 텍스트 메시지 전송. 메시지 ID 반환 */
+  /** Send a text message. Returns message ID */
   sendText(channelId: string, text: string, threadId?: string): Promise<string>;
 
-  /** 승인/거부 버튼이 포함된 메시지 전송 */
+  /** Update an existing message by its ID */
+  updateText(channelId: string, messageId: string, text: string): Promise<void>;
+
+  /** Send an approval message with Approve/Reject buttons */
   sendApproval(
     channelId: string,
     text: string,
@@ -36,6 +39,6 @@ export interface MessengerAdapter {
     threadId?: string,
   ): Promise<void>;
 
-  /** 승인/거부 콜백 등록 */
+  /** Register approval/rejection callback */
   onApproval(handler: (taskId: string, approved: boolean) => void): void;
 }
