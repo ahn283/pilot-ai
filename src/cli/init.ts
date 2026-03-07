@@ -20,7 +20,7 @@ export async function runInit(): Promise<void> {
   const claudeConfig = await setupClaude();
 
   // 2. Messenger setup
-  const messengerConfig = await setupMessenger();
+  const { messenger: messengerConfig, userId, platform } = await setupMessenger();
 
   // 3. Optional integrations
   const integrationConfig = await setupIntegrations();
@@ -28,13 +28,21 @@ export async function runInit(): Promise<void> {
   // 4. Playwright browser install
   await installPlaywright();
 
-  // 5. Save config
+  // 5. Save config with allowedUsers
   const config: Partial<PilotConfig> = {
     ...defaultConfig,
     claude: claudeConfig,
     messenger: messengerConfig,
     ...integrationConfig,
   };
+  // Register the user in allowedUsers
+  if (config.security?.allowedUsers) {
+    if (platform === 'slack') {
+      config.security.allowedUsers.slack = [userId];
+    } else {
+      config.security.allowedUsers.telegram = [userId];
+    }
+  }
 
   await saveConfig(config);
 
@@ -80,7 +88,13 @@ async function setupClaude(): Promise<PilotConfig['claude']> {
   return { mode: 'api', cliBinary: 'claude', apiKey: '***keychain***' };
 }
 
-async function setupMessenger(): Promise<PilotConfig['messenger']> {
+interface MessengerSetupResult {
+  messenger: PilotConfig['messenger'];
+  userId: string;
+  platform: 'slack' | 'telegram';
+}
+
+async function setupMessenger(): Promise<MessengerSetupResult> {
   console.log('\n── Messenger Setup ──\n');
 
   const { platform } = await inquirer.prompt([
@@ -101,15 +115,19 @@ async function setupMessenger(): Promise<PilotConfig['messenger']> {
   return setupTelegram();
 }
 
-async function setupSlack(): Promise<PilotConfig['messenger']> {
+async function setupSlack(): Promise<MessengerSetupResult> {
   console.log('\n📋 Slack App Setup Guide:');
   console.log('  1. Create a new App at https://api.slack.com/apps');
   console.log('  2. Enable Socket Mode');
   console.log('  3. Event Subscriptions → Subscribe to bot events: message.im');
   console.log('  4. OAuth & Permissions → Bot Token Scopes:');
-  console.log('     chat:write, im:history, im:read, im:write');
+  console.log('     chat:write, im:history, im:read, im:write,');
+  console.log('     app_mentions:read, channels:history');
   console.log('  5. App Home → Messages Tab: turn ON');
-  console.log('  6. Install the App to your workspace\n');
+  console.log('  6. Event Subscriptions → Subscribe to bot events:');
+  console.log('     message.im, app_mention');
+  console.log('  7. Install the App to your workspace');
+  console.log('  8. Invite the bot to channels: /invite @bot-name\n');
 
   const answers = await inquirer.prompt([
     {
@@ -155,16 +173,20 @@ async function setupSlack(): Promise<PilotConfig['messenger']> {
   await setSecret('slack-signing-secret', answers.signingSecret);
 
   return {
-    platform: 'slack',
-    slack: {
-      botToken: '***keychain***',
-      appToken: '***keychain***',
-      signingSecret: '***keychain***',
+    messenger: {
+      platform: 'slack',
+      slack: {
+        botToken: '***keychain***',
+        appToken: '***keychain***',
+        signingSecret: '***keychain***',
+      },
     },
+    userId: answers.userId,
+    platform: 'slack',
   };
 }
 
-async function setupTelegram(): Promise<PilotConfig['messenger']> {
+async function setupTelegram(): Promise<MessengerSetupResult> {
   console.log('\n📋 Telegram Bot Setup Guide:');
   console.log('  1. Send /newbot to @BotFather on Telegram');
   console.log('  2. Set the bot name and username');
@@ -198,10 +220,14 @@ async function setupTelegram(): Promise<PilotConfig['messenger']> {
   await setSecret('telegram-bot-token', answers.botToken);
 
   return {
-    platform: 'telegram',
-    telegram: {
-      botToken: '***keychain***',
+    messenger: {
+      platform: 'telegram',
+      telegram: {
+        botToken: '***keychain***',
+      },
     },
+    userId: answers.chatId,
+    platform: 'telegram',
   };
 }
 

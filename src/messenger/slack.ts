@@ -69,6 +69,24 @@ export class SlackAdapter implements MessengerAdapter {
       });
     });
 
+    // Receive @mentions in channels
+    this.app.event('app_mention', async ({ event }) => {
+      if (!this.messageHandler) return;
+
+      // Strip the bot mention from the text
+      const text = (event.text ?? '').replace(/<@[A-Z0-9]+>/g, '').trim();
+      if (!text || !event.user) return;
+
+      this.messageHandler({
+        platform: 'slack',
+        userId: event.user as string,
+        channelId: event.channel,
+        threadId: event.thread_ts ?? event.ts,
+        text,
+        timestamp: new Date(parseFloat(event.ts) * 1000),
+      });
+    });
+
     // Approve/Reject button actions
     this.app.action('approve_task', async ({ action, ack, body }) => {
       await ack();
