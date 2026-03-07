@@ -4,6 +4,7 @@ import { saveConfig, ensurePilotDir } from '../config/store.js';
 import { setSecret } from '../config/keychain.js';
 import type { PilotConfig } from '../config/schema.js';
 import { defaultConfig } from '../config/schema.js';
+import { testSlackConnection, testTelegramConnection } from './connection-test.js';
 
 export async function runInit(): Promise<void> {
   console.log('\n🚀 Pilot-AI 셋업을 시작합니다.\n');
@@ -125,7 +126,16 @@ async function setupSlack(): Promise<PilotConfig['messenger']> {
     },
   ]);
 
-  // Keychain에 저장
+  // Connection test
+  console.log('\n  Testing Slack connection...');
+  const slackTest = await testSlackConnection(answers.botToken);
+  if (slackTest.ok) {
+    console.log('  Connected successfully!\n');
+  } else {
+    console.log(`  Warning: Connection test failed (${slackTest.error}). Saving tokens anyway.\n`);
+  }
+
+  // Save to Keychain
   await setSecret('slack-bot-token', answers.botToken);
   await setSecret('slack-app-token', answers.appToken);
   await setSecret('slack-signing-secret', answers.signingSecret);
@@ -161,6 +171,15 @@ async function setupTelegram(): Promise<PilotConfig['messenger']> {
       validate: (input: string) => /^\d+$/.test(input) || '숫자로 된 Chat ID를 입력하세요.',
     },
   ]);
+
+  // Connection test
+  console.log('\n  Testing Telegram connection...');
+  const telegramTest = await testTelegramConnection(answers.botToken);
+  if (telegramTest.ok) {
+    console.log('  Connected successfully!\n');
+  } else {
+    console.log(`  Warning: Connection test failed (${telegramTest.error}). Saving token anyway.\n`);
+  }
 
   await setSecret('telegram-bot-token', answers.botToken);
 

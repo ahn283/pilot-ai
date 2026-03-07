@@ -168,7 +168,7 @@ describe('에러 핸들링', () => {
     });
 
     expect(messenger.sentMessages).toHaveLength(1);
-    expect(messenger.sentMessages[0].text).toContain('오류가 발생했습니다');
+    expect(messenger.sentMessages[0].text).toContain('Error:');
     expect(messenger.sentMessages[0].text).toContain('CLI timeout');
   });
 });

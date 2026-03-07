@@ -123,13 +123,13 @@
   - [x] `history/{date}.md` 작업 히스토리 자동 기록
   - [x] Claude 프롬프트에 관련 메모리 자동 주입
   - [x] 토큰 관리 (MEMORY.md 200줄 제한, 요약본 사용)
-  - [ ] 사용자 선호 자동 감지 & 저장
-  - [ ] 프로젝트 첫 작업 시 스택/구조 분석 & 메모리 생성
-- [ ] 메신저 명령 연동
-  - [ ] "내 메모리 보여줘" → MEMORY.md 전송
-  - [ ] "api 프로젝트 메모리 보여줘" → projects/api.md 전송
-  - [ ] "커밋 메시지 영어로 바꿔줘" → MEMORY.md 업데이트
-  - [ ] "메모리 초기화해줘" → 확인 후 초기화
+  - [x] 사용자 선호 자동 감지 & 저장
+  - [x] 프로젝트 첫 작업 시 스택/구조 분석 & 메모리 생성
+- [x] 메신저 명령 연동
+  - [x] "내 메모리 보여줘" → MEMORY.md 전송
+  - [x] "api 프로젝트 메모리 보여줘" → projects/api.md 전송
+  - [x] "커밋 메시지 영어로 바꿔줘" → MEMORY.md 업데이트
+  - [x] "메모리 초기화해줘" → 확인 후 초기화
 
 ### 1.10 Onboarding CLI
 - [x] `cli/init.ts` - 대화형 셋업 위저드
@@ -140,7 +140,7 @@
   - [x] Telegram: BotFather 가이드 → Bot Token 입력 → 연결 테스트
   - [x] User ID / Chat ID 자동 등록 (화이트리스트)
   - [x] 토큰을 macOS Keychain에 저장
-  - [ ] 연결 테스트 (메신저로 테스트 메시지 전송)
+  - [x] 연결 테스트 (메신저로 테스트 메시지 전송)
 
 ### 1.11 Process Management (launchd)
 - [x] `cli/start.ts` - 에이전트 시작

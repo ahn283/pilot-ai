@@ -3,7 +3,12 @@ import type { PilotConfig } from '../config/schema.js';
 import { isAuthorizedUser } from '../security/auth.js';
 import { writeAuditLog } from '../security/audit.js';
 import { invokeClaudeCli, invokeClaudeApi } from './claude.js';
-import { ApprovalManager, classifySafety } from './safety.js';
+import { ApprovalManager } from './safety.js';
+import { buildMemoryContext } from './memory.js';
+import { resolveProject, touchProject } from './project.js';
+import { handleMemoryCommand } from './memory-commands.js';
+import { detectAndSavePreference } from './preference-detector.js';
+import { analyzeProjectIfNew } from './project-analyzer.js';
 
 export class AgentCore {
   private messenger: MessengerAdapter;
@@ -34,7 +39,7 @@ export class AgentCore {
   }
 
   private async handleMessage(msg: IncomingMessage): Promise<void> {
-    // 1. 인증 검증
+    // 1. Auth check
     if (!isAuthorizedUser(msg, this.config)) {
       await writeAuditLog({
         timestamp: new Date().toISOString(),
@@ -43,10 +48,10 @@ export class AgentCore {
         platform: msg.platform,
         content: `[BLOCKED] ${msg.text}`,
       });
-      return; // 무시 (응답 없음)
+      return;
     }
 
-    // 2. 감사 로그
+    // 2. Audit log
     await writeAuditLog({
       timestamp: new Date().toISOString(),
       type: 'command',
@@ -55,13 +60,20 @@ export class AgentCore {
       content: msg.text,
     });
 
-    // 3. Claude에 프롬프트 전달
+    // 3. Memory command intercept
+    const memResult = await handleMemoryCommand(msg.text);
+    if (memResult.handled) {
+      await this.messenger.sendText(msg.channelId, memResult.response!, msg.threadId);
+      return;
+    }
+
+    // 4. Detect user preferences (async, non-blocking)
+    detectAndSavePreference(msg.text).catch(() => {});
+
+    // 5. Invoke Claude with context
     try {
       const response = await this.invokeClaudeWithContext(msg);
-
-      // 4. 결과를 메신저로 전송 (스레드 유지)
-      const threadId = msg.threadId;
-      await this.messenger.sendText(msg.channelId, response, threadId);
+      await this.messenger.sendText(msg.channelId, response, msg.threadId);
 
       await writeAuditLog({
         timestamp: new Date().toISOString(),
@@ -74,7 +86,7 @@ export class AgentCore {
       const errorMsg = err instanceof Error ? err.message : String(err);
       await this.messenger.sendText(
         msg.channelId,
-        `오류가 발생했습니다: ${errorMsg}`,
+        `Error: ${errorMsg}`,
         msg.threadId,
       );
 
@@ -89,12 +101,25 @@ export class AgentCore {
   }
 
   /**
-   * 메모리 컨텍스트를 포함하여 Claude를 호출한다.
+   * Resolves project from message, builds memory context, and invokes Claude.
    */
   private async invokeClaudeWithContext(msg: IncomingMessage): Promise<string> {
-    // TODO: Phase 1.9에서 메모리 주입 구현
-    // TODO: Phase 1.8에서 프로젝트 인식 + --cwd 구현
-    const prompt = msg.text;
+    // Resolve project from message text
+    const project = await resolveProject(msg.text);
+    const projectName = project?.name;
+    const projectPath = project?.path;
+
+    // If project resolved, analyze on first use and update lastUsed
+    if (projectName && projectPath) {
+      await touchProject(projectName);
+      await analyzeProjectIfNew(projectName, projectPath);
+    }
+
+    // Build memory context
+    const memoryContext = await buildMemoryContext(projectName);
+    const prompt = memoryContext
+      ? `${memoryContext}\n\n<USER_COMMAND>\n${msg.text}\n</USER_COMMAND>`
+      : msg.text;
 
     if (this.config.claude.mode === 'api' && this.config.claude.apiKey) {
       return invokeClaudeApi({
@@ -103,7 +128,10 @@ export class AgentCore {
       });
     }
 
-    const result = await invokeClaudeCli({ prompt });
+    const result = await invokeClaudeCli({
+      prompt,
+      cwd: projectPath,
+    });
     return result.result;
   }
 }
