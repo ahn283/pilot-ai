@@ -1,6 +1,6 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import { execFile } from 'node:child_process';
+import { execFile, spawn } from 'node:child_process';
 import { promisify } from 'node:util';
 import { getPilotDir, configExists } from '../config/store.js';
 
@@ -47,7 +47,7 @@ export function buildPlist(nodePath: string, scriptPath: string, logDir: string)
 </plist>`;
 }
 
-export async function runStart(): Promise<void> {
+export async function runStart(options: { follow?: boolean } = {}): Promise<void> {
   if (!(await configExists())) {
     console.error('No configuration found. Run "npx pilot-ai init" first.');
     process.exitCode = 1;
@@ -57,6 +57,9 @@ export async function runStart(): Promise<void> {
   // Check if already running
   if (await isLoaded()) {
     console.log('Agent is already running.');
+    if (options.follow) {
+      followLogs();
+    }
     return;
   }
 
@@ -70,6 +73,10 @@ export async function runStart(): Promise<void> {
   const logDir = path.join(getPilotDir(), 'logs');
   await fs.mkdir(logDir, { recursive: true });
 
+  // Ensure log file exists before tailing
+  const logPath = path.join(logDir, 'agent.log');
+  await fs.appendFile(logPath, '');
+
   const plistContent = buildPlist(nodePath, scriptPath, logDir);
 
   await fs.mkdir(PLIST_DIR, { recursive: true });
@@ -78,11 +85,27 @@ export async function runStart(): Promise<void> {
   try {
     await execFileAsync('launchctl', ['load', getPlistPath()]);
     console.log('Agent started.');
-    console.log(`  Logs: ${logDir}/agent.log`);
+
+    if (options.follow) {
+      console.log('Following logs (Ctrl+C to stop):\n');
+      followLogs();
+    } else {
+      console.log(`  Logs: ${logDir}/agent.log`);
+      console.log('  Run "pilot-ai start -f" to follow logs.');
+    }
   } catch (err) {
     console.error('launchctl load failed:', (err as Error).message);
     process.exitCode = 1;
   }
+}
+
+function followLogs(): void {
+  const logPath = path.join(getPilotDir(), 'logs', 'agent.log');
+  const child = spawn('tail', ['-f', logPath], { stdio: 'inherit' });
+  process.on('SIGINT', () => {
+    child.kill();
+    process.exit(0);
+  });
 }
 
 export async function isLoaded(): Promise<boolean> {

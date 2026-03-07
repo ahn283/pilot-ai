@@ -25,8 +25,9 @@ program
 program
   .command('start')
   .description('Start the agent (launchd)')
-  .action(async () => {
-    await runStart();
+  .option('-f, --follow', 'Follow log output after starting')
+  .action(async (opts) => {
+    await runStart(opts);
   });
 
 program
