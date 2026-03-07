@@ -199,20 +199,16 @@
   - [x] 동시 실행 개수 제한 (Claude CLI rate limit 고려)
 
 ### 2.4 Heartbeat Scheduler
-- [ ] `agent/heartbeat.ts` - 스케줄러 구현
-  - [ ] 타이머 기반 주기적 실행 (node-cron 또는 자체 구현)
-  - [ ] `~/.pilot/HEARTBEAT.md` 파싱 & 실행
-  - [ ] `~/.pilot/cron-jobs.json` 관리
-  - [ ] cron 표현식 파싱
-  - [ ] 각 예약 작업을 독립 세션으로 실행
+- [x] `agent/heartbeat.ts` - 스케줄러 엔진
+  - [x] 타이머 기반 주기적 실행 (자체 구현, 60초 interval)
+  - [x] `~/.pilot/HEARTBEAT.md` 파싱 & 실행
+  - [x] `~/.pilot/cron-jobs.json` CRUD 관리
+  - [x] cron 표현식 파싱 (5-field: min, hour, dom, mon, dow)
+  - [x] 각 예약 작업을 독립 세션으로 실행 (tick → executor)
+  - [x] 실패 시 lastError 기록
   - [ ] 실행 결과 메신저로 보고 (요약)
-  - [ ] 실패 시 에러 알림
   - [ ] Dangerous 작업은 실행 전 승인 요청
-- [ ] 메신저 명령 연동
-  - [ ] "매일 9시에 ~~해줘" → cron job 등록
-  - [ ] "예약 작업 목록" → 전체 조회
-  - [ ] "예약 N번 취소" → 삭제
-  - [ ] "예약 N번 비활성화/활성화" → enabled 토글
+- [ ] 스케줄 관련 자연어 명령은 LLM이 해석 → heartbeat CRUD 함수 호출 (tool 연동)
 
 ### 2.5 Skills System
 - [ ] `agent/skills.ts` - 스킬 관리
