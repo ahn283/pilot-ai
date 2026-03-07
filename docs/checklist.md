@@ -132,14 +132,14 @@
   - [ ] "메모리 초기화해줘" → 확인 후 초기화
 
 ### 1.10 Onboarding CLI
-- [ ] `cli/init.ts` - 대화형 셋업 위저드
-  - [ ] Claude Code CLI 설치 확인 + `claude -p` 테스트
-  - [ ] (대안) API Key 입력 & 검증
-  - [ ] 메신저 선택 (Slack / Telegram)
-  - [ ] Slack: App 생성 가이드 → 토큰 입력 → 연결 테스트
-  - [ ] Telegram: BotFather 가이드 → Bot Token 입력 → 연결 테스트
-  - [ ] User ID / Chat ID 자동 등록 (화이트리스트)
-  - [ ] 토큰을 macOS Keychain에 저장
+- [x] `cli/init.ts` - 대화형 셋업 위저드
+  - [x] Claude Code CLI 설치 확인 + `claude -p` 테스트
+  - [x] (대안) API Key 입력 & 검증
+  - [x] 메신저 선택 (Slack / Telegram)
+  - [x] Slack: App 생성 가이드 → 토큰 입력 → 연결 테스트
+  - [x] Telegram: BotFather 가이드 → Bot Token 입력 → 연결 테스트
+  - [x] User ID / Chat ID 자동 등록 (화이트리스트)
+  - [x] 토큰을 macOS Keychain에 저장
   - [ ] 연결 테스트 (메신저로 테스트 메시지 전송)
 
 ### 1.11 Process Management (launchd)

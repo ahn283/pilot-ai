@@ -2,6 +2,7 @@
 
 import { Command } from 'commander';
 import { createProjectCommand } from './cli/project.js';
+import { runInit } from './cli/init.js';
 
 const program = new Command();
 
@@ -14,7 +15,7 @@ program
   .command('init')
   .description('Interactive setup wizard')
   .action(async () => {
-    console.log('pilot-ai init - coming soon');
+    await runInit();
   });
 
 program
