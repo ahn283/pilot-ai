@@ -24,12 +24,21 @@ function generateTaskId(): string {
 }
 
 /**
- * 순차 실행 큐 (FIFO). Phase 1은 모든 작업을 순차 처리한다.
+ * Task queue with project-based parallel execution.
+ * - Different projects run in parallel
+ * - Same project tasks run sequentially
+ * - Null-project tasks (Notion, browser) run in parallel with everything
+ * - Max concurrent limit to respect Claude CLI rate limits
  */
 export class TaskQueue {
   private queue: Task[] = [];
-  private running: Task | null = null;
+  private runningTasks: Set<Task> = new Set();
   private handler: TaskHandler | null = null;
+  private maxConcurrent: number;
+
+  constructor(maxConcurrent: number = 3) {
+    this.maxConcurrent = maxConcurrent;
+  }
 
   onTask(handler: TaskHandler): void {
     this.handler = handler;
@@ -61,15 +70,51 @@ export class TaskQueue {
   }
 
   private async processNext(): Promise<void> {
-    if (this.running) return;
+    if (this.runningTasks.size >= this.maxConcurrent) return;
 
-    const task = this.queue.find((t) => t.status === 'queued');
-    if (!task) return;
+    const nextTask = this.findNextRunnable();
+    if (!nextTask) return;
 
-    this.running = task;
-    task.status = 'running';
-    task.startedAt = new Date();
+    this.runningTasks.add(nextTask);
+    nextTask.status = 'running';
+    nextTask.startedAt = new Date();
 
+    // Run async without blocking processNext
+    this.executeTask(nextTask).finally(() => {
+      this.runningTasks.delete(nextTask);
+      // Try to start more tasks
+      this.processNext();
+    });
+
+    // Try to start more parallel tasks immediately
+    if (this.runningTasks.size < this.maxConcurrent) {
+      this.processNext();
+    }
+  }
+
+  /**
+   * Finds the next task that can run based on project parallelism rules.
+   */
+  private findNextRunnable(): Task | null {
+    const runningProjects = new Set<string>();
+    for (const task of this.runningTasks) {
+      if (task.project) runningProjects.add(task.project);
+    }
+
+    for (const task of this.queue) {
+      if (task.status !== 'queued') continue;
+
+      // Null-project tasks can always run (no project conflict)
+      if (task.project === null) return task;
+
+      // Project tasks can run only if no other task for the same project is running
+      if (!runningProjects.has(task.project)) return task;
+    }
+
+    return null;
+  }
+
+  private async executeTask(task: Task): Promise<void> {
     try {
       if (this.handler) {
         await this.handler(task);
@@ -80,8 +125,6 @@ export class TaskQueue {
       task.error = err instanceof Error ? err.message : String(err);
     } finally {
       task.completedAt = new Date();
-      this.running = null;
-      this.processNext();
     }
   }
 
@@ -93,9 +136,9 @@ export class TaskQueue {
     return true;
   }
 
-  getStatus(): { running: Task | null; queued: Task[]; completed: Task[] } {
+  getStatus(): { running: Task[]; queued: Task[]; completed: Task[] } {
     return {
-      running: this.running,
+      running: [...this.runningTasks],
       queued: this.queue.filter((t) => t.status === 'queued'),
       completed: this.queue.filter((t) => t.status === 'completed' || t.status === 'failed'),
     };
@@ -109,21 +152,27 @@ export class TaskQueue {
     return this.queue.filter((t) => t.status === 'queued').length;
   }
 
+  getRunningCount(): number {
+    return this.runningTasks.size;
+  }
+
   formatStatus(): string {
     const { running, queued } = this.getStatus();
-    const lines: string[] = ['현재 작업 큐:'];
+    const lines: string[] = ['Task Queue:'];
 
-    if (running) {
-      const elapsed = Math.floor((Date.now() - (running.startedAt?.getTime() ?? Date.now())) / 1000);
-      lines.push(`  [${running.id}] running - ${running.command} (${elapsed}초 경과)`);
+    for (const task of running) {
+      const elapsed = Math.floor((Date.now() - (task.startedAt?.getTime() ?? Date.now())) / 1000);
+      const proj = task.project ? `[${task.project}] ` : '';
+      lines.push(`  [${task.id}] running - ${proj}${task.command} (${elapsed}s)`);
     }
 
     for (const task of queued) {
-      lines.push(`  [${task.id}] queued - ${task.command}`);
+      const proj = task.project ? `[${task.project}] ` : '';
+      lines.push(`  [${task.id}] queued - ${proj}${task.command}`);
     }
 
-    if (!running && queued.length === 0) {
-      lines.push('  대기 중인 작업이 없습니다.');
+    if (running.length === 0 && queued.length === 0) {
+      lines.push('  No pending tasks.');
     }
 
     return lines.join('\n');

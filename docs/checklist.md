@@ -192,11 +192,11 @@
 - [ ] 온보딩에 Notion Integration 가이드 + API 키 입력 추가
 
 ### 2.3 프로젝트 간 병렬 실행
-- [ ] `agent/queue.ts` 업데이트
-  - [ ] 서로 다른 프로젝트 작업은 동시 실행
-  - [ ] 같은 프로젝트 작업은 순차 유지
-  - [ ] 프로젝트 무관 작업 (Notion, 브라우저) 병렬 가능
-  - [ ] 동시 실행 개수 제한 (Claude CLI rate limit 고려)
+- [x] `agent/queue.ts` 업데이트
+  - [x] 서로 다른 프로젝트 작업은 동시 실행
+  - [x] 같은 프로젝트 작업은 순차 유지
+  - [x] 프로젝트 무관 작업 (Notion, 브라우저) 병렬 가능
+  - [x] 동시 실행 개수 제한 (Claude CLI rate limit 고려)
 
 ### 2.4 Heartbeat Scheduler
 - [ ] `agent/heartbeat.ts` - 스케줄러 구현
