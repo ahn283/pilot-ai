@@ -45,8 +45,12 @@ export async function checkClaudeCli(binary: string = 'claude'): Promise<boolean
  */
 export async function checkClaudeCliAuth(binary: string = 'claude'): Promise<boolean> {
   try {
+    const env = { ...process.env };
+    delete env.CLAUDECODE;
+
     const { stdout } = await execFileAsync(binary, ['-p', '--output-format', 'json', 'Reply with OK'], {
       timeout: 30_000,
+      env,
     });
     return stdout.includes('result') || stdout.includes('OK');
   } catch {
@@ -80,9 +84,13 @@ export async function invokeClaudeCli(options: ClaudeCliOptions): Promise<Claude
   args.push(prompt);
 
   return new Promise<ClaudeCliResult>((resolve, reject) => {
+    const env = { ...process.env };
+    delete env.CLAUDECODE;
+
     const child = spawn('claude', args, {
       stdio: ['ignore', 'pipe', 'pipe'],
       timeout: timeoutMs,
+      env,
     });
 
     let stdout = '';

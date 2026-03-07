@@ -108,10 +108,13 @@ export class SlackAdapter implements MessengerAdapter {
   }
 
   async start(): Promise<void> {
+    console.log(`[${new Date().toISOString()}] Slack: connecting via Socket Mode...`);
     await this.app.start();
+    console.log(`[${new Date().toISOString()}] Slack: connected and listening for messages`);
   }
 
   async stop(): Promise<void> {
+    console.log(`[${new Date().toISOString()}] Slack: disconnecting...`);
     await this.app.stop();
   }
 

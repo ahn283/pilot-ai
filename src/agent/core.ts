@@ -13,6 +13,10 @@ import { buildSkillsContext } from './skills.js';
 import { buildToolDescriptions } from './tool-descriptions.js';
 import { getMcpConfigPathIfExists } from '../tools/figma-mcp.js';
 
+function log(message: string): void {
+  console.log(`[${new Date().toISOString()}] ${message}`);
+}
+
 export class AgentCore {
   private messenger: MessengerAdapter;
   private config: PilotConfig;
@@ -34,16 +38,22 @@ export class AgentCore {
   }
 
   async start(): Promise<void> {
+    log('Connecting to messenger...');
     await this.messenger.start();
+    log('Messenger connected. Waiting for messages...');
   }
 
   async stop(): Promise<void> {
+    log('Stopping messenger...');
     await this.messenger.stop();
   }
 
   private async handleMessage(msg: IncomingMessage): Promise<void> {
+    log(`Message received from ${msg.platform}:${msg.userId} in ${msg.channelId}: "${msg.text}"`);
+
     // 1. Auth check
     if (!isAuthorizedUser(msg, this.config)) {
+      log(`BLOCKED: user ${msg.userId} is not in allowedUsers`);
       await writeAuditLog({
         timestamp: new Date().toISOString(),
         type: 'command',
@@ -53,6 +63,8 @@ export class AgentCore {
       });
       return;
     }
+
+    log(`Authorized user ${msg.userId}`);
 
     // 2. Audit log
     await writeAuditLog({
@@ -66,6 +78,7 @@ export class AgentCore {
     // 3. Memory command intercept
     const memResult = await handleMemoryCommand(msg.text);
     if (memResult.handled) {
+      log('Handled as memory command');
       await this.messenger.sendText(msg.channelId, memResult.response!, msg.threadId);
       return;
     }
@@ -74,6 +87,7 @@ export class AgentCore {
     detectAndSavePreference(msg.text).catch(() => {});
 
     // 5. Send thinking status and invoke Claude
+    log('Invoking Claude...');
     const statusMsgId = await this.messenger.sendText(
       msg.channelId, '🤔 Thinking...', msg.threadId,
     );
@@ -87,6 +101,7 @@ export class AgentCore {
         }
       });
 
+      log(`Claude response (${response.length} chars): "${response.slice(0, 100)}..."`);
       await this.messenger.updateText(msg.channelId, statusMsgId, response);
 
       await writeAuditLog({
@@ -98,6 +113,7 @@ export class AgentCore {
       });
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : String(err);
+      log(`Claude error: ${errorMsg}`);
       await this.messenger.updateText(
         msg.channelId, statusMsgId, `❌ Error: ${errorMsg}`,
       );
