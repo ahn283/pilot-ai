@@ -12,6 +12,7 @@ export interface ClaudeCliOptions {
   allowedTools?: string[];
   mcpConfigPath?: string;
   timeoutMs?: number;
+  onToolUse?: (status: string) => void;
 }
 
 export interface ClaudeCliResult {
@@ -74,12 +75,40 @@ export async function checkClaudeCliAuth(binary: string = 'claude'): Promise<boo
   }
 }
 
+/** Maps Claude tool names to user-friendly status descriptions */
+function describeToolUse(toolName: string, input?: Record<string, unknown>): string {
+  switch (toolName) {
+    case 'Bash': {
+      const cmd = typeof input?.command === 'string' ? input.command.slice(0, 60) : '';
+      if (cmd.startsWith('gh ')) return `🔍 Checking GitHub... \`${cmd}\``;
+      if (cmd.startsWith('git ')) return `📂 Checking git history...`;
+      if (cmd.startsWith('curl ') || cmd.startsWith('wget ')) return `🌐 Fetching URL...`;
+      if (cmd.startsWith('npm ') || cmd.startsWith('npx ')) return `📦 Running npm...`;
+      return `⚡ Running: \`${cmd || 'command'}\``;
+    }
+    case 'Read': return `📖 Reading file...`;
+    case 'Write': return `✏️ Writing file...`;
+    case 'Edit': case 'MultiEdit': return `✏️ Editing file...`;
+    case 'Glob': return `🔍 Searching files...`;
+    case 'Grep': return `🔍 Searching code...`;
+    case 'LS': return `📂 Listing directory...`;
+    case 'WebSearch': {
+      const q = typeof input?.query === 'string' ? input.query.slice(0, 50) : '';
+      return q ? `🌐 Searching: "${q}"` : `🌐 Searching the web...`;
+    }
+    case 'WebFetch': return `🌐 Fetching web page...`;
+    case 'Task': return `🧠 Delegating sub-task...`;
+    case 'NotebookRead': case 'NotebookEdit': return `📓 Working with notebook...`;
+    default: return `🔧 Using ${toolName}...`;
+  }
+}
+
 /**
  * Invokes the Claude Code CLI as a subprocess.
  * Runs `claude -p --output-format json` and parses the JSON response.
  */
 export async function invokeClaudeCli(options: ClaudeCliOptions): Promise<ClaudeCliResult> {
-  const { prompt, systemPrompt, cwd, allowedTools, mcpConfigPath, timeoutMs = DEFAULT_TIMEOUT_MS } = options;
+  const { prompt, systemPrompt, cwd, allowedTools, mcpConfigPath, timeoutMs = DEFAULT_TIMEOUT_MS, onToolUse } = options;
 
   const args = ['-p', '--output-format', 'json'];
 
@@ -118,9 +147,34 @@ export async function invokeClaudeCli(options: ClaudeCliOptions): Promise<Claude
 
     let stdout = '';
     let stderr = '';
+    let lineBuffer = '';
 
     child.stdout.on('data', (data: Buffer) => {
-      stdout += data.toString();
+      const chunk = data.toString();
+      stdout += chunk;
+
+      // Stream-parse JSONL lines to detect tool usage in real-time
+      if (onToolUse) {
+        lineBuffer += chunk;
+        const lines = lineBuffer.split('\n');
+        lineBuffer = lines.pop() ?? '';
+        for (const line of lines) {
+          if (!line.trim()) continue;
+          try {
+            const msg = JSON.parse(line);
+            // Detect tool_use blocks in assistant messages
+            if (msg.type === 'assistant' && Array.isArray(msg.content)) {
+              for (const block of msg.content) {
+                if (block.type === 'tool_use' && block.name) {
+                  onToolUse(describeToolUse(block.name, block.input));
+                }
+              }
+            }
+          } catch {
+            // Not valid JSON yet, skip
+          }
+        }
+      }
     });
 
     child.stderr.on('data', (data: Buffer) => {

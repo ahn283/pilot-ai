@@ -222,6 +222,7 @@ RULES:
       cwd: projectPath,
       allowedTools: DEFAULT_ALLOWED_TOOLS,
       mcpConfigPath,
+      onToolUse: (status) => onStatus?.(status),
     });
     return result.result;
   }
