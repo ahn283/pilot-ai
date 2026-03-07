@@ -116,13 +116,13 @@
   - [x] `npx pilot-ai project remove <name>`
 
 ### 1.9 Persistent Memory
-- [ ] `agent/memory.ts` - 메모리 관리
-  - [ ] `~/.pilot/memory/` 디렉토리 구조 생성
-  - [ ] `MEMORY.md` 읽기/쓰기 (핵심 사용자 선호)
-  - [ ] `projects/{name}.md` 읽기/쓰기 (프로젝트 지식)
-  - [ ] `history/{date}.md` 작업 히스토리 자동 기록
-  - [ ] Claude 프롬프트에 관련 메모리 자동 주입
-  - [ ] 토큰 관리 (MEMORY.md 200줄 제한, 요약본 사용)
+- [x] `agent/memory.ts` - 메모리 관리
+  - [x] `~/.pilot/memory/` 디렉토리 구조 생성
+  - [x] `MEMORY.md` 읽기/쓰기 (핵심 사용자 선호)
+  - [x] `projects/{name}.md` 읽기/쓰기 (프로젝트 지식)
+  - [x] `history/{date}.md` 작업 히스토리 자동 기록
+  - [x] Claude 프롬프트에 관련 메모리 자동 주입
+  - [x] 토큰 관리 (MEMORY.md 200줄 제한, 요약본 사용)
   - [ ] 사용자 선호 자동 감지 & 저장
   - [ ] 프로젝트 첫 작업 시 스택/구조 분석 & 메모리 생성
 - [ ] 메신저 명령 연동
