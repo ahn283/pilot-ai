@@ -2,6 +2,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import os from 'node:os';
 import { configSchema, type PilotConfig } from './schema.js';
+import { getSecret } from './keychain.js';
 
 export function getPilotDir(): string {
   return path.join(os.homedir(), '.pilot');
@@ -36,7 +37,54 @@ export async function loadConfig(): Promise<PilotConfig> {
     throw new Error(`Invalid configuration file:\n${result.error.format()._errors.join('\n')}`);
   }
 
-  return result.data;
+  return resolveKeychainSecrets(result.data);
+}
+
+/**
+ * Resolves ***keychain*** placeholders with actual values from macOS Keychain.
+ */
+async function resolveKeychainSecrets(config: PilotConfig): Promise<PilotConfig> {
+  const resolved = structuredClone(config);
+
+  // Slack tokens
+  if (resolved.messenger.slack) {
+    if (resolved.messenger.slack.botToken === '***keychain***') {
+      resolved.messenger.slack.botToken = (await getSecret('slack-bot-token')) ?? '';
+    }
+    if (resolved.messenger.slack.appToken === '***keychain***') {
+      resolved.messenger.slack.appToken = (await getSecret('slack-app-token')) ?? '';
+    }
+    if (resolved.messenger.slack.signingSecret === '***keychain***') {
+      resolved.messenger.slack.signingSecret = (await getSecret('slack-signing-secret')) ?? '';
+    }
+  }
+
+  // Telegram token
+  if (resolved.messenger.telegram?.botToken === '***keychain***') {
+    resolved.messenger.telegram.botToken = (await getSecret('telegram-bot-token')) ?? '';
+  }
+
+  // Claude API key
+  if (resolved.claude.apiKey === '***keychain***') {
+    resolved.claude.apiKey = (await getSecret('anthropic-api-key')) ?? null;
+  }
+
+  // Notion
+  if (resolved.notion?.apiKey === '***keychain***') {
+    resolved.notion.apiKey = (await getSecret('notion-api-key')) ?? '';
+  }
+
+  // Figma
+  if (resolved.figma?.personalAccessToken === '***keychain***') {
+    resolved.figma.personalAccessToken = (await getSecret('figma-personal-access-token')) ?? '';
+  }
+
+  // Linear
+  if (resolved.linear?.apiKey === '***keychain***') {
+    resolved.linear.apiKey = (await getSecret('linear-api-key')) ?? '';
+  }
+
+  return resolved;
 }
 
 export async function saveConfig(config: Partial<PilotConfig>): Promise<void> {

@@ -19,6 +19,7 @@ vi.mock('inquirer', () => ({
 // Mock keychain
 vi.mock('../../src/config/keychain.js', () => ({
   setSecret: vi.fn(),
+  getSecret: vi.fn().mockResolvedValue('mock-secret'),
 }));
 
 // Mock claude check
@@ -74,7 +75,7 @@ describe('runInit - CLI mode with Slack', () => {
     expect(config.claude.mode).toBe('cli');
     expect(config.claude.apiKey).toBeNull();
     expect(config.messenger.platform).toBe('slack');
-    expect(config.messenger.slack?.botToken).toBe('***keychain***');
+    expect(config.messenger.slack?.botToken).toBe('mock-secret');
     expect(setSecret).toHaveBeenCalledWith('slack-bot-token', 'xoxb-test');
     expect(setSecret).toHaveBeenCalledWith('slack-app-token', 'xapp-test');
     expect(setSecret).toHaveBeenCalledWith('slack-signing-secret', 'secret123');
@@ -101,9 +102,9 @@ describe('runInit - API mode with Telegram', () => {
 
     const config = await loadConfig();
     expect(config.claude.mode).toBe('api');
-    expect(config.claude.apiKey).toBe('***keychain***');
+    expect(config.claude.apiKey).toBe('mock-secret');
     expect(config.messenger.platform).toBe('telegram');
-    expect(config.messenger.telegram?.botToken).toBe('***keychain***');
+    expect(config.messenger.telegram?.botToken).toBe('mock-secret');
     expect(setSecret).toHaveBeenCalledWith('anthropic-api-key', 'sk-test-key');
     expect(setSecret).toHaveBeenCalledWith('telegram-bot-token', '123456:ABC-DEF');
   });
