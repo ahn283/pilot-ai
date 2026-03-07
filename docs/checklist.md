@@ -30,22 +30,22 @@
 - [x] 타임아웃 및 에러 핸들링
 
 ### 1.3 Messenger Adapter
-- [ ] `messenger/adapter.ts` - MessengerAdapter 인터페이스 정의
-- [ ] `messenger/factory.ts` - config 기반 어댑터 팩토리
-- [ ] **Slack 구현체**
-  - [ ] `messenger/slack.ts` - Slack Bolt SDK 연동
-  - [ ] Socket Mode 설정 (외부 서버 불필요)
-  - [ ] 메시지 수신 핸들링
-  - [ ] 텍스트 응답 전송
-  - [ ] 스레드 기반 대화
-  - [ ] Interactive Message 버튼 (승인/거부)
-- [ ] **Telegram 구현체**
-  - [ ] `messenger/telegram.ts` - telegraf 연동
-  - [ ] Long Polling 설정
-  - [ ] 메시지 수신 핸들링
-  - [ ] 텍스트 응답 전송
-  - [ ] Reply 기반 대화
-  - [ ] Inline Keyboard 버튼 (승인/거부)
+- [x] `messenger/adapter.ts` - MessengerAdapter 인터페이스 정의
+- [x] `messenger/factory.ts` - config 기반 어댑터 팩토리
+- [x] **Slack 구현체**
+  - [x] `messenger/slack.ts` - Slack Bolt SDK 연동
+  - [x] Socket Mode 설정 (외부 서버 불필요)
+  - [x] 메시지 수신 핸들링
+  - [x] 텍스트 응답 전송
+  - [x] 스레드 기반 대화
+  - [x] Interactive Message 버튼 (승인/거부)
+- [x] **Telegram 구현체**
+  - [x] `messenger/telegram.ts` - telegraf 연동
+  - [x] Long Polling 설정
+  - [x] 메시지 수신 핸들링
+  - [x] 텍스트 응답 전송
+  - [x] Reply 기반 대화
+  - [x] Inline Keyboard 버튼 (승인/거부)
 
 ### 1.4 Security (기본)
 - [ ] `security/auth.ts` - User ID / Chat ID 화이트리스트
