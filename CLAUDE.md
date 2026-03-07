@@ -25,7 +25,8 @@ See `docs/PRD.md` for full specification and `docs/checklist.md` for implementat
 - `src/cli/` - CLI subcommands (init, start, stop, status, logs, project)
 - `src/agent/` - Core agent logic (message loop, Claude CLI integration, task queue, project registry, memory, safety)
 - `src/messenger/` - MessengerAdapter interface + Slack/Telegram implementations
-- `src/tools/` - Tool wrappers (filesystem, shell, browser, notion, vscode)
+- `src/tools/` - Tool wrappers (filesystem, shell, browser, notion, github, clipboard, obsidian, linear, notification, image)
+- `src/api/` - Local HTTP webhook server (node:http, Bearer auth, rate limiting)
 - `src/security/` - Auth, sandbox, prompt injection guard, audit logging
 - `src/config/` - Config store (~/.pilot/), keychain integration, schema
 
@@ -50,5 +51,8 @@ Every feature/fix MUST follow this exact sequence. Never skip or reorder steps:
 - ESM modules (`"type": "module"` in package.json)
 - TypeScript with strict mode, target ES2022, module Node16
 - ESLint flat config (`eslint.config.js`)
-- Korean language for user-facing docs and commit messages
-- Phased development: Phase 1 (MVP) -> Phase 2 -> Phase 3. Check `docs/checklist.md` for current phase.
+- Commit messages in English
+- System comments and user-facing messages in English
+- Docs (PRD, checklist) in Korean
+- Natural language parsing should be delegated to LLM, not regex rules — expose functions as tools
+- Phased development: Phase 1 (MVP) ✅ -> Phase 2 (in progress) -> Phase 3. Check `docs/checklist.md` for current phase.
