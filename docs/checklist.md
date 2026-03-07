@@ -184,11 +184,11 @@
 - [ ] 온보딩에 Playwright 브라우저 자동 설치 추가
 
 ### 2.2 Notion Integration
-- [ ] `tools/notion.ts` - @notionhq/client 연동
-  - [ ] 페이지 생성, 읽기, 수정
-  - [ ] 데이터베이스 쿼리, 항목 추가/수정
-  - [ ] 페이지 검색
-  - [ ] 콘텐츠 요약/보고서 생성
+- [x] `tools/notion.ts` - @notionhq/client 연동
+  - [x] 페이지 생성, 읽기, 수정
+  - [x] 데이터베이스 조회
+  - [x] 페이지 검색
+  - [x] 콘텐츠 블록 추가/읽기
 - [ ] 온보딩에 Notion Integration 가이드 + API 키 입력 추가
 
 ### 2.3 프로젝트 간 병렬 실행
