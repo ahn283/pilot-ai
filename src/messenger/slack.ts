@@ -20,7 +20,7 @@ export class SlackAdapter implements MessengerAdapter {
       appToken: config.appToken,
       signingSecret: config.signingSecret,
       socketMode: true,
-      logLevel: 'ERROR' as LogLevel,
+      logLevel: 'INFO' as LogLevel,
     });
 
     this.setupListeners();
