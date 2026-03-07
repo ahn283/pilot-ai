@@ -8,7 +8,7 @@ export interface TelegramConfig {
 export class TelegramAdapter implements MessengerAdapter {
   private bot: Telegraf;
   private botToken: string;
-  private messageHandler?: (msg: IncomingMessage) => void;
+  private messageHandler?: (msg: IncomingMessage) => void | Promise<void>;
   private approvalHandler?: (taskId: string, approved: boolean) => void;
 
   constructor(config: TelegramConfig) {
@@ -99,7 +99,7 @@ export class TelegramAdapter implements MessengerAdapter {
     this.bot.stop('SIGTERM');
   }
 
-  onMessage(handler: (msg: IncomingMessage) => void): void {
+  onMessage(handler: (msg: IncomingMessage) => void | Promise<void>): void {
     this.messageHandler = handler;
   }
 

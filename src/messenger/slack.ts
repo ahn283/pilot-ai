@@ -10,7 +10,7 @@ export interface SlackConfig {
 export class SlackAdapter implements MessengerAdapter {
   private app: App;
   private botToken: string;
-  private messageHandler?: (msg: IncomingMessage) => void;
+  private messageHandler?: (msg: IncomingMessage) => void | Promise<void>;
   private approvalHandler?: (taskId: string, approved: boolean) => void;
 
   constructor(config: SlackConfig) {
@@ -29,8 +29,15 @@ export class SlackAdapter implements MessengerAdapter {
   private setupListeners(): void {
     // Receive incoming messages
     this.app.message(async ({ message }) => {
-      if (!this.messageHandler) return;
-      if (message.subtype && message.subtype !== 'file_share') return; // Ignore bot messages, edits, etc. but allow file uploads
+      console.log(`[${new Date().toISOString()}] Slack event: message received`, JSON.stringify({ subtype: (message as { subtype?: string }).subtype, user: (message as { user?: string }).user, channel: (message as { channel?: string }).channel }));
+      if (!this.messageHandler) {
+        console.log(`[${new Date().toISOString()}] Slack: no messageHandler registered, ignoring`);
+        return;
+      }
+      if (message.subtype && message.subtype !== 'file_share') {
+        console.log(`[${new Date().toISOString()}] Slack: ignoring message with subtype "${message.subtype}"`);
+        return;
+      }
 
       const msg = message as {
         user?: string;
@@ -58,7 +65,7 @@ export class SlackAdapter implements MessengerAdapter {
         }
       }
 
-      this.messageHandler({
+      await this.messageHandler({
         platform: 'slack',
         userId: msg.user,
         channelId: msg.channel ?? '',
@@ -71,13 +78,14 @@ export class SlackAdapter implements MessengerAdapter {
 
     // Receive @mentions in channels
     this.app.event('app_mention', async ({ event }) => {
+      console.log(`[${new Date().toISOString()}] Slack event: app_mention from ${event.user} in ${event.channel}`);
       if (!this.messageHandler) return;
 
       // Strip the bot mention from the text
       const text = (event.text ?? '').replace(/<@[A-Z0-9]+>/g, '').trim();
       if (!text || !event.user) return;
 
-      this.messageHandler({
+      await this.messageHandler({
         platform: 'slack',
         userId: event.user as string,
         channelId: event.channel,
@@ -118,7 +126,7 @@ export class SlackAdapter implements MessengerAdapter {
     await this.app.stop();
   }
 
-  onMessage(handler: (msg: IncomingMessage) => void): void {
+  onMessage(handler: (msg: IncomingMessage) => void | Promise<void>): void {
     this.messageHandler = handler;
   }
 

@@ -23,7 +23,7 @@ export interface MessengerAdapter {
   stop(): Promise<void>;
 
   /** Register incoming message callback */
-  onMessage(handler: (msg: IncomingMessage) => void): void;
+  onMessage(handler: (msg: IncomingMessage) => void | Promise<void>): void;
 
   /** Send a text message. Returns message ID */
   sendText(channelId: string, text: string, threadId?: string): Promise<string>;

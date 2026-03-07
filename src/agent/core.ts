@@ -49,82 +49,88 @@ export class AgentCore {
   }
 
   private async handleMessage(msg: IncomingMessage): Promise<void> {
-    log(`Message received from ${msg.platform}:${msg.userId} in ${msg.channelId}: "${msg.text}"`);
+    try {
+      log(`Message received from ${msg.platform}:${msg.userId} in ${msg.channelId}: "${msg.text}"`);
+      log(`Allowed users: ${JSON.stringify(this.config.security.allowedUsers)}`);
 
-    // 1. Auth check
-    if (!isAuthorizedUser(msg, this.config)) {
-      log(`BLOCKED: user ${msg.userId} is not in allowedUsers`);
+      // 1. Auth check
+      if (!isAuthorizedUser(msg, this.config)) {
+        log(`BLOCKED: user ${msg.userId} is not in allowedUsers`);
+        await writeAuditLog({
+          timestamp: new Date().toISOString(),
+          type: 'command',
+          userId: msg.userId,
+          platform: msg.platform,
+          content: `[BLOCKED] ${msg.text}`,
+        });
+        return;
+      }
+
+      log(`Authorized user ${msg.userId}`);
+
+      // 2. Audit log
       await writeAuditLog({
         timestamp: new Date().toISOString(),
         type: 'command',
         userId: msg.userId,
         platform: msg.platform,
-        content: `[BLOCKED] ${msg.text}`,
-      });
-      return;
-    }
-
-    log(`Authorized user ${msg.userId}`);
-
-    // 2. Audit log
-    await writeAuditLog({
-      timestamp: new Date().toISOString(),
-      type: 'command',
-      userId: msg.userId,
-      platform: msg.platform,
-      content: msg.text,
-    });
-
-    // 3. Memory command intercept
-    const memResult = await handleMemoryCommand(msg.text);
-    if (memResult.handled) {
-      log('Handled as memory command');
-      await this.messenger.sendText(msg.channelId, memResult.response!, msg.threadId);
-      return;
-    }
-
-    // 4. Detect user preferences (async, non-blocking)
-    detectAndSavePreference(msg.text).catch(() => {});
-
-    // 5. Send thinking status and invoke Claude
-    log('Invoking Claude...');
-    const statusMsgId = await this.messenger.sendText(
-      msg.channelId, '🤔 Thinking...', msg.threadId,
-    );
-
-    try {
-      const response = await this.invokeClaudeWithContext(msg, async (status: string) => {
-        try {
-          await this.messenger.updateText(msg.channelId, statusMsgId, status);
-        } catch {
-          // Ignore update failures (e.g. message already deleted)
-        }
+        content: msg.text,
       });
 
-      log(`Claude response (${response.length} chars): "${response.slice(0, 100)}..."`);
-      await this.messenger.updateText(msg.channelId, statusMsgId, response);
+      // 3. Memory command intercept
+      const memResult = await handleMemoryCommand(msg.text);
+      if (memResult.handled) {
+        log('Handled as memory command');
+        await this.messenger.sendText(msg.channelId, memResult.response!, msg.threadId);
+        return;
+      }
 
-      await writeAuditLog({
-        timestamp: new Date().toISOString(),
-        type: 'result',
-        userId: msg.userId,
-        platform: msg.platform,
-        content: response,
-      });
-    } catch (err) {
-      const errorMsg = err instanceof Error ? err.message : String(err);
-      log(`Claude error: ${errorMsg}`);
-      await this.messenger.updateText(
-        msg.channelId, statusMsgId, `❌ Error: ${errorMsg}`,
+      // 4. Detect user preferences (async, non-blocking)
+      detectAndSavePreference(msg.text).catch(() => {});
+
+      // 5. Send thinking status and invoke Claude
+      log('Sending thinking status...');
+      const statusMsgId = await this.messenger.sendText(
+        msg.channelId, '🤔 Thinking...', msg.threadId,
       );
+      log(`Thinking message sent (id: ${statusMsgId}). Invoking Claude...`);
 
-      await writeAuditLog({
-        timestamp: new Date().toISOString(),
-        type: 'error',
-        userId: msg.userId,
-        platform: msg.platform,
-        content: errorMsg,
-      });
+      try {
+        const response = await this.invokeClaudeWithContext(msg, async (status: string) => {
+          try {
+            await this.messenger.updateText(msg.channelId, statusMsgId, status);
+          } catch {
+            // Ignore update failures (e.g. message already deleted)
+          }
+        });
+
+        log(`Claude response (${response.length} chars): "${response.slice(0, 100)}..."`);
+        await this.messenger.updateText(msg.channelId, statusMsgId, response);
+
+        await writeAuditLog({
+          timestamp: new Date().toISOString(),
+          type: 'result',
+          userId: msg.userId,
+          platform: msg.platform,
+          content: response,
+        });
+      } catch (err) {
+        const errorMsg = err instanceof Error ? err.message : String(err);
+        log(`Claude error: ${errorMsg}`);
+        await this.messenger.updateText(
+          msg.channelId, statusMsgId, `❌ Error: ${errorMsg}`,
+        );
+
+        await writeAuditLog({
+          timestamp: new Date().toISOString(),
+          type: 'error',
+          userId: msg.userId,
+          platform: msg.platform,
+          content: errorMsg,
+        });
+      }
+    } catch (err) {
+      log(`FATAL error in handleMessage: ${err instanceof Error ? err.stack : String(err)}`);
     }
   }
 
