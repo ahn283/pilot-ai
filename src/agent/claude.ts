@@ -7,6 +7,7 @@ const execFileAsync = promisify(execFile);
 
 export interface ClaudeCliOptions {
   prompt: string;
+  systemPrompt?: string;
   cwd?: string;
   allowedTools?: string[];
   mcpConfigPath?: string;
@@ -26,7 +27,22 @@ export interface ClaudeJsonMessage {
   [key: string]: unknown;
 }
 
-const DEFAULT_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes
+const DEFAULT_TIMEOUT_MS = 15 * 60 * 1000; // 15 minutes (agentic tasks take longer)
+
+/** Default tools to pre-approve for claude -p so it can operate agentically */
+export const DEFAULT_ALLOWED_TOOLS = [
+  'Bash',
+  'Read',
+  'Write',
+  'Edit',
+  'MultiEdit',
+  'Glob',
+  'Grep',
+  'LS',
+  'WebSearch',
+  'WebFetch',
+  'Task',
+];
 
 /**
  * Checks whether the Claude CLI binary is installed.
@@ -63,12 +79,16 @@ export async function checkClaudeCliAuth(binary: string = 'claude'): Promise<boo
  * Runs `claude -p --output-format json` and parses the JSON response.
  */
 export async function invokeClaudeCli(options: ClaudeCliOptions): Promise<ClaudeCliResult> {
-  const { prompt, cwd, allowedTools, mcpConfigPath, timeoutMs = DEFAULT_TIMEOUT_MS } = options;
+  const { prompt, systemPrompt, cwd, allowedTools, mcpConfigPath, timeoutMs = DEFAULT_TIMEOUT_MS } = options;
 
   const args = ['-p', '--output-format', 'json'];
 
   if (cwd) {
     args.push('--cwd', cwd);
+  }
+
+  if (systemPrompt) {
+    args.push('--append-system-prompt', systemPrompt);
   }
 
   if (allowedTools && allowedTools.length > 0) {

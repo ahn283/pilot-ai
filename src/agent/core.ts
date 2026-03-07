@@ -2,7 +2,7 @@ import type { MessengerAdapter, IncomingMessage } from '../messenger/adapter.js'
 import type { PilotConfig } from '../config/schema.js';
 import { isAuthorizedUser } from '../security/auth.js';
 import { writeAuditLog } from '../security/audit.js';
-import { invokeClaudeCli, invokeClaudeApi } from './claude.js';
+import { invokeClaudeCli, invokeClaudeApi, DEFAULT_ALLOWED_TOOLS } from './claude.js';
 import { ApprovalManager } from './safety.js';
 import { buildMemoryContext } from './memory.js';
 import { resolveProject, touchProject } from './project.js';
@@ -161,33 +161,36 @@ export class AgentCore {
       await analyzeProjectIfNew(projectName, projectPath);
     }
 
-    // Build memory context, skills context, and tool descriptions
+    // Build system-level context (memory, skills, tool descriptions)
     const memoryContext = await buildMemoryContext(projectName);
     const skillsContext = await buildSkillsContext();
     const toolDescriptions = buildToolDescriptions();
 
-    const contextParts: string[] = [];
-    if (memoryContext) contextParts.push(memoryContext);
-    if (skillsContext) contextParts.push(skillsContext);
-    if (toolDescriptions) contextParts.push(toolDescriptions);
+    const systemParts: string[] = [];
+    systemParts.push('You are Pilot-AI, a personal AI agent. Work autonomously to complete the user\'s request. Think step by step, use tools to investigate and act, and keep going until the task is fully done. Do not give up early.');
+    if (memoryContext) systemParts.push(memoryContext);
+    if (skillsContext) systemParts.push(skillsContext);
+    if (toolDescriptions) systemParts.push(toolDescriptions);
 
-    const prompt = contextParts.length > 0
-      ? `${contextParts.join('\n\n')}\n\n<USER_COMMAND>\n${msg.text}\n</USER_COMMAND>`
-      : msg.text;
+    const systemPrompt = systemParts.join('\n\n');
 
     await onStatus?.('⚙️ Processing...');
 
     if (this.config.claude.mode === 'api' && this.config.claude.apiKey) {
+      // API mode: inject context into user prompt (no system prompt support)
+      const apiPrompt = `${systemPrompt}\n\n<USER_COMMAND>\n${msg.text}\n</USER_COMMAND>`;
       return invokeClaudeApi({
-        prompt,
+        prompt: apiPrompt,
         apiKey: this.config.claude.apiKey,
       });
     }
 
     const mcpConfigPath = await getMcpConfigPathIfExists() ?? undefined;
     const result = await invokeClaudeCli({
-      prompt,
+      prompt: msg.text,
+      systemPrompt,
       cwd: projectPath,
+      allowedTools: DEFAULT_ALLOWED_TOOLS,
       mcpConfigPath,
     });
     return result.result;

@@ -16,6 +16,7 @@ vi.mock('../../src/agent/claude.js', () => ({
   invokeClaudeCli: vi.fn().mockResolvedValue({ result: 'Claude 응답입니다.' }),
   invokeClaudeApi: vi.fn().mockResolvedValue('API 응답입니다.'),
   checkClaudeCli: vi.fn().mockResolvedValue(true),
+  DEFAULT_ALLOWED_TOOLS: ['Bash', 'Read', 'Write', 'Edit', 'Glob', 'Grep', 'WebSearch', 'WebFetch'],
 }));
 
 const { AgentCore } = await import('../../src/agent/core.js');
