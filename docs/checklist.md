@@ -231,17 +231,18 @@
 - [ ] Raycast extension 예제
 
 ### 2.7 GitHub Integration
-- [ ] `tools/github.ts` - `gh` CLI 래퍼
-  - [ ] PR 생성/조회/머지
-  - [ ] 이슈 생성/조회/닫기
-  - [ ] CI 상태 확인
-  - [ ] diff 조회 및 리뷰
+- [x] `tools/github.ts` - `gh` CLI 래퍼
+  - [x] PR 생성/조회/머지/diff
+  - [x] 이슈 생성/조회/닫기
+  - [x] CI 상태 확인 (run list, run view --log-failed)
+  - [x] gh auth status 확인
 
 ### 2.8 Clipboard / Screenshot
-- [ ] `tools/clipboard.ts` - macOS 클립보드 연동
-  - [ ] `pbpaste` 읽기
-  - [ ] `pbcopy` 쓰기
-  - [ ] `screencapture` 스크린샷
+- [x] `tools/clipboard.ts` - macOS 클립보드 연동
+  - [x] `pbpaste` 읽기
+  - [x] `pbcopy` 쓰기
+  - [x] `screencapture -x` 전체 스크린샷
+  - [x] `screencapture -x -w` 윈도우 스크린샷
   - [ ] Claude Vision으로 이미지 분석
 
 ### 2.9 Multi-modal Input
