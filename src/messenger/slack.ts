@@ -23,6 +23,10 @@ export class SlackAdapter implements MessengerAdapter {
       logLevel: 'INFO' as LogLevel,
     });
 
+    this.app.error(async (error) => {
+      console.error(`[${new Date().toISOString()}] Slack unhandled error:`, error);
+    });
+
     this.setupListeners();
   }
 
