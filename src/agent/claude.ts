@@ -41,18 +41,18 @@ export async function checkClaudeCli(binary: string = 'claude'): Promise<boolean
 }
 
 /**
- * Checks whether the Claude CLI is authenticated by running a simple prompt.
+ * Checks whether the Claude CLI is authenticated using `claude auth status`.
  */
 export async function checkClaudeCliAuth(binary: string = 'claude'): Promise<boolean> {
   try {
     const env = { ...process.env };
     delete env.CLAUDECODE;
 
-    const { stdout } = await execFileAsync(binary, ['-p', '--output-format', 'json', 'Reply with OK'], {
-      timeout: 30_000,
+    const { stdout } = await execFileAsync(binary, ['auth', 'status'], {
+      timeout: 5_000,
       env,
     });
-    return stdout.includes('result') || stdout.includes('OK');
+    return stdout.includes('"loggedIn": true') || stdout.includes('"loggedIn":true');
   } catch {
     return false;
   }
