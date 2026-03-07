@@ -93,14 +93,14 @@
   - [x] 환경변수 격리
 
 ### 1.7 Task Queue
-- [ ] `agent/queue.ts` - 순차 실행 큐 (FIFO)
-  - [ ] Task 인터페이스 정의 (id, status, project, command 등)
-  - [ ] 큐 진입 & 순차 실행
-  - [ ] 상태 관리 (queued → running → completed/failed)
-  - [ ] 각 작업을 메신저 스레드에 매핑
-  - [ ] 진행 상황 실시간 업데이트
-  - [ ] 큐 상태 조회 ("작업 현황")
-  - [ ] 대기 중 작업 취소
+- [x] `agent/queue.ts` - 순차 실행 큐 (FIFO)
+  - [x] Task 인터페이스 정의 (id, status, project, command 등)
+  - [x] 큐 진입 & 순차 실행
+  - [x] 상태 관리 (queued → running → completed/failed)
+  - [x] 각 작업을 메신저 스레드에 매핑
+  - [x] 진행 상황 실시간 업데이트
+  - [x] 큐 상태 조회 ("작업 현황")
+  - [x] 대기 중 작업 취소
 
 ### 1.8 Multi-Project Management
 - [ ] `agent/project.ts` - 프로젝트 레지스트리
