@@ -3,6 +3,10 @@
 import { Command } from 'commander';
 import { createProjectCommand } from './cli/project.js';
 import { runInit } from './cli/init.js';
+import { runStart } from './cli/start.js';
+import { runStop } from './cli/stop.js';
+import { runStatus } from './cli/status.js';
+import { runLogs } from './cli/logs.js';
 
 const program = new Command();
 
@@ -22,29 +26,29 @@ program
   .command('start')
   .description('Start the agent (launchd)')
   .action(async () => {
-    console.log('pilot-ai start - coming soon');
+    await runStart();
   });
 
 program
   .command('stop')
   .description('Stop the agent')
   .action(async () => {
-    console.log('pilot-ai stop - coming soon');
+    await runStop();
   });
 
 program
   .command('status')
   .description('Check agent status')
   .action(async () => {
-    console.log('pilot-ai status - coming soon');
+    await runStatus();
   });
 
 program
   .command('logs')
   .description('View agent logs')
   .option('-f, --follow', 'Follow log output')
-  .action(async () => {
-    console.log('pilot-ai logs - coming soon');
+  .action(async (opts) => {
+    await runLogs(opts);
   });
 
 program.addCommand(createProjectCommand());

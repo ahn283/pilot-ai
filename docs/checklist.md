@@ -143,20 +143,20 @@
   - [ ] 연결 테스트 (메신저로 테스트 메시지 전송)
 
 ### 1.11 Process Management (launchd)
-- [ ] `cli/start.ts` - 에이전트 시작
-  - [ ] plist 파일 생성 (`~/Library/LaunchAgents/com.pilot.agent.plist`)
-  - [ ] Node.js 경로 & daemon.js 경로 자동 감지
-  - [ ] `launchctl load` 실행
-  - [ ] 시작 확인 메시지
-- [ ] `cli/stop.ts` - 에이전트 중지
-  - [ ] `launchctl unload` 실행
-  - [ ] plist 파일 제거
-- [ ] `cli/status.ts` - 상태 확인
-  - [ ] `launchctl list` 파싱
-  - [ ] PID, 실행 시간 표시
-- [ ] `cli/logs.ts` - 로그 조회
-  - [ ] `~/.pilot/logs/` 로그 파일 tail
-  - [ ] `--follow` 옵션
+- [x] `cli/start.ts` - 에이전트 시작
+  - [x] plist 파일 생성 (`~/Library/LaunchAgents/com.pilot-ai.agent.plist`)
+  - [x] Node.js 경로 & daemon.js 경로 자동 감지
+  - [x] `launchctl load` 실행
+  - [x] 시작 확인 메시지
+- [x] `cli/stop.ts` - 에이전트 중지
+  - [x] `launchctl unload` 실행
+  - [x] plist 파일 제거
+- [x] `cli/status.ts` - 상태 확인
+  - [x] `launchctl list` 파싱
+  - [x] PID, 실행 시간 표시
+- [x] `cli/logs.ts` - 로그 조회
+  - [x] `~/.pilot/logs/` 로그 파일 tail
+  - [x] `--follow` 옵션
 
 ### 1.12 통합 테스트 (MVP)
 - [ ] 온보딩 플로우 E2E 테스트
