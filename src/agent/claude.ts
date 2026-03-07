@@ -81,8 +81,7 @@ export async function invokeClaudeCli(options: ClaudeCliOptions): Promise<Claude
     args.push('--mcp-config', mcpConfigPath);
   }
 
-  // Pass prompt via stdin to avoid OS arg length limits
-  args.push('-');
+  // Prompt is passed via stdin to avoid OS arg length limits
 
   return new Promise<ClaudeCliResult>((resolve, reject) => {
     const env = { ...process.env };

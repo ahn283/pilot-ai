@@ -69,7 +69,7 @@ export class SlackAdapter implements MessengerAdapter {
         platform: 'slack',
         userId: msg.user,
         channelId: msg.channel ?? '',
-        threadId: msg.thread_ts,
+        threadId: msg.thread_ts ?? msg.ts,
         text: msg.text ?? '',
         images: images.length > 0 ? images : undefined,
         timestamp: new Date(parseFloat(msg.ts ?? '0') * 1000),
@@ -183,6 +183,22 @@ export class SlackAdapter implements MessengerAdapter {
         },
       ],
     });
+  }
+
+  async addReaction(channelId: string, messageTs: string, emoji: string): Promise<void> {
+    try {
+      await this.app.client.reactions.add({ channel: channelId, timestamp: messageTs, name: emoji });
+    } catch {
+      // Ignore reaction failures (e.g. already reacted, missing scope)
+    }
+  }
+
+  async removeReaction(channelId: string, messageTs: string, emoji: string): Promise<void> {
+    try {
+      await this.app.client.reactions.remove({ channel: channelId, timestamp: messageTs, name: emoji });
+    } catch {
+      // Ignore reaction failures
+    }
   }
 
   onApproval(handler: (taskId: string, approved: boolean) => void): void {

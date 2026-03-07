@@ -145,7 +145,7 @@ async function setupSlack(): Promise<MessengerSetupResult> {
   console.log('  2. Enable Socket Mode');
   console.log('  3. Event Subscriptions → Subscribe to bot events: message.im');
   console.log('  4. OAuth & Permissions → Bot Token Scopes:');
-  console.log('     chat:write, im:history, im:read, im:write,');
+  console.log('     chat:write, reactions:write, im:history, im:read, im:write,');
   console.log('     app_mentions:read, channels:history');
   console.log('  5. App Home → Messages Tab: turn ON');
   console.log('  6. Event Subscriptions → Subscribe to bot events:');

@@ -31,6 +31,12 @@ export interface MessengerAdapter {
   /** Update an existing message by its ID */
   updateText(channelId: string, messageId: string, text: string): Promise<void>;
 
+  /** Add a reaction to a message (best-effort, no-op if unsupported) */
+  addReaction?(channelId: string, messageTs: string, emoji: string): Promise<void>;
+
+  /** Remove a reaction from a message (best-effort, no-op if unsupported) */
+  removeReaction?(channelId: string, messageTs: string, emoji: string): Promise<void>;
+
   /** Send an approval message with Approve/Reject buttons */
   sendApproval(
     channelId: string,

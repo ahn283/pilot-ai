@@ -88,14 +88,19 @@ export class AgentCore {
       // 4. Detect user preferences (async, non-blocking)
       detectAndSavePreference(msg.text).catch(() => {});
 
-      // 5. Send thinking status and invoke Claude
+      // 5. Add thinking reaction and send status message
       log('Sending thinking status...');
+      const incomingTs = msg.threadId ?? '';
+      await this.messenger.addReaction?.(msg.channelId, incomingTs, 'thinking_face');
       const statusMsgId = await this.messenger.sendText(
         msg.channelId, '🤔 Thinking...', msg.threadId,
       );
       log(`Thinking message sent (id: ${statusMsgId}). Invoking Claude...`);
 
       try {
+        await this.messenger.removeReaction?.(msg.channelId, incomingTs, 'thinking_face');
+        await this.messenger.addReaction?.(msg.channelId, incomingTs, 'gear');
+
         const response = await this.invokeClaudeWithContext(msg, async (status: string) => {
           try {
             await this.messenger.updateText(msg.channelId, statusMsgId, status);
@@ -105,6 +110,8 @@ export class AgentCore {
         });
 
         log(`Claude response (${response.length} chars): "${response.slice(0, 100)}..."`);
+        await this.messenger.removeReaction?.(msg.channelId, incomingTs, 'gear');
+        await this.messenger.addReaction?.(msg.channelId, incomingTs, 'white_check_mark');
         await this.messenger.updateText(msg.channelId, statusMsgId, response);
 
         await writeAuditLog({
@@ -117,6 +124,8 @@ export class AgentCore {
       } catch (err) {
         const errorMsg = err instanceof Error ? err.message : String(err);
         log(`Claude error: ${errorMsg}`);
+        await this.messenger.removeReaction?.(msg.channelId, incomingTs, 'gear');
+        await this.messenger.addReaction?.(msg.channelId, incomingTs, 'x');
         await this.messenger.updateText(
           msg.channelId, statusMsgId, `❌ Error: ${errorMsg}`,
         );
