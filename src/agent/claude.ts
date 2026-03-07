@@ -81,17 +81,21 @@ export async function invokeClaudeCli(options: ClaudeCliOptions): Promise<Claude
     args.push('--mcp-config', mcpConfigPath);
   }
 
-  args.push(prompt);
+  // Pass prompt via stdin to avoid OS arg length limits
+  args.push('-');
 
   return new Promise<ClaudeCliResult>((resolve, reject) => {
     const env = { ...process.env };
     delete env.CLAUDECODE;
 
     const child = spawn('claude', args, {
-      stdio: ['ignore', 'pipe', 'pipe'],
+      stdio: ['pipe', 'pipe', 'pipe'],
       timeout: timeoutMs,
       env,
     });
+
+    child.stdin.write(prompt);
+    child.stdin.end();
 
     let stdout = '';
     let stderr = '';
