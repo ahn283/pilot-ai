@@ -128,7 +128,7 @@ async function setupSlack(): Promise<PilotConfig['messenger']> {
 
   // Connection test
   console.log('\n  Testing Slack connection...');
-  const slackTest = await testSlackConnection(answers.botToken);
+  const slackTest = await testSlackConnection(answers.botToken, answers.userId);
   if (slackTest.ok) {
     console.log('  Connected successfully!\n');
   } else {
@@ -174,7 +174,7 @@ async function setupTelegram(): Promise<PilotConfig['messenger']> {
 
   // Connection test
   console.log('\n  Testing Telegram connection...');
-  const telegramTest = await testTelegramConnection(answers.botToken);
+  const telegramTest = await testTelegramConnection(answers.botToken, answers.chatId);
   if (telegramTest.ok) {
     console.log('  Connected successfully!\n');
   } else {
