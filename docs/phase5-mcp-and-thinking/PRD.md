@@ -218,7 +218,113 @@ agent: {
 
 ---
 
-## 7. 참고 자료
+## 8. 통합 도구 선택 UX 및 CLI 관리 명령
+
+### 8.1 문제
+
+현재 init의 Integration 설정 UX:
+- 도구마다 하나씩 yes/no 질문 → 반복적, 느림
+- MCP 레지스트리(13개)와 커스텀 연동(Obsidian, Google OAuth)이 별도 흐름
+- init 이후 도구를 추가/제거하려면 init을 다시 실행해야 함
+- 현재 활성화된 도구를 확인하는 방법 없음
+
+### 8.2 요구사항
+
+- **R12**: init의 Integration 단계를 체크박스 복수 선택 방식으로 변경
+  - MCP 레지스트리 도구 + 커스텀 연동(GitHub, Obsidian, Google OAuth)을 한 화면에 노출
+  - 카테고리별 그룹핑 (Design, Productivity, Development, Data, Communication)
+  - 선택 후 각 도구에 필요한 키/정보를 순서대로 수집
+- **R13**: `pilot-ai tools` 명령 — 전체 도구 리스트 + 활성화/비활성화 상태 표시
+- **R14**: `pilot-ai addtool <tool_name>` 명령 — init 이후 개별 도구 추가
+  - MCP 레지스트리에서 tool_name을 찾아서 키 입력 → MCP 등록
+  - 커스텀 연동(GitHub, Obsidian)은 기존 setup 함수 재사용
+- **R15**: `pilot-ai removetool <tool_name>` 명령 — 도구 비활성화 (MCP config에서 제거)
+
+### 8.3 설계
+
+#### init 통합 선택 UI
+
+```
+── Integration Setup ──
+
+Select the tools you want to enable:
+  (Press <space> to select, <a> to toggle all)
+
+  Design
+  ◻ Figma — Access Figma designs, components, variables
+
+  Productivity
+  ◻ Notion — Search, read, create Notion pages and databases
+  ◻ Google Drive — Search, read, and create files in Google Drive
+  ◻ Obsidian — Local Obsidian vault integration
+
+  Development
+  ◻ GitHub — Manage repos, issues, PRs (via gh CLI)
+  ◻ Linear — Manage Linear issues, projects, cycles
+  ◻ Sentry — View and manage Sentry error tracking
+
+  Data
+  ◻ PostgreSQL — Query and manage PostgreSQL databases
+
+  Communication
+  ◻ Slack MCP — Extended Slack tools via MCP
+```
+
+선택 후 각 도구별로 필요 정보 수집:
+- MCP 도구: `envVars`에 정의된 키 수집 → `installMcpServer()` 호출
+- GitHub: 기존 `setupGithub()` 로직
+- Obsidian: vault path 입력
+- Google OAuth: clientId/secret + 서비스 선택
+
+#### `pilot-ai tools` 명령
+
+```
+$ pilot-ai tools
+
+Tool             Status    Type     Category
+─────────────────────────────────────────────
+Figma            active    MCP      Design
+Notion           active    MCP      Productivity
+Linear           inactive  MCP      Development
+GitHub           active    CLI      Development
+Obsidian         active    Local    Productivity
+Google Drive     inactive  MCP      Productivity
+PostgreSQL       inactive  MCP      Data
+...
+```
+
+#### `pilot-ai addtool <name>` 명령
+
+```
+$ pilot-ai addtool linear
+
+📋 Linear API Key Guide:
+  1. Linear > Settings > API > Personal API keys
+  2. Click "Create key" and copy it
+
+? Linear API Key (lin_api_...): ****
+  Linear configured (MCP server registered).
+```
+
+#### `pilot-ai removetool <name>` 명령
+
+```
+$ pilot-ai removetool linear
+  Linear MCP server removed.
+```
+
+### 8.4 구현 파일
+
+| 파일 | 변경 내용 |
+|------|----------|
+| `src/cli/init.ts` | `setupIntegrations()` → 체크박스 기반으로 리팩토링 |
+| `src/cli/tools.ts` | 신규: `runTools()`, `runAddTool()`, `runRemoveTool()` |
+| `src/index.ts` | `tools`, `addtool`, `removetool` 서브커맨드 등록 |
+| `src/tools/mcp-registry.ts` | `setupGuide` 필드 추가 (각 도구의 키 획득 가이드) |
+
+---
+
+## 9. 참고 자료
 
 ### Claude Code CLI 관련
 - [Issue #30660](https://github.com/anthropics/claude-code/issues/30660) — 실시간 thinking 스트리밍 요청

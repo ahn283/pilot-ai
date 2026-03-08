@@ -10,10 +10,14 @@ import { runLogs } from './cli/logs.js';
 
 const program = new Command();
 
+import { createRequire } from 'node:module';
+const require = createRequire(import.meta.url);
+const pkg = require('../package.json') as { version: string };
+
 program
   .name('pilot-ai')
   .description('Personal AI agent for macOS')
-  .version('0.1.0');
+  .version(pkg.version);
 
 program
   .command('init')
@@ -114,6 +118,32 @@ program
   .action(async () => {
     const { runDoctor } = await import('./cli/doctor.js');
     await runDoctor();
+  });
+
+program
+  .command('tools')
+  .description('List all available tools with active/inactive status')
+  .action(async () => {
+    const { runTools } = await import('./cli/tools.js');
+    await runTools();
+  });
+
+program
+  .command('addtool')
+  .description('Add and configure a tool')
+  .argument('<name>', 'Tool name (e.g. notion, figma, linear)')
+  .action(async (name: string) => {
+    const { runAddTool } = await import('./cli/tools.js');
+    await runAddTool(name);
+  });
+
+program
+  .command('removetool')
+  .description('Remove a tool')
+  .argument('<name>', 'Tool name to remove')
+  .action(async (name: string) => {
+    const { runRemoveTool } = await import('./cli/tools.js');
+    await runRemoveTool(name);
   });
 
 program.addCommand(createProjectCommand());

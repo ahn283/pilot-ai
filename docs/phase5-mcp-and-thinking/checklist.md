@@ -53,3 +53,44 @@
 - [x] stream-json 파싱 단위 테스트 — thinking_delta, text_delta, tool_use 이벤트
 - [x] throttle 로직 테스트
 - [x] 기존 claude.ts 테스트가 stream-json 전환 후에도 통과하는지 확인
+
+---
+
+## 5.3 [P0] init 통합 도구 선택 UX 리팩토링
+
+- [x] `init.ts` — `setupIntegrations()`를 체크박스 복수 선택 방식으로 리팩토링
+- [x] MCP 레지스트리 도구 + 커스텀(GitHub, Obsidian) 통합 리스트 제시
+- [x] 선택된 도구만 키/정보 수집 → MCP 등록
+- [x] 테스트 — 통합 선택 흐름 테스트
+
+---
+
+## 5.4 [P0] `pilot-ai tools` 명령
+
+- [x] `src/cli/tools.ts` — `runTools()` 구현 (전체 도구 리스트 + active/inactive 상태)
+- [x] `src/index.ts` — `tools` 서브커맨드 등록
+- [x] 테스트
+
+---
+
+## 5.5 [P0] `pilot-ai addtool <name>` 명령
+
+- [x] `src/cli/tools.ts` — `runAddTool(name)` 구현 (키 수집 → MCP 등록)
+- [x] MCP 레지스트리에서 도구 찾기, 가이드 출력, 키 입력 프롬프트
+- [x] 커스텀 연동(GitHub, Obsidian)은 기존 setup 함수 재사용
+- [x] `src/index.ts` — `addtool` 서브커맨드 등록
+- [x] 테스트
+
+---
+
+## 5.6 [P1] `pilot-ai removetool <name>` 명령
+
+- [x] `src/cli/tools.ts` — `runRemoveTool(name)` 구현 (MCP config에서 제거)
+- [x] `src/index.ts` — `removetool` 서브커맨드 등록
+- [x] 테스트
+
+---
+
+## 5.7 [P0] 버전 관리
+
+- [x] `src/index.ts` — 하드코딩된 version → package.json에서 동적 읽기

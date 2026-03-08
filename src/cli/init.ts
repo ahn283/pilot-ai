@@ -9,6 +9,7 @@ import { defaultConfig } from '../config/schema.js';
 import { testSlackConnection, testTelegramConnection } from './connection-test.js';
 import { registerFigmaMcp } from '../tools/figma-mcp.js';
 import { installMcpServer } from '../agent/mcp-manager.js';
+import { MCP_REGISTRY, type McpServerEntry } from '../tools/mcp-registry.js';
 import { requestPermissions, triggerBulkAutomationPermissions } from '../security/permissions.js';
 import { isGhAuthenticated } from '../tools/github.js';
 
@@ -262,58 +263,80 @@ async function setupTelegram(): Promise<MessengerSetupResult> {
   };
 }
 
+/** Tools available in init selection — MCP registry entries + custom integrations */
+interface InitToolChoice {
+  id: string;
+  name: string;
+  description: string;
+  category: string;
+  type: 'mcp' | 'cli' | 'local';
+}
+
+function getInitToolChoices(): InitToolChoice[] {
+  // MCP tools from registry (exclude ones not useful for init: filesystem, memory, puppeteer, sqlite)
+  const skipMcp = new Set(['filesystem', 'memory', 'puppeteer', 'sqlite']);
+  const mcpTools: InitToolChoice[] = MCP_REGISTRY
+    .filter((e) => !skipMcp.has(e.id))
+    .map((e) => ({ id: e.id, name: e.name, description: e.description, category: e.category, type: 'mcp' as const }));
+
+  // Custom integrations
+  const customTools: InitToolChoice[] = [
+    { id: 'github', name: 'GitHub', description: 'Manage repos, issues, PRs (via gh CLI)', category: 'development', type: 'cli' },
+    { id: 'obsidian', name: 'Obsidian', description: 'Local Obsidian vault integration', category: 'productivity', type: 'local' },
+    { id: 'google-oauth', name: 'Google (Gmail, Calendar)', description: 'Google OAuth for Gmail and Calendar', category: 'productivity', type: 'local' },
+  ];
+
+  // Merge, dedup by id (custom overrides MCP for github)
+  const ids = new Set<string>();
+  const result: InitToolChoice[] = [];
+  for (const tool of [...customTools, ...mcpTools]) {
+    if (!ids.has(tool.id)) {
+      ids.add(tool.id);
+      result.push(tool);
+    }
+  }
+
+  // Sort by category
+  const catOrder: Record<string, number> = { design: 0, productivity: 1, development: 2, data: 3, communication: 4 };
+  result.sort((a, b) => (catOrder[a.category] ?? 99) - (catOrder[b.category] ?? 99));
+  return result;
+}
+
 async function setupIntegrations(): Promise<Partial<PilotConfig>> {
   console.log('\n── Integration Setup (optional) ──\n');
 
+  const tools = getInitToolChoices();
+
+  // Group by category for display
+  let lastCat = '';
+  const choices = tools.map((t) => {
+    const separator = t.category !== lastCat
+      ? new inquirer.Separator(`\n  ${t.category.charAt(0).toUpperCase() + t.category.slice(1)}`)
+      : undefined;
+    lastCat = t.category;
+    const choice = { name: `${t.name} — ${t.description}`, value: t.id };
+    return separator ? [separator, choice] : [choice];
+  }).flat();
+
+  const { selectedTools } = await inquirer.prompt([
+    {
+      type: 'checkbox',
+      name: 'selectedTools',
+      message: 'Select tools to enable (space to select, enter to confirm):',
+      choices,
+    },
+  ]);
+
+  const selected = new Set(selectedTools as string[]);
   const result: Partial<PilotConfig> = {};
 
-  // GitHub
-  const githubConfig = await setupGithub();
-  if (githubConfig) {
-    result.github = githubConfig;
+  // Process each selected tool
+  if (selected.has('github')) {
+    const githubConfig = await setupGithub();
+    if (githubConfig) result.github = githubConfig;
   }
 
-  // Notion
-  const { setupNotion } = await inquirer.prompt([
-    { type: 'confirm', name: 'setupNotion', message: 'Set up Notion Integration?', default: false },
-  ]);
-  if (setupNotion) {
-    console.log('\n📋 Notion Integration Guide:');
-    console.log('  1. Create a new Integration at https://www.notion.so/my-integrations');
-    console.log('  2. Set a name and click "Submit"');
-    console.log('  3. Copy the Internal Integration Secret');
-    console.log('  4. Add the Integration via "Connections" on the pages/DBs you want to use\n');
-
-    const { notionApiKey } = await inquirer.prompt([
-      {
-        type: 'password',
-        name: 'notionApiKey',
-        message: 'Notion API Key (ntn_ or secret_...):',
-        mask: '*',
-        validate: (input: string) => input.length > 10 || 'Valid Notion API Key required.',
-      },
-    ]);
-    await setSecret('notion-api-key', notionApiKey);
-    try {
-      await installMcpServer('notion', {
-        OPENAPI_MCP_HEADERS: JSON.stringify({
-          'Authorization': `Bearer ${notionApiKey}`,
-          'Notion-Version': '2022-06-28',
-        }),
-      }, { skipVerify: true });
-      console.log('  Notion configured (MCP server registered).\n');
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      console.log(`  Notion key saved, but MCP registration failed (${msg}). You can register it later.\n`);
-    }
-    result.notion = { apiKey: '***keychain***' };
-  }
-
-  // Obsidian
-  const { setupObsidian } = await inquirer.prompt([
-    { type: 'confirm', name: 'setupObsidian', message: 'Set up Obsidian vault?', default: false },
-  ]);
-  if (setupObsidian) {
+  if (selected.has('obsidian')) {
     const { vaultPath } = await inquirer.prompt([
       {
         type: 'input',
@@ -326,50 +349,11 @@ async function setupIntegrations(): Promise<Partial<PilotConfig>> {
     console.log('  Obsidian vault configured.\n');
   }
 
-  // Figma
-  const { setupFigma } = await inquirer.prompt([
-    { type: 'confirm', name: 'setupFigma', message: 'Set up Figma?', default: false },
-  ]);
-  if (setupFigma) {
-    console.log('\n📋 Figma Personal Access Token Guide:');
-    console.log('  1. Figma > Account Settings > Personal access tokens');
-    console.log('  2. Click "Generate new token" and copy it\n');
-
-    const { figmaToken } = await inquirer.prompt([
-      {
-        type: 'password',
-        name: 'figmaToken',
-        message: 'Figma Personal Access Token:',
-        mask: '*',
-        validate: (input: string) => input.length > 10 || 'Valid Figma token required.',
-      },
-    ]);
-    await setSecret('figma-personal-access-token', figmaToken);
-    try {
-      await installMcpServer('figma', {
-        FIGMA_PERSONAL_ACCESS_TOKEN: figmaToken,
-      }, { skipVerify: true });
-      console.log('  Figma configured (MCP server registered).\n');
-    } catch (err) {
-      // Fallback to legacy registration
-      await registerFigmaMcp(figmaToken);
-      console.log('  Figma configured (MCP server registered via fallback).\n');
-    }
-    result.figma = { personalAccessToken: '***keychain***' };
-  }
-
-  // Google (Gmail, Calendar, Drive)
-  const { setupGoogle } = await inquirer.prompt([
-    { type: 'confirm', name: 'setupGoogle', message: 'Set up Google (Gmail, Calendar, Drive)?', default: false },
-  ]);
-  if (setupGoogle) {
-    console.log('\n📋 Google OAuth2 Setup Guide:');
+  if (selected.has('google-oauth') || selected.has('google-drive')) {
+    console.log('\n  Google OAuth2 Setup Guide:');
     console.log('  1. Go to https://console.cloud.google.com/apis/credentials');
     console.log('  2. Create a new OAuth 2.0 Client ID (Desktop app)');
-    console.log('  3. Enable these APIs in your project:');
-    console.log('     - Gmail API');
-    console.log('     - Google Calendar API');
-    console.log('     - Google Drive API');
+    console.log('  3. Enable Gmail API, Google Calendar API, Google Drive API');
     console.log('  4. Copy the Client ID and Client Secret\n');
 
     const googleAnswers = await inquirer.prompt([
@@ -389,7 +373,6 @@ async function setupIntegrations(): Promise<Partial<PilotConfig>> {
       },
     ]);
 
-    console.log('\n  Select which Google services to enable:\n');
     const { googleServices } = await inquirer.prompt([
       {
         type: 'checkbox',
@@ -398,7 +381,7 @@ async function setupIntegrations(): Promise<Partial<PilotConfig>> {
         choices: [
           { name: 'Gmail', value: 'gmail', checked: true },
           { name: 'Google Calendar', value: 'calendar', checked: true },
-          { name: 'Google Drive', value: 'drive', checked: true },
+          { name: 'Google Drive', value: 'drive', checked: selected.has('google-drive') },
         ],
       },
     ]);
@@ -406,18 +389,8 @@ async function setupIntegrations(): Promise<Partial<PilotConfig>> {
     await setSecret('google-client-id', googleAnswers.clientId);
     await setSecret('google-client-secret', googleAnswers.clientSecret);
 
-    // Register Google Drive MCP if drive service is selected
     if ((googleServices as string[]).includes('drive')) {
-      try {
-        await installMcpServer('google-drive', {
-          GOOGLE_CLIENT_ID: googleAnswers.clientId,
-          GOOGLE_CLIENT_SECRET: googleAnswers.clientSecret,
-        }, { skipVerify: true });
-        console.log('  Google Drive MCP server registered.');
-      } catch (err) {
-        const msg = err instanceof Error ? err.message : String(err);
-        console.log(`  Google Drive MCP registration failed (${msg}). You can register it later.`);
-      }
+      await registerMcpTool('google-drive', { GOOGLE_CLIENT_ID: googleAnswers.clientId, GOOGLE_CLIENT_SECRET: googleAnswers.clientSecret });
     }
 
     result.google = {
@@ -425,43 +398,101 @@ async function setupIntegrations(): Promise<Partial<PilotConfig>> {
       clientSecret: '***keychain***',
       services: googleServices as Array<'gmail' | 'calendar' | 'drive'>,
     };
-
-    console.log(`  Google configured (${(googleServices as string[]).join(', ')}).`);
-    console.log('  OAuth token setup will happen on first use via chat.\n');
+    console.log(`  Google configured (${(googleServices as string[]).join(', ')}).\n`);
   }
 
-  // Linear
-  const { setupLinear } = await inquirer.prompt([
-    { type: 'confirm', name: 'setupLinear', message: 'Set up Linear?', default: false },
-  ]);
-  if (setupLinear) {
-    console.log('\n📋 Linear API Key Guide:');
-    console.log('  1. Linear > Settings > API > Personal API keys');
-    console.log('  2. Click "Create key" and copy it\n');
-
-    const { linearApiKey } = await inquirer.prompt([
-      {
-        type: 'password',
-        name: 'linearApiKey',
-        message: 'Linear API Key:',
-        mask: '*',
-        validate: (input: string) => input.startsWith('lin_api_') || 'Please enter a key starting with lin_api_.',
-      },
-    ]);
-    await setSecret('linear-api-key', linearApiKey);
-    try {
-      await installMcpServer('linear', {
-        LINEAR_API_KEY: linearApiKey,
-      }, { skipVerify: true });
-      console.log('  Linear configured (MCP server registered).\n');
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      console.log(`  Linear key saved, but MCP registration failed (${msg}). You can register it later.\n`);
-    }
-    result.linear = { apiKey: '***keychain***' };
+  // MCP tools: collect credentials and register
+  for (const toolId of selected) {
+    if (['github', 'obsidian', 'google-oauth', 'google-drive'].includes(toolId)) continue;
+    await collectAndRegisterMcpTool(toolId, result);
   }
 
   return result;
+}
+
+/** Collect credentials for an MCP tool and register it */
+async function collectAndRegisterMcpTool(toolId: string, result: Partial<PilotConfig>): Promise<void> {
+  const entry = MCP_REGISTRY.find((e) => e.id === toolId);
+  if (!entry) return;
+
+  const envValues: Record<string, string> = {};
+
+  // Tool-specific setup guides and key collection
+  switch (toolId) {
+    case 'notion': {
+      console.log('\n  Notion Integration Guide:');
+      console.log('  1. Create a new Integration at https://www.notion.so/my-integrations');
+      console.log('  2. Copy the Internal Integration Secret');
+      console.log('  3. Add the Integration via "Connections" on your pages/DBs\n');
+      const { notionApiKey } = await inquirer.prompt([{
+        type: 'password', name: 'notionApiKey', message: 'Notion API Key:', mask: '*',
+        validate: (input: string) => input.length > 10 || 'Valid Notion API Key required.',
+      }]);
+      await setSecret('notion-api-key', notionApiKey);
+      envValues['OPENAPI_MCP_HEADERS'] = JSON.stringify({
+        'Authorization': `Bearer ${notionApiKey}`,
+        'Notion-Version': '2022-06-28',
+      });
+      result.notion = { apiKey: '***keychain***' };
+      break;
+    }
+    case 'figma': {
+      console.log('\n  Figma Personal Access Token Guide:');
+      console.log('  1. Figma > Account Settings > Personal access tokens');
+      console.log('  2. Click "Generate new token" and copy it\n');
+      const { figmaToken } = await inquirer.prompt([{
+        type: 'password', name: 'figmaToken', message: 'Figma Personal Access Token:', mask: '*',
+        validate: (input: string) => input.length > 10 || 'Valid Figma token required.',
+      }]);
+      await setSecret('figma-personal-access-token', figmaToken);
+      envValues['FIGMA_PERSONAL_ACCESS_TOKEN'] = figmaToken;
+      result.figma = { personalAccessToken: '***keychain***' };
+      break;
+    }
+    case 'linear': {
+      console.log('\n  Linear API Key Guide:');
+      console.log('  1. Linear > Settings > API > Personal API keys');
+      console.log('  2. Click "Create key" and copy it\n');
+      const { linearApiKey } = await inquirer.prompt([{
+        type: 'password', name: 'linearApiKey', message: 'Linear API Key:', mask: '*',
+        validate: (input: string) => input.startsWith('lin_api_') || 'Please enter a key starting with lin_api_.',
+      }]);
+      await setSecret('linear-api-key', linearApiKey);
+      envValues['LINEAR_API_KEY'] = linearApiKey;
+      result.linear = { apiKey: '***keychain***' };
+      break;
+    }
+    default: {
+      // Generic MCP tool: collect all envVars from registry
+      if (entry.envVars && Object.keys(entry.envVars).length > 0) {
+        console.log(`\n  ${entry.name} requires the following credentials:\n`);
+        for (const [key, desc] of Object.entries(entry.envVars)) {
+          const { value } = await inquirer.prompt([{
+            type: 'password', name: 'value', message: `${desc}:`, mask: '*',
+            validate: (input: string) => input.length > 0 || `${key} is required.`,
+          }]);
+          envValues[key] = value;
+        }
+      }
+      break;
+    }
+  }
+
+  await registerMcpTool(toolId, envValues);
+}
+
+/** Register an MCP tool with error handling */
+export async function registerMcpTool(toolId: string, envValues: Record<string, string>): Promise<boolean> {
+  try {
+    await installMcpServer(toolId, envValues, { skipVerify: true });
+    const entry = MCP_REGISTRY.find((e) => e.id === toolId);
+    console.log(`  ${entry?.name ?? toolId} configured (MCP server registered).`);
+    return true;
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.log(`  MCP registration failed for ${toolId} (${msg}). You can add it later with: pilot-ai addtool ${toolId}`);
+    return false;
+  }
 }
 
 async function setupGithub(): Promise<PilotConfig['github'] | null> {
