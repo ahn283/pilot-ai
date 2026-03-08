@@ -56,38 +56,38 @@
 ## 4.3 [P0] 핵심 테스트 커버리지 구축
 
 ### `safety.ts` 테스트
-- [ ] Dangerous 분류 테스트 (`git push`, `rm -rf`, `send email` 등)
-- [ ] Moderate 분류 테스트 (`git commit`, `npm install`, `write` 등)
-- [ ] Safe 분류 테스트 (`ls`, `cat`, `echo` 등)
-- [ ] 체이닝 명령 분류 테스트 (`cmd1 && cmd2`)
-- [ ] false positive 검증 (주석 안의 위험 키워드)
+- [x] Dangerous 분류 테스트 (`git push`, `rm -rf`, `send email` 등)
+- [x] Moderate 분류 테스트 (`git commit`, `npm install`, `write` 등)
+- [x] Safe 분류 테스트 (`ls`, `cat`, `echo` 등)
+- [x] 체이닝 명령 분류 테스트 (`cmd1 && cmd2`)
+- [x] false positive 검증 (주석 안의 위험 키워드)
 
 ### `claude.ts` 테스트
-- [ ] 정상 JSONL 파싱 테스트
-- [ ] 깨진 JSON 처리 테스트
-- [ ] 빈 출력 처리 테스트
-- [ ] tool_use 블록 감지 테스트
+- [x] 정상 JSONL 파싱 테스트
+- [x] 깨진 JSON 처리 테스트
+- [x] 빈 출력 처리 테스트
+- [x] tool_use 블록 감지 테스트
 
 ### `heartbeat.ts` 테스트
-- [ ] 와일드카드 매칭 (`* * * * *`)
-- [ ] 특정 시간 매칭 (`0 9 * * 1-5`)
-- [ ] 스텝 매칭 (`*/5 * * * *`)
-- [ ] 범위 초과 값 에러 처리
+- [x] 와일드카드 매칭 (`* * * * *`)
+- [x] 특정 시간 매칭 (`0 9 * * 1-5`)
+- [x] 스텝 매칭 (`*/5 * * * *`)
+- [x] 범위 초과 값 에러 처리
 
 ### `session.ts` 테스트
-- [ ] 세션 생성/조회/갱신 라이프사이클
-- [ ] TTL 만료 후 조회 → null
-- [ ] 동시 로드 race condition 방어
+- [x] 세션 생성/조회/갱신 라이프사이클
+- [x] TTL 만료 후 조회 → null
+- [x] 동시 로드 race condition 방어
 
 ### `sandbox.ts` 테스트
-- [ ] 허용 경로 통과 테스트
-- [ ] 차단 경로 거부 테스트 (`~/.ssh`, `~/.pilot`)
-- [ ] path traversal (`../`) 거부 테스트
-- [ ] symlink 우회 시도 거부 테스트
+- [x] 허용 경로 통과 테스트
+- [x] 차단 경로 거부 테스트 (`~/.ssh`, `~/.pilot`)
+- [x] path traversal (`../`) 거부 테스트
+- [x] symlink 우회 시도 거부 테스트
 
 ### `auth.ts` 테스트
-- [ ] 허용 사용자 통과 테스트
-- [ ] 비허용 사용자 거부 테스트
+- [x] 허용 사용자 통과 테스트
+- [x] 비허용 사용자 거부 테스트
 
 ---
 

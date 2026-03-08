@@ -41,6 +41,34 @@ describe('classifySafety', () => {
   it('Notion 조회는 safe', () => {
     expect(classifySafety('Notion 페이지 목록 가져오기')).toBe('safe');
   });
+
+  it('echo는 safe', () => {
+    expect(classifySafety('echo hello')).toBe('safe');
+  });
+
+  it('chained command with dangerous part is dangerous', () => {
+    expect(classifySafety('ls && git push origin main')).toBe('dangerous');
+  });
+
+  it('chained command with moderate part is moderate', () => {
+    expect(classifySafety('ls && git commit -m "test"')).toBe('moderate');
+  });
+
+  it('git reset --hard is dangerous', () => {
+    expect(classifySafety('git reset --hard HEAD~1')).toBe('dangerous');
+  });
+
+  it('send email is dangerous', () => {
+    expect(classifySafety('send email to user@test.com')).toBe('dangerous');
+  });
+
+  it('drop table is dangerous', () => {
+    expect(classifySafety('DROP TABLE users')).toBe('dangerous');
+  });
+
+  it('git merge is moderate', () => {
+    expect(classifySafety('git merge feature-branch')).toBe('moderate');
+  });
 });
 
 describe('ApprovalManager', () => {

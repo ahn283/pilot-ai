@@ -41,6 +41,15 @@ describe('parseClaudeJsonOutput', () => {
     expect(parseClaudeJsonOutput(output)).toBe('this is not json');
   });
 
+  it('truncated/partial JSON returns raw text', () => {
+    const output = '{"type":"result","result":"incom';
+    expect(parseClaudeJsonOutput(output)).toBe(output);
+  });
+
+  it('empty string returns empty string', () => {
+    expect(parseClaudeJsonOutput('')).toBe('');
+  });
+
   it('tool_use content 블록은 무시한다', () => {
     const output = JSON.stringify({
       type: 'assistant',

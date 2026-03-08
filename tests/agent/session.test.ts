@@ -94,4 +94,25 @@ describe('session store', () => {
     expect(removed).toBe(0);
     expect(await getSessionCount()).toBe(1);
   });
+
+  it('cleanupSessions removes expired sessions (TTL)', async () => {
+    // Create a session and manually set its lastUsedAt to 25 hours ago
+    await createSession('slack', 'C1', 'Texpired');
+    const sessionsPath = path.join(testDir, '.pilot', 'sessions.json');
+    const data = JSON.parse(await fs.readFile(sessionsPath, 'utf-8'));
+    const expiredTime = new Date(Date.now() - 25 * 60 * 60 * 1000).toISOString();
+    for (const entry of data) {
+      if (entry.threadId === 'Texpired') {
+        entry.lastUsedAt = expiredTime;
+      }
+    }
+    await fs.writeFile(sessionsPath, JSON.stringify(data));
+    // Force reload from file
+    resetSessionStore();
+
+    const removed = await cleanupSessions();
+    expect(removed).toBe(1);
+    const session = await getSession('slack', 'C1', 'Texpired');
+    expect(session).toBeNull();
+  });
 });
