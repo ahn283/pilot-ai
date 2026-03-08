@@ -33,6 +33,11 @@ vi.mock('../../src/tools/github.js', () => ({
   isGhAuthenticated: vi.fn().mockResolvedValue(false),
 }));
 
+// Mock MCP manager
+vi.mock('../../src/agent/mcp-manager.js', () => ({
+  installMcpServer: vi.fn().mockResolvedValue({ success: true }),
+}));
+
 // Mock child_process for Playwright install
 vi.mock('node:child_process', () => ({
   execFile: vi.fn((_cmd: string, _args: string[], _opts: object, cb: (err: Error | null) => void) => { cb(null); }),
@@ -41,6 +46,7 @@ vi.mock('node:child_process', () => ({
 import inquirer from 'inquirer';
 import { setSecret } from '../../src/config/keychain.js';
 import { checkClaudeCli, checkClaudeCliAuth } from '../../src/agent/claude.js';
+import { installMcpServer } from '../../src/agent/mcp-manager.js';
 
 const { runInit } = await import('../../src/cli/init.js');
 const { loadConfig } = await import('../../src/config/store.js');
@@ -146,5 +152,147 @@ describe('runInit - CLI exists but choose API', () => {
     const config = await loadConfig();
     expect(config.claude.mode).toBe('api');
     expect(setSecret).toHaveBeenCalledWith('anthropic-api-key', 'sk-my-key');
+  });
+});
+
+describe('runInit - MCP registration during init', () => {
+  it('Notion setup registers MCP server', async () => {
+    vi.mocked(checkClaudeCli).mockResolvedValue(true);
+    vi.mocked(checkClaudeCliAuth).mockResolvedValue(true);
+    vi.mocked(inquirer.prompt)
+      .mockResolvedValueOnce({ useApi: false })
+      .mockResolvedValueOnce({ platformChoice: '1' })
+      .mockResolvedValueOnce({
+        botToken: 'xoxb-test',
+        appToken: 'xapp-test',
+        signingSecret: 'secret123',
+        userId: 'U12345',
+      })
+      .mockResolvedValueOnce({ setupGh: false })
+      .mockResolvedValueOnce({ setupNotion: true })
+      .mockResolvedValueOnce({ notionApiKey: 'ntn_test_key_12345' })
+      .mockResolvedValueOnce({ setupObsidian: false })
+      .mockResolvedValueOnce({ setupFigma: false })
+      .mockResolvedValueOnce({ setupGoogle: false })
+      .mockResolvedValueOnce({ setupLinear: false })
+      .mockResolvedValueOnce({ install: false });
+
+    await runInit();
+
+    expect(installMcpServer).toHaveBeenCalledWith('notion', expect.objectContaining({
+      OPENAPI_MCP_HEADERS: expect.stringContaining('ntn_test_key_12345'),
+    }), { skipVerify: true });
+  });
+
+  it('Linear setup registers MCP server', async () => {
+    vi.mocked(checkClaudeCli).mockResolvedValue(true);
+    vi.mocked(checkClaudeCliAuth).mockResolvedValue(true);
+    vi.mocked(inquirer.prompt)
+      .mockResolvedValueOnce({ useApi: false })
+      .mockResolvedValueOnce({ platformChoice: '1' })
+      .mockResolvedValueOnce({
+        botToken: 'xoxb-test',
+        appToken: 'xapp-test',
+        signingSecret: 'secret123',
+        userId: 'U12345',
+      })
+      .mockResolvedValueOnce({ setupGh: false })
+      .mockResolvedValueOnce({ setupNotion: false })
+      .mockResolvedValueOnce({ setupObsidian: false })
+      .mockResolvedValueOnce({ setupFigma: false })
+      .mockResolvedValueOnce({ setupGoogle: false })
+      .mockResolvedValueOnce({ setupLinear: true })
+      .mockResolvedValueOnce({ linearApiKey: 'lin_api_test123' })
+      .mockResolvedValueOnce({ install: false });
+
+    await runInit();
+
+    expect(installMcpServer).toHaveBeenCalledWith('linear', {
+      LINEAR_API_KEY: 'lin_api_test123',
+    }, { skipVerify: true });
+  });
+
+  it('Figma setup registers MCP server via installMcpServer', async () => {
+    vi.mocked(checkClaudeCli).mockResolvedValue(true);
+    vi.mocked(checkClaudeCliAuth).mockResolvedValue(true);
+    vi.mocked(inquirer.prompt)
+      .mockResolvedValueOnce({ useApi: false })
+      .mockResolvedValueOnce({ platformChoice: '1' })
+      .mockResolvedValueOnce({
+        botToken: 'xoxb-test',
+        appToken: 'xapp-test',
+        signingSecret: 'secret123',
+        userId: 'U12345',
+      })
+      .mockResolvedValueOnce({ setupGh: false })
+      .mockResolvedValueOnce({ setupNotion: false })
+      .mockResolvedValueOnce({ setupObsidian: false })
+      .mockResolvedValueOnce({ setupFigma: true })
+      .mockResolvedValueOnce({ figmaToken: 'figd_test_token' })
+      .mockResolvedValueOnce({ setupGoogle: false })
+      .mockResolvedValueOnce({ setupLinear: false })
+      .mockResolvedValueOnce({ install: false });
+
+    await runInit();
+
+    expect(installMcpServer).toHaveBeenCalledWith('figma', {
+      FIGMA_PERSONAL_ACCESS_TOKEN: 'figd_test_token',
+    }, { skipVerify: true });
+  });
+
+  it('Google Drive setup registers MCP server when drive is selected', async () => {
+    vi.mocked(checkClaudeCli).mockResolvedValue(true);
+    vi.mocked(checkClaudeCliAuth).mockResolvedValue(true);
+    vi.mocked(inquirer.prompt)
+      .mockResolvedValueOnce({ useApi: false })
+      .mockResolvedValueOnce({ platformChoice: '1' })
+      .mockResolvedValueOnce({
+        botToken: 'xoxb-test',
+        appToken: 'xapp-test',
+        signingSecret: 'secret123',
+        userId: 'U12345',
+      })
+      .mockResolvedValueOnce({ setupGh: false })
+      .mockResolvedValueOnce({ setupNotion: false })
+      .mockResolvedValueOnce({ setupObsidian: false })
+      .mockResolvedValueOnce({ setupFigma: false })
+      .mockResolvedValueOnce({ setupGoogle: true })
+      .mockResolvedValueOnce({ clientId: 'google-client-id', clientSecret: 'google-secret' })
+      .mockResolvedValueOnce({ googleServices: ['gmail', 'drive'] })
+      .mockResolvedValueOnce({ setupLinear: false })
+      .mockResolvedValueOnce({ install: false });
+
+    await runInit();
+
+    expect(installMcpServer).toHaveBeenCalledWith('google-drive', {
+      GOOGLE_CLIENT_ID: 'google-client-id',
+      GOOGLE_CLIENT_SECRET: 'google-secret',
+    }, { skipVerify: true });
+  });
+
+  it('MCP registration failure does not break init', async () => {
+    vi.mocked(checkClaudeCli).mockResolvedValue(true);
+    vi.mocked(checkClaudeCliAuth).mockResolvedValue(true);
+    vi.mocked(installMcpServer).mockRejectedValueOnce(new Error('MCP registration failed'));
+    vi.mocked(inquirer.prompt)
+      .mockResolvedValueOnce({ useApi: false })
+      .mockResolvedValueOnce({ platformChoice: '1' })
+      .mockResolvedValueOnce({
+        botToken: 'xoxb-test',
+        appToken: 'xapp-test',
+        signingSecret: 'secret123',
+        userId: 'U12345',
+      })
+      .mockResolvedValueOnce({ setupGh: false })
+      .mockResolvedValueOnce({ setupNotion: true })
+      .mockResolvedValueOnce({ notionApiKey: 'ntn_test_key_12345' })
+      .mockResolvedValueOnce({ setupObsidian: false })
+      .mockResolvedValueOnce({ setupFigma: false })
+      .mockResolvedValueOnce({ setupGoogle: false })
+      .mockResolvedValueOnce({ setupLinear: false })
+      .mockResolvedValueOnce({ install: false });
+
+    // Should not throw even if MCP registration fails
+    await expect(runInit()).resolves.not.toThrow();
   });
 });

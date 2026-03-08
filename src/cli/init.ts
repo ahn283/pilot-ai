@@ -8,6 +8,7 @@ import type { PilotConfig } from '../config/schema.js';
 import { defaultConfig } from '../config/schema.js';
 import { testSlackConnection, testTelegramConnection } from './connection-test.js';
 import { registerFigmaMcp } from '../tools/figma-mcp.js';
+import { installMcpServer } from '../agent/mcp-manager.js';
 import { requestPermissions, triggerBulkAutomationPermissions } from '../security/permissions.js';
 import { isGhAuthenticated } from '../tools/github.js';
 
@@ -293,8 +294,19 @@ async function setupIntegrations(): Promise<Partial<PilotConfig>> {
       },
     ]);
     await setSecret('notion-api-key', notionApiKey);
+    try {
+      await installMcpServer('notion', {
+        OPENAPI_MCP_HEADERS: JSON.stringify({
+          'Authorization': `Bearer ${notionApiKey}`,
+          'Notion-Version': '2022-06-28',
+        }),
+      }, { skipVerify: true });
+      console.log('  Notion configured (MCP server registered).\n');
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.log(`  Notion key saved, but MCP registration failed (${msg}). You can register it later.\n`);
+    }
     result.notion = { apiKey: '***keychain***' };
-    console.log('  Notion configured.\n');
   }
 
   // Obsidian
@@ -333,9 +345,17 @@ async function setupIntegrations(): Promise<Partial<PilotConfig>> {
       },
     ]);
     await setSecret('figma-personal-access-token', figmaToken);
-    await registerFigmaMcp(figmaToken);
+    try {
+      await installMcpServer('figma', {
+        FIGMA_PERSONAL_ACCESS_TOKEN: figmaToken,
+      }, { skipVerify: true });
+      console.log('  Figma configured (MCP server registered).\n');
+    } catch (err) {
+      // Fallback to legacy registration
+      await registerFigmaMcp(figmaToken);
+      console.log('  Figma configured (MCP server registered via fallback).\n');
+    }
     result.figma = { personalAccessToken: '***keychain***' };
-    console.log('  Figma configured (MCP server registered).\n');
   }
 
   // Google (Gmail, Calendar, Drive)
@@ -385,6 +405,21 @@ async function setupIntegrations(): Promise<Partial<PilotConfig>> {
 
     await setSecret('google-client-id', googleAnswers.clientId);
     await setSecret('google-client-secret', googleAnswers.clientSecret);
+
+    // Register Google Drive MCP if drive service is selected
+    if ((googleServices as string[]).includes('drive')) {
+      try {
+        await installMcpServer('google-drive', {
+          GOOGLE_CLIENT_ID: googleAnswers.clientId,
+          GOOGLE_CLIENT_SECRET: googleAnswers.clientSecret,
+        }, { skipVerify: true });
+        console.log('  Google Drive MCP server registered.');
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        console.log(`  Google Drive MCP registration failed (${msg}). You can register it later.`);
+      }
+    }
+
     result.google = {
       clientId: '***keychain***',
       clientSecret: '***keychain***',
@@ -414,8 +449,16 @@ async function setupIntegrations(): Promise<Partial<PilotConfig>> {
       },
     ]);
     await setSecret('linear-api-key', linearApiKey);
+    try {
+      await installMcpServer('linear', {
+        LINEAR_API_KEY: linearApiKey,
+      }, { skipVerify: true });
+      console.log('  Linear configured (MCP server registered).\n');
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.log(`  Linear key saved, but MCP registration failed (${msg}). You can register it later.\n`);
+    }
     result.linear = { apiKey: '***keychain***' };
-    console.log('  Linear configured.\n');
   }
 
   return result;

@@ -42,20 +42,28 @@ export async function detectNeededServers(userMessage: string): Promise<McpServe
  * 2. Stores env vars in keychain
  * 3. Adds to mcp-config.json
  */
+export interface McpInstallOptions {
+  /** Skip npx package verification (useful during init when speed matters) */
+  skipVerify?: boolean;
+}
+
 export async function installMcpServer(
   serverId: string,
   envValues: Record<string, string>,
+  options: McpInstallOptions = {},
 ): Promise<{ success: boolean; error?: string }> {
   const entry = getRegistryEntry(serverId);
   if (!entry) return { success: false, error: `Unknown MCP server: ${serverId}` };
 
-  try {
-    // Verify the package exists by trying to resolve it
-    await execFileAsync('npx', ['-y', '--package', entry.npmPackage, 'echo', 'ok'], {
-      timeout: 60_000,
-    });
-  } catch {
-    // npx -y will auto-install, so this is fine even if it fails on echo
+  if (!options.skipVerify) {
+    try {
+      // Verify the package exists by trying to resolve it
+      await execFileAsync('npx', ['-y', '--package', entry.npmPackage, 'echo', 'ok'], {
+        timeout: 60_000,
+      });
+    } catch {
+      // npx -y will auto-install, so this is fine even if it fails on echo
+    }
   }
 
   // Store environment variables in keychain

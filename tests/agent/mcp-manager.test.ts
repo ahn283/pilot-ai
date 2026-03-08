@@ -85,6 +85,45 @@ describe('mcp-manager', () => {
     expect(result.error).toContain('Unknown');
   });
 
+  it('installMcpServer with skipVerify skips npx verification', async () => {
+    const { execFile } = await import('node:child_process');
+    const result = await installMcpServer('notion', {
+      OPENAPI_MCP_HEADERS: '{"Authorization":"Bearer ntn_test"}',
+    }, { skipVerify: true });
+    expect(result.success).toBe(true);
+    expect(mockMcpConfig.mcpServers).toHaveProperty('notion');
+    // execFile should NOT have been called (skipVerify)
+    expect(execFile).not.toHaveBeenCalled();
+  });
+
+  it('installMcpServer registers notion with correct config', async () => {
+    const headers = JSON.stringify({ 'Authorization': 'Bearer ntn_test', 'Notion-Version': '2022-06-28' });
+    await installMcpServer('notion', { OPENAPI_MCP_HEADERS: headers }, { skipVerify: true });
+    const notionConfig = mockMcpConfig.mcpServers['notion'] as { command: string; args: string[]; env: Record<string, string> };
+    expect(notionConfig.command).toBe('npx');
+    expect(notionConfig.args).toContain('@notionhq/notion-mcp-server');
+    expect(notionConfig.env?.OPENAPI_MCP_HEADERS).toBe(headers);
+  });
+
+  it('installMcpServer registers linear with correct config', async () => {
+    await installMcpServer('linear', { LINEAR_API_KEY: 'lin_api_test' }, { skipVerify: true });
+    const linearConfig = mockMcpConfig.mcpServers['linear'] as { command: string; args: string[]; env: Record<string, string> };
+    expect(linearConfig.command).toBe('npx');
+    expect(linearConfig.args).toContain('@anthropic-ai/linear-mcp');
+    expect(linearConfig.env?.LINEAR_API_KEY).toBe('lin_api_test');
+  });
+
+  it('installMcpServer registers google-drive with correct config', async () => {
+    await installMcpServer('google-drive', {
+      GOOGLE_CLIENT_ID: 'client-id',
+      GOOGLE_CLIENT_SECRET: 'client-secret',
+    }, { skipVerify: true });
+    const driveConfig = mockMcpConfig.mcpServers['google-drive'] as { command: string; args: string[]; env: Record<string, string> };
+    expect(driveConfig.command).toBe('npx');
+    expect(driveConfig.args).toContain('@anthropic-ai/google-drive-mcp');
+    expect(driveConfig.env?.GOOGLE_CLIENT_ID).toBe('client-id');
+  });
+
   it('uninstallMcpServer removes server from config', async () => {
     mockMcpConfig.mcpServers = { figma: { command: 'npx' } };
     await uninstallMcpServer('figma');
