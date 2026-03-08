@@ -1,14 +1,26 @@
+import fsSync from 'node:fs';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { isPathAllowed } from '../security/sandbox.js';
 import type { PilotConfig } from '../config/schema.js';
 
+/**
+ * Resolves the real path (following symlinks) and checks sandbox permissions.
+ * Throws if the resolved path is not allowed.
+ */
 function assertAllowed(targetPath: string, config: PilotConfig): string {
   const resolved = path.resolve(targetPath);
-  if (!isPathAllowed(resolved, config)) {
-    throw new Error(`Access denied: blocked path: ${resolved}`);
+  // Resolve symlinks for existing paths
+  let realResolved: string;
+  try {
+    realResolved = fsSync.realpathSync(resolved);
+  } catch {
+    realResolved = resolved;
   }
-  return resolved;
+  if (!isPathAllowed(realResolved, config)) {
+    throw new Error(`Access denied: blocked path: ${realResolved}`);
+  }
+  return realResolved;
 }
 
 export async function readFile(filePath: string, config: PilotConfig): Promise<string> {

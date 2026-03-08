@@ -1,3 +1,4 @@
+import fsSync from 'node:fs';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 
@@ -98,9 +99,22 @@ export async function listNotes(vaultPath: string, subdir?: string): Promise<str
 function resolveNotePath(vaultPath: string, notePath: string): string {
   const normalized = notePath.endsWith('.md') ? notePath : notePath + '.md';
   const resolved = path.resolve(vaultPath, normalized);
-  // Prevent path traversal outside vault
-  if (!resolved.startsWith(path.resolve(vaultPath))) {
+  const resolvedVault = path.resolve(vaultPath);
+  // Resolve symlinks if target exists to prevent symlink-based bypass
+  let realResolved: string;
+  try {
+    realResolved = fsSync.realpathSync(resolved);
+  } catch {
+    realResolved = resolved;
+  }
+  let realVault: string;
+  try {
+    realVault = fsSync.realpathSync(resolvedVault);
+  } catch {
+    realVault = resolvedVault;
+  }
+  if (!realResolved.startsWith(realVault + path.sep) && realResolved !== realVault) {
     throw new Error('Path traversal detected: note path is outside vault');
   }
-  return resolved;
+  return realResolved;
 }

@@ -124,10 +124,10 @@
 
 ## 4.7 [P0] Symlink Path Traversal 방어
 
-- [ ] `sandbox.ts`의 `isPathAllowed()` — `fs.realpathSync()` 적용
-- [ ] `filesystem.ts` 파일 접근 전 realpath 검증 추가
-- [ ] `obsidian.ts` 파일 접근 전 realpath 검증 추가
-- [ ] symlink → 차단 경로 우회 테스트
+- [x] `sandbox.ts`의 `isPathAllowed()` — `fs.realpathSync()` 적용
+- [x] `filesystem.ts` 파일 접근 전 realpath 검증 추가
+- [x] `obsidian.ts` 파일 접근 전 realpath 검증 추가
+- [x] symlink → 차단 경로 우회 테스트
 
 ---
 

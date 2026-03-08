@@ -1,3 +1,4 @@
+import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
 import type { PilotConfig } from '../config/schema.js';
@@ -13,19 +14,38 @@ function expandHome(p: string): string {
 }
 
 /**
+ * Resolves a path following symlinks where possible.
+ * If the full path doesn't exist, resolves the deepest existing ancestor
+ * and appends the remaining segments. This prevents symlink-based bypasses
+ * while still working for paths that don't yet exist.
+ */
+function resolveRealPath(p: string): string {
+  try {
+    return fs.realpathSync(p);
+  } catch {
+    // Path doesn't exist — resolve the parent and append the basename
+    const parent = path.dirname(p);
+    const base = path.basename(p);
+    if (parent === p) return p; // root reached
+    return path.join(resolveRealPath(parent), base);
+  }
+}
+
+/**
  * Validates whether a given path is within the sandbox scope.
+ * - Resolves symlinks to prevent symlink-based bypass attacks
  * - Normalizes the path to prevent path traversal attacks
  * - Checks against the allowed paths whitelist
  * - Checks against the blocked paths blacklist
  */
 export function isPathAllowed(targetPath: string, config: PilotConfig): boolean {
-  const resolved = path.resolve(expandHome(targetPath));
+  const resolved = resolveRealPath(path.resolve(expandHome(targetPath)));
 
   const { allowedPaths, blockedPaths } = config.security.filesystemSandbox;
 
   // Check blocked paths (takes priority)
   for (const blocked of blockedPaths) {
-    const resolvedBlocked = path.resolve(expandHome(blocked));
+    const resolvedBlocked = resolveRealPath(path.resolve(expandHome(blocked)));
     if (resolved === resolvedBlocked || resolved.startsWith(resolvedBlocked + path.sep)) {
       return false;
     }
@@ -33,7 +53,7 @@ export function isPathAllowed(targetPath: string, config: PilotConfig): boolean 
 
   // Check allowed paths
   for (const allowed of allowedPaths) {
-    const resolvedAllowed = path.resolve(expandHome(allowed));
+    const resolvedAllowed = resolveRealPath(path.resolve(expandHome(allowed)));
     if (resolved === resolvedAllowed || resolved.startsWith(resolvedAllowed + path.sep)) {
       return true;
     }
