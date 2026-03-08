@@ -1,6 +1,7 @@
 import { Telegraf } from 'telegraf';
 import type { MessengerAdapter, IncomingMessage, ImageAttachment } from './adapter.js';
 import { splitMessage, MAX_MESSAGE_LENGTH } from './split.js';
+import { RateLimiter } from '../utils/rate-limiter.js';
 
 export interface TelegramConfig {
   botToken: string;
@@ -11,6 +12,7 @@ export class TelegramAdapter implements MessengerAdapter {
   private botToken: string;
   private messageHandler?: (msg: IncomingMessage) => void | Promise<void>;
   private approvalHandler?: (taskId: string, approved: boolean) => void;
+  private rateLimiter = new RateLimiter(30, 30); // Telegram: 30 msg/sec
 
   constructor(config: TelegramConfig) {
     this.botToken = config.botToken;
@@ -108,6 +110,7 @@ export class TelegramAdapter implements MessengerAdapter {
     const chunks = splitMessage(text, MAX_MESSAGE_LENGTH.telegram);
     let lastId = '';
     for (const chunk of chunks) {
+      await this.rateLimiter.acquire();
       const result = await this.bot.telegram.sendMessage(channelId, chunk, {
         parse_mode: 'Markdown',
         ...(threadId ? { reply_parameters: { message_id: parseInt(threadId, 10) } } : {}),

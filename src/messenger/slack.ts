@@ -1,6 +1,7 @@
 import { App, type LogLevel } from '@slack/bolt';
 import type { MessengerAdapter, IncomingMessage, ImageAttachment } from './adapter.js';
 import { splitMessage, MAX_MESSAGE_LENGTH } from './split.js';
+import { RateLimiter } from '../utils/rate-limiter.js';
 
 export interface SlackConfig {
   botToken: string;
@@ -13,6 +14,7 @@ export class SlackAdapter implements MessengerAdapter {
   private botToken: string;
   private messageHandler?: (msg: IncomingMessage) => void | Promise<void>;
   private approvalHandler?: (taskId: string, approved: boolean) => void;
+  private rateLimiter = new RateLimiter(5, 1); // Slack: ~1 msg/sec, burst 5
 
   constructor(config: SlackConfig) {
     this.botToken = config.botToken;
@@ -139,6 +141,7 @@ export class SlackAdapter implements MessengerAdapter {
     const chunks = splitMessage(text, MAX_MESSAGE_LENGTH.slack);
     let lastTs = '';
     for (const chunk of chunks) {
+      await this.rateLimiter.acquire();
       const result = await this.app.client.chat.postMessage({
         channel: channelId,
         text: chunk,

@@ -186,11 +186,11 @@
 
 ## 4.13 [P2] 메신저 안정성 강화
 
-- [ ] Slack: connection 이벤트 리스너 + 재접속 로깅
-- [ ] Telegram: polling 에러 핸들러 + 자동 재시작
-- [ ] 발신 Rate Limiter (토큰 버킷: Slack 1msg/sec, Telegram 30msg/sec)
-- [ ] Graceful Shutdown (SIGTERM → 10초 대기 → 정리)
-- [ ] 연결 안정성 테스트
+- [x] Slack: connection 이벤트 리스너 + 재접속 로깅
+- [x] Telegram: polling 에러 핸들러 + 자동 재시작
+- [x] 발신 Rate Limiter (토큰 버킷: Slack 1msg/sec, Telegram 30msg/sec)
+- [x] Graceful Shutdown (SIGTERM → 10초 대기 → 정리)
+- [x] 연결 안정성 테스트
 
 ---
 
