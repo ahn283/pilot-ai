@@ -1,4 +1,7 @@
+import fs from 'node:fs';
+import path from 'node:path';
 import { createWorktree, removeWorktree, type WorktreeInfo } from './worktree.js';
+import { getPilotDir } from '../config/store.js';
 
 export type TaskStatus = 'queued' | 'running' | 'waiting_approval' | 'completed' | 'failed' | 'cancelled';
 
@@ -34,16 +37,27 @@ function generateTaskId(): string {
  * - Null-project tasks (Notion, browser) run in parallel with everything
  * - Max concurrent limit to respect Claude CLI rate limits
  */
+const MAX_QUEUE_SIZE = 50;
+const BACKPRESSURE_THRESHOLD = 20;
+const PERSIST_DEBOUNCE_MS = 1000;
+
 export class TaskQueue {
   private queue: Task[] = [];
   private runningTasks: Set<Task> = new Set();
   private handler: TaskHandler | null = null;
   private maxConcurrent: number;
   private worktreeEnabled: boolean;
+  private persistTimer: ReturnType<typeof setTimeout> | null = null;
+  private onBackpressure?: (depth: number) => void;
 
   constructor(maxConcurrent: number = 3, worktreeEnabled: boolean = false) {
     this.maxConcurrent = maxConcurrent;
     this.worktreeEnabled = worktreeEnabled;
+  }
+
+  /** Register a callback for backpressure warnings */
+  setBackpressureCallback(cb: (depth: number) => void): void {
+    this.onBackpressure = cb;
   }
 
   onTask(handler: TaskHandler): void {
@@ -58,6 +72,11 @@ export class TaskQueue {
     userId: string;
     threadId?: string;
   }): Task {
+    const queuedCount = this.queue.filter((t) => t.status === 'queued').length;
+    if (queuedCount >= MAX_QUEUE_SIZE) {
+      throw new Error(`Task queue is full (max ${MAX_QUEUE_SIZE}). Please wait for existing tasks to complete.`);
+    }
+
     const task: Task = {
       id: generateTaskId(),
       status: 'queued',
@@ -73,6 +92,14 @@ export class TaskQueue {
     };
 
     this.queue.push(task);
+    this.schedulePersist();
+
+    // Backpressure warning
+    const newQueuedCount = this.queue.filter((t) => t.status === 'queued').length;
+    if (newQueuedCount > BACKPRESSURE_THRESHOLD && this.onBackpressure) {
+      this.onBackpressure(newQueuedCount);
+    }
+
     this.processNext();
     return task;
   }
@@ -151,6 +178,7 @@ export class TaskQueue {
       task.error = err instanceof Error ? err.message : String(err);
     } finally {
       task.completedAt = new Date();
+      this.schedulePersist();
       // Clean up worktree
       if (task.worktree && task.projectPath) {
         try {
@@ -210,5 +238,77 @@ export class TaskQueue {
     }
 
     return lines.join('\n');
+  }
+
+  // --- Persistence ---
+
+  private getQueueFilePath(): string {
+    return path.join(getPilotDir(), 'task-queue.json');
+  }
+
+  private schedulePersist(): void {
+    if (this.persistTimer) return;
+    this.persistTimer = setTimeout(() => {
+      this.persistTimer = null;
+      this.persistToDisk();
+    }, PERSIST_DEBOUNCE_MS);
+  }
+
+  private persistToDisk(): void {
+    try {
+      const serializable = this.queue
+        .filter((t) => t.status === 'queued' || t.status === 'running')
+        .map((t) => ({
+          ...t,
+          createdAt: t.createdAt.toISOString(),
+          startedAt: t.startedAt?.toISOString() ?? null,
+          completedAt: t.completedAt?.toISOString() ?? null,
+          worktree: undefined, // Don't persist worktree info
+        }));
+      fs.writeFileSync(this.getQueueFilePath(), JSON.stringify(serializable, null, 2));
+    } catch {
+      // Best-effort persistence
+    }
+  }
+
+  /**
+   * Restores queued tasks from disk on daemon startup.
+   * Running tasks are marked as failed (they were interrupted).
+   */
+  restoreFromDisk(): Task[] {
+    try {
+      const data = fs.readFileSync(this.getQueueFilePath(), 'utf-8');
+      const items = JSON.parse(data) as Array<Record<string, unknown>>;
+      const restored: Task[] = [];
+
+      for (const item of items) {
+        const task: Task = {
+          id: item.id as string,
+          status: item.status === 'running' ? 'failed' : 'queued',
+          project: (item.project as string | null) ?? null,
+          projectPath: item.projectPath as string | undefined,
+          command: item.command as string,
+          channelId: item.channelId as string,
+          userId: item.userId as string,
+          threadId: item.threadId as string | undefined,
+          createdAt: new Date(item.createdAt as string),
+          startedAt: item.startedAt ? new Date(item.startedAt as string) : null,
+          completedAt: item.status === 'running' ? new Date() : null,
+          error: item.status === 'running' ? 'Daemon restarted while task was running' : undefined,
+        };
+        this.queue.push(task);
+        restored.push(task);
+      }
+
+      // Clean up the file after restoring
+      fs.unlinkSync(this.getQueueFilePath());
+
+      // Resume processing queued tasks
+      this.processNext();
+
+      return restored;
+    } catch {
+      return [];
+    }
   }
 }
