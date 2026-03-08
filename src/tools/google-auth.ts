@@ -5,6 +5,7 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { getPilotDir } from '../config/store.js';
+import { getSecret, setSecret, deleteSecret } from '../config/keychain.js';
 
 export interface GoogleOAuthConfig {
   clientId: string;
@@ -37,7 +38,9 @@ export const GOOGLE_SCOPES = {
   ],
 };
 
-function getTokenPath(): string {
+const KEYCHAIN_KEY = 'google-oauth-tokens';
+
+function getLegacyTokenPath(): string {
   return path.join(getPilotDir(), 'credentials', 'google-tokens.json');
 }
 
@@ -53,9 +56,25 @@ export function getGoogleConfig(): GoogleOAuthConfig | null {
 }
 
 export async function loadGoogleTokens(): Promise<GoogleTokens | null> {
+  // Try Keychain first
+  const secret = await getSecret(KEYCHAIN_KEY);
+  if (secret) {
+    try {
+      tokens = JSON.parse(secret) as GoogleTokens;
+      return tokens;
+    } catch {
+      // Corrupted keychain entry, fall through to legacy
+    }
+  }
+
+  // Try legacy JSON file and migrate if found
   try {
-    const data = await fs.readFile(getTokenPath(), 'utf-8');
-    tokens = JSON.parse(data) as GoogleTokens;
+    const data = await fs.readFile(getLegacyTokenPath(), 'utf-8');
+    const parsed = JSON.parse(data) as GoogleTokens;
+    // Migrate to Keychain
+    await saveGoogleTokens(parsed);
+    // Remove legacy file
+    await fs.unlink(getLegacyTokenPath()).catch(() => {});
     return tokens;
   } catch {
     return null;
@@ -64,7 +83,12 @@ export async function loadGoogleTokens(): Promise<GoogleTokens | null> {
 
 export async function saveGoogleTokens(t: GoogleTokens): Promise<void> {
   tokens = t;
-  await fs.writeFile(getTokenPath(), JSON.stringify(t, null, 2), { mode: 0o600 });
+  await setSecret(KEYCHAIN_KEY, JSON.stringify(t));
+}
+
+export async function deleteGoogleTokens(): Promise<void> {
+  tokens = null;
+  await deleteSecret(KEYCHAIN_KEY);
 }
 
 /**

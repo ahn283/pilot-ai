@@ -114,11 +114,11 @@
 
 ## 4.6 [P0] 토큰 저장소 Keychain 통합
 
-- [ ] `google-auth.ts` 토큰 저장/로드를 Keychain으로 이관
-- [ ] `email.ts` 토큰 저장/로드를 Keychain으로 이관
-- [ ] 마이그레이션 로직: 기존 JSON → Keychain 이관 후 JSON 삭제
-- [ ] Keychain 읽기 실패 시 에러 핸들링 (not found vs access denied 구분)
-- [ ] 토큰 마이그레이션 테스트
+- [x] `google-auth.ts` 토큰 저장/로드를 Keychain으로 이관
+- [x] `email.ts` 토큰 저장/로드를 Keychain으로 이관
+- [x] 마이그레이션 로직: 기존 JSON → Keychain 이관 후 JSON 삭제
+- [x] Keychain 읽기 실패 시 에러 핸들링 (not found vs access denied 구분)
+- [x] 토큰 마이그레이션 테스트
 
 ---
 

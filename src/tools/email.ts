@@ -5,6 +5,7 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { getPilotDir } from '../config/store.js';
+import { getSecret, setSecret, deleteSecret } from '../config/keychain.js';
 
 export interface EmailConfig {
   clientId: string;
@@ -38,8 +39,9 @@ export interface EmailDraft {
 
 const GMAIL_API = 'https://gmail.googleapis.com/gmail/v1';
 const TOKEN_URL = 'https://oauth2.googleapis.com/token';
+const KEYCHAIN_KEY = 'gmail-oauth-tokens';
 
-function getTokenPath(): string {
+function getLegacyTokenPath(): string {
   return path.join(getPilotDir(), 'gmail-tokens.json');
 }
 
@@ -53,9 +55,25 @@ export function configureEmail(cfg: EmailConfig): void {
 // --- Token management ---
 
 export async function loadTokens(): Promise<OAuthTokens | null> {
+  // Try Keychain first
+  const secret = await getSecret(KEYCHAIN_KEY);
+  if (secret) {
+    try {
+      tokens = JSON.parse(secret) as OAuthTokens;
+      return tokens;
+    } catch {
+      // Corrupted keychain entry, fall through to legacy
+    }
+  }
+
+  // Try legacy JSON file and migrate if found
   try {
-    const data = await fs.readFile(getTokenPath(), 'utf-8');
-    tokens = JSON.parse(data) as OAuthTokens;
+    const data = await fs.readFile(getLegacyTokenPath(), 'utf-8');
+    const parsed = JSON.parse(data) as OAuthTokens;
+    // Migrate to Keychain
+    await saveTokens(parsed);
+    // Remove legacy file
+    await fs.unlink(getLegacyTokenPath()).catch(() => {});
     return tokens;
   } catch {
     return null;
@@ -64,7 +82,12 @@ export async function loadTokens(): Promise<OAuthTokens | null> {
 
 export async function saveTokens(t: OAuthTokens): Promise<void> {
   tokens = t;
-  await fs.writeFile(getTokenPath(), JSON.stringify(t), { mode: 0o600 });
+  await setSecret(KEYCHAIN_KEY, JSON.stringify(t));
+}
+
+export async function deleteTokens(): Promise<void> {
+  tokens = null;
+  await deleteSecret(KEYCHAIN_KEY);
 }
 
 /**
