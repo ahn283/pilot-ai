@@ -96,23 +96,28 @@ export async function listNotes(vaultPath: string, subdir?: string): Promise<str
   return notes.sort();
 }
 
+/**
+ * Resolves a path following symlinks where possible.
+ * If the full path doesn't exist, resolves the deepest existing ancestor.
+ */
+function resolveReal(p: string): string {
+  try {
+    return fsSync.realpathSync(p);
+  } catch {
+    const parent = path.dirname(p);
+    const base = path.basename(p);
+    if (parent === p) return p;
+    return path.join(resolveReal(parent), base);
+  }
+}
+
 function resolveNotePath(vaultPath: string, notePath: string): string {
   const normalized = notePath.endsWith('.md') ? notePath : notePath + '.md';
   const resolved = path.resolve(vaultPath, normalized);
   const resolvedVault = path.resolve(vaultPath);
-  // Resolve symlinks if target exists to prevent symlink-based bypass
-  let realResolved: string;
-  try {
-    realResolved = fsSync.realpathSync(resolved);
-  } catch {
-    realResolved = resolved;
-  }
-  let realVault: string;
-  try {
-    realVault = fsSync.realpathSync(resolvedVault);
-  } catch {
-    realVault = resolvedVault;
-  }
+  // Resolve symlinks to prevent symlink-based bypass
+  const realResolved = resolveReal(resolved);
+  const realVault = resolveReal(resolvedVault);
   if (!realResolved.startsWith(realVault + path.sep) && realResolved !== realVault) {
     throw new Error('Path traversal detected: note path is outside vault');
   }
