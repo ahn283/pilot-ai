@@ -3,6 +3,7 @@
  * Primary: Apple Calendar via osascript (no OAuth needed)
  */
 import { executeShell } from './shell.js';
+import { escapeAppleScript, escapeShellArg } from '../utils/escape.js';
 
 export interface CalendarEvent {
   title: string;
@@ -35,7 +36,7 @@ tell application "Calendar"
   return output
 end tell`;
 
-  const result = await executeShell(`osascript -e '${escapeAppleScript(script)}'`);
+  const result = await executeShell(`osascript -e ${escapeShellArg(script)}`);
   if (result.exitCode !== 0) return [];
 
   return result.stdout
@@ -85,14 +86,14 @@ export async function createEvent(event: CalendarEvent): Promise<void> {
   const cal = event.calendar ?? 'Calendar';
   const script = `
 tell application "Calendar"
-  tell calendar "${escapeAS(cal)}"
-    set newEvent to make new event with properties {summary:"${escapeAS(event.title)}", start date:date "${event.startDate}", end date:date "${event.endDate}"}
-    ${event.location ? `set location of newEvent to "${escapeAS(event.location)}"` : ''}
-    ${event.notes ? `set description of newEvent to "${escapeAS(event.notes)}"` : ''}
+  tell calendar "${escapeAppleScript(cal)}"
+    set newEvent to make new event with properties {summary:"${escapeAppleScript(event.title)}", start date:date "${event.startDate}", end date:date "${event.endDate}"}
+    ${event.location ? `set location of newEvent to "${escapeAppleScript(event.location)}"` : ''}
+    ${event.notes ? `set description of newEvent to "${escapeAppleScript(event.notes)}"` : ''}
   end tell
 end tell`;
 
-  const result = await executeShell(`osascript -e '${escapeAppleScript(script)}'`);
+  const result = await executeShell(`osascript -e ${escapeShellArg(script)}`);
   if (result.exitCode !== 0) throw new Error(`Failed to create event: ${result.stderr}`);
 }
 
@@ -108,7 +109,7 @@ export async function deleteEvent(title: string, date: Date): Promise<boolean> {
   const script = `
 tell application "Calendar"
   repeat with cal in calendars
-    set evts to (every event of cal whose summary is "${escapeAS(title)}" and start date >= date "${dateStr}" and start date < date "${nextStr}")
+    set evts to (every event of cal whose summary is "${escapeAppleScript(title)}" and start date >= date "${dateStr}" and start date < date "${nextStr}")
     repeat with e in evts
       delete e
       return "deleted"
@@ -117,7 +118,7 @@ tell application "Calendar"
   return "not found"
 end tell`;
 
-  const result = await executeShell(`osascript -e '${escapeAppleScript(script)}'`);
+  const result = await executeShell(`osascript -e ${escapeShellArg(script)}`);
   return result.stdout.includes('deleted');
 }
 
@@ -163,10 +164,3 @@ function formatAppleScriptDate(d: Date): string {
   }) + ` ${d.toLocaleTimeString('en-US', { hour12: true })}`;
 }
 
-function escapeAS(str: string): string {
-  return str.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
-}
-
-function escapeAppleScript(script: string): string {
-  return script.replace(/'/g, "'\\''");
-}

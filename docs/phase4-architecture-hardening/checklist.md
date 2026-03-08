@@ -102,13 +102,13 @@
 
 ## 4.5 [P0] AppleScript/Shell 이스케이프 통합
 
-- [ ] `src/utils/escape.ts` 생성
-- [ ] `escapeAppleScript(str)` 구현 (백슬래시, 따옴표, 백틱, `$(...)` 처리)
-- [ ] `escapeShellArg(str)` 구현 (POSIX 호환)
-- [ ] `notification.ts` 독자 escape → 통합 모듈 교체
-- [ ] `calendar.ts` 독자 escape → 통합 모듈 교체
-- [ ] `clipboard.ts` 독자 escape → 통합 모듈 교체
-- [ ] 이스케이프 함수 단위 테스트 (특수문자, 유니코드, 빈 문자열 등)
+- [x] `src/utils/escape.ts` 생성
+- [x] `escapeAppleScript(str)` 구현 (백슬래시, 따옴표, 백틱, `$(...)` 처리)
+- [x] `escapeShellArg(str)` 구현 (POSIX 호환)
+- [x] `notification.ts` 독자 escape → 통합 모듈 교체
+- [x] `calendar.ts` 독자 escape → 통합 모듈 교체
+- [x] `clipboard.ts` 독자 escape → 통합 모듈 교체
+- [x] 이스케이프 함수 단위 테스트 (특수문자, 유니코드, 빈 문자열 등)
 
 ---
 

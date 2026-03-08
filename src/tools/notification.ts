@@ -1,4 +1,5 @@
 import { executeShell } from './shell.js';
+import { escapeAppleScript, escapeShellArg } from '../utils/escape.js';
 
 export async function sendNotification(params: {
   title?: string;
@@ -24,7 +25,7 @@ export async function sendNotification(params: {
   }
 
   const script = parts.join(' ');
-  const result = await executeShell(`osascript -e '${script}'`);
+  const result = await executeShell(`osascript -e ${escapeShellArg(script)}`);
   if (result.exitCode !== 0) throw new Error(`Failed to send notification: ${result.stderr}`);
 }
 
@@ -56,10 +57,3 @@ async function sendWithTerminalNotifier(params: {
   return result.exitCode === 0;
 }
 
-function escapeAppleScript(str: string): string {
-  return str.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
-}
-
-function escapeShellArg(str: string): string {
-  return `'${str.replace(/'/g, "'\\''")}'`;
-}

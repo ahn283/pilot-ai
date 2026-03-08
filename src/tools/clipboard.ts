@@ -1,4 +1,5 @@
 import { executeShell } from './shell.js';
+import { escapeShellArg } from '../utils/escape.js';
 import { imageToDataUrl } from './image.js';
 import path from 'node:path';
 import os from 'node:os';
@@ -11,8 +12,7 @@ export async function readClipboard(): Promise<string> {
 
 export async function writeClipboard(text: string): Promise<void> {
   // Use printf to avoid echo adding newline issues with special chars
-  const escaped = text.replace(/\\/g, '\\\\').replace(/'/g, "'\\''");
-  const result = await executeShell(`printf '%s' '${escaped}' | pbcopy`);
+  const result = await executeShell(`printf '%s' ${escapeShellArg(text)} | pbcopy`);
   if (result.exitCode !== 0) throw new Error(`Failed to write clipboard: ${result.stderr}`);
 }
 
