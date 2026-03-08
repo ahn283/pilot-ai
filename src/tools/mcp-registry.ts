@@ -73,7 +73,7 @@ export const MCP_REGISTRY: McpServerEntry[] = [
     description: 'Search, read, create, and update Notion pages and databases',
     npmPackage: '@notionhq/notion-mcp-server',
     envVars: { OPENAPI_MCP_HEADERS: 'Notion API headers JSON (Authorization: Bearer ntn_...)' },
-    keywords: ['notion', 'notion page', 'notion database', 'wiki'],
+    keywords: ['notion', 'notion page', 'notion database'],
     category: 'productivity',
   },
   {
@@ -147,6 +147,43 @@ export const MCP_REGISTRY: McpServerEntry[] = [
     envVars: { SENTRY_AUTH_TOKEN: 'Sentry Auth Token' },
     keywords: ['sentry', 'error tracking', 'crash', 'exception'],
     category: 'development',
+  },
+  {
+    id: 'jira',
+    name: 'Jira',
+    description: 'Manage Jira issues, boards, and sprints',
+    npmPackage: '@aashari/mcp-server-atlassian-jira',
+    envVars: {
+      ATLASSIAN_SITE_NAME: 'Atlassian site name (e.g. mycompany from mycompany.atlassian.net)',
+      ATLASSIAN_USER_EMAIL: 'Atlassian account email',
+      ATLASSIAN_API_TOKEN: 'Atlassian API Token',
+    },
+    keywords: ['jira', 'jira issue', 'jira board', 'sprint', 'atlassian', 'ticket'],
+    category: 'development',
+  },
+  {
+    id: 'confluence',
+    name: 'Confluence',
+    description: 'Search, read, and create Confluence pages and spaces',
+    npmPackage: '@aashari/mcp-server-atlassian-confluence',
+    envVars: {
+      ATLASSIAN_SITE_NAME: 'Atlassian site name (e.g. mycompany from mycompany.atlassian.net)',
+      ATLASSIAN_USER_EMAIL: 'Atlassian account email',
+      ATLASSIAN_API_TOKEN: 'Atlassian API Token',
+    },
+    keywords: ['confluence', 'confluence page', 'confluence space', 'atlassian wiki'],
+    category: 'productivity',
+  },
+  {
+    id: 'wiki',
+    name: 'Wiki (MediaWiki)',
+    description: 'Search and read MediaWiki pages (Wikipedia, internal wikis)',
+    npmPackage: '@professional-wiki/mediawiki-mcp-server',
+    envVars: {
+      CONFIG: 'Path to MediaWiki config JSON file',
+    },
+    keywords: ['wiki', 'mediawiki', 'wikipedia', 'wiki page'],
+    category: 'productivity',
   },
 ];
 

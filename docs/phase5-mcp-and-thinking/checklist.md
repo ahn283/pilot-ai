@@ -94,3 +94,15 @@
 ## 5.7 [P0] 버전 관리
 
 - [x] `src/index.ts` — 하드코딩된 version → package.json에서 동적 읽기
+
+---
+
+## 5.8 [P1] MCP 레지스트리 확장 (Jira, Confluence, Wiki)
+
+- [x] `mcp-registry.ts` — Jira 항목 추가 (`@aashari/mcp-server-atlassian-jira`, ATLASSIAN_SITE_NAME/EMAIL/API_TOKEN)
+- [x] `mcp-registry.ts` — Confluence 항목 추가 (`@aashari/mcp-server-atlassian-confluence`, 동일 Atlassian 인증)
+- [x] `mcp-registry.ts` — Wiki(MediaWiki) 항목 추가 (`@professional-wiki/mediawiki-mcp-server`, CONFIG 경로)
+- [x] `init.ts` — Jira/Confluence/Wiki 선택 시 설정 가이드 출력 및 키 수집 로직 추가
+- [x] `tools.ts` — `runAddTool()`에 Jira/Confluence/Wiki 설정 가이드 및 키 수집 로직 추가
+- [x] 빌드 통과 확인
+- [x] 기존 테스트 623개 전체 통과 확인

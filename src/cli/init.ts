@@ -462,6 +462,36 @@ async function collectAndRegisterMcpTool(toolId: string, result: Partial<PilotCo
       result.linear = { apiKey: '***keychain***' };
       break;
     }
+    case 'jira':
+    case 'confluence': {
+      const toolLabel = toolId === 'jira' ? 'Jira' : 'Confluence';
+      console.log(`\n  Atlassian ${toolLabel} Setup Guide:`);
+      console.log('  1. Go to https://id.atlassian.com/manage-profile/security/api-tokens');
+      console.log('  2. Click "Create API token" and copy it');
+      console.log('  3. Note your site name (e.g. "mycompany" from mycompany.atlassian.net)\n');
+      const atlassianAnswers = await inquirer.prompt([
+        { type: 'input', name: 'siteName', message: 'Atlassian site name:', validate: (i: string) => i.length > 0 || 'Site name required.' },
+        { type: 'input', name: 'email', message: 'Atlassian account email:', validate: (i: string) => i.includes('@') || 'Valid email required.' },
+        { type: 'password', name: 'apiToken', message: 'Atlassian API Token:', mask: '*', validate: (i: string) => i.length > 5 || 'Valid token required.' },
+      ]);
+      envValues['ATLASSIAN_SITE_NAME'] = atlassianAnswers.siteName;
+      envValues['ATLASSIAN_USER_EMAIL'] = atlassianAnswers.email;
+      envValues['ATLASSIAN_API_TOKEN'] = atlassianAnswers.apiToken;
+      await setSecret(`atlassian-api-token-${toolId}`, atlassianAnswers.apiToken);
+      break;
+    }
+    case 'wiki': {
+      console.log('\n  MediaWiki MCP Setup Guide:');
+      console.log('  1. Create a config JSON file with your wiki URL and credentials');
+      console.log('  2. Example: { "url": "https://en.wikipedia.org/w", "username": "...", "password": "..." }');
+      console.log('  3. Provide the path to this config file\n');
+      const { configPath } = await inquirer.prompt([{
+        type: 'input', name: 'configPath', message: 'Path to MediaWiki config JSON:',
+        validate: (i: string) => i.length > 0 || 'Config path required.',
+      }]);
+      envValues['CONFIG'] = configPath;
+      break;
+    }
     default: {
       // Generic MCP tool: collect all envVars from registry
       if (entry.envVars && Object.keys(entry.envVars).length > 0) {
