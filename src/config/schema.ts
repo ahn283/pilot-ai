@@ -69,6 +69,7 @@ export const configSchema = z.object({
       allowedPaths: z.array(z.string()).default(['~']),
       blockedPaths: z.array(z.string()).default(['~/.pilot', '~/.ssh', '~/.gnupg', '~/.aws']),
     }),
+    autoApprovePermissions: z.boolean().default(true),
     auditLog: z.object({
       enabled: z.boolean().default(true),
       path: z.string().default('~/.pilot/logs/audit.jsonl'),
@@ -92,6 +93,7 @@ export const defaultConfig: Partial<PilotConfig> = {
   security: {
     allowedUsers: { slack: [], telegram: [] },
     dmOnly: true,
+    autoApprovePermissions: true,
     filesystemSandbox: {
       allowedPaths: ['~'],
       blockedPaths: ['~/.pilot', '~/.ssh', '~/.gnupg', '~/.aws'],

@@ -108,6 +108,14 @@ program
     await listUsers();
   });
 
+program
+  .command('doctor')
+  .description('Diagnose system requirements and macOS permissions')
+  .action(async () => {
+    const { runDoctor } = await import('./cli/doctor.js');
+    await runDoctor();
+  });
+
 program.addCommand(createProjectCommand());
 
 program.parse();

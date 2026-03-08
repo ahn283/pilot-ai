@@ -28,28 +28,28 @@
 ## 4.2 [P0] macOS TCC 권한 일괄 설정 & 진단
 
 ### 온보딩 TCC 사전 트리거 (`permissions.ts`)
-- [ ] 일괄 권한 요청 대상 앱 목록 정의 (System Events, Finder, Calendar, Mail, Safari, Terminal)
-- [ ] 각 앱에 대해 간단한 osascript 명령 실행하여 TCC 팝업 트리거
-- [ ] 사전 안내 메시지 출력 ("여러 팝업이 나타납니다. 모두 Allow 클릭")
-- [ ] 각 앱별 권한 결과(성공/실패) 요약 출력
+- [x] 일괄 권한 요청 대상 앱 목록 정의 (System Events, Finder, Calendar, Mail, Safari, Terminal)
+- [x] 각 앱에 대해 간단한 osascript 명령 실행하여 TCC 팝업 트리거
+- [x] 사전 안내 메시지 출력 ("여러 팝업이 나타납니다. 모두 Allow 클릭")
+- [x] 각 앱별 권한 결과(성공/실패) 요약 출력
 
 ### `pilot-ai doctor` 명령
-- [ ] `cli/doctor.ts` 신규 생성
-- [ ] `src/index.ts`에 `doctor` 서브커맨드 등록
-- [ ] 시스템 요구사항 확인 (Node.js, Claude CLI, gh CLI, Playwright)
-- [ ] macOS 권한 확인 (Automation, Screen Recording, Accessibility, Full Disk Access)
-- [ ] 미허용 권한별 해결 가이드 출력 (System Settings 경로 + `tccutil reset` 명령)
-- [ ] `node` 바이너리 경로 출력 + Full Disk Access 추가 안내
-- [ ] GitHub 인증 상태 확인
+- [x] `cli/doctor.ts` 신규 생성
+- [x] `src/index.ts`에 `doctor` 서브커맨드 등록
+- [x] 시스템 요구사항 확인 (Node.js, Claude CLI, gh CLI, Playwright)
+- [x] macOS 권한 확인 (Automation, Screen Recording, Accessibility, Full Disk Access)
+- [x] 미허용 권한별 해결 가이드 출력 (System Settings 경로 + `tccutil reset` 명령)
+- [x] `node` 바이너리 경로 출력 + Full Disk Access 추가 안내
+- [x] GitHub 인증 상태 확인
 
 ### PermissionWatcher 개선
-- [ ] 자동 클릭 시 대상 앱 이름 로깅
-- [ ] 자동 클릭 3회 연속 실패 시 메신저로 수동 조치 안내
-- [ ] `security.autoApprovePermissions` config 옵션 추가
+- [x] 자동 클릭 시 대상 앱 이름 로깅
+- [x] 자동 클릭 3회 연속 실패 시 메신저로 수동 조치 안내
+- [x] `security.autoApprovePermissions` config 옵션 추가
 
 ### 테스트
-- [ ] `doctor` 명령 출력 포맷 테스트
-- [ ] TCC 트리거 함수 단위 테스트 (osascript 호출 mock)
+- [x] `doctor` 명령 출력 포맷 테스트
+- [x] TCC 트리거 함수 단위 테스트 (osascript 호출 mock)
 
 ---
 

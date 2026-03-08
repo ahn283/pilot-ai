@@ -151,6 +151,7 @@ export class PermissionWatcher {
   private intervalId: ReturnType<typeof setInterval> | null = null;
   private notify: (message: string) => void;
   private hasAccessibility = false;
+  private consecutiveFailures = 0;
 
   constructor(notify: (message: string) => void) {
     this.notify = notify;
@@ -218,15 +219,74 @@ end tell`;
       const { stdout } = await execFileAsync('osascript', ['-e', script], { timeout: 8_000 });
       const approved = stdout.trim();
       if (approved) {
+        this.consecutiveFailures = 0;
         const dialogNames = approved.split('|').filter(Boolean);
         for (const name of dialogNames) {
           this.notify(`Auto-approved macOS permission: "${name}"`);
         }
       }
     } catch {
-      // Scan failure is non-critical, silently retry next interval
+      this.consecutiveFailures++;
+      if (this.consecutiveFailures === 3) {
+        this.notify(
+          'Auto-approve failed 3 times in a row. ' +
+          'Please manually handle macOS permission popups or check Accessibility settings.',
+        );
+      }
     }
   }
+}
+
+/**
+ * Target apps for bulk Automation permission triggering.
+ * Each entry triggers a TCC popup for the source app (Terminal/node) → target app combination.
+ */
+const TCC_TARGET_APPS = [
+  { name: 'System Events', script: 'tell application "System Events" to get name of first process' },
+  { name: 'Finder', script: 'tell application "Finder" to get name of first Finder window' },
+  { name: 'Calendar', script: 'tell application "Calendar" to get name of first calendar' },
+  { name: 'Mail', script: 'tell application "Mail" to get mailbox count of first account' },
+  { name: 'Safari', script: 'tell application "Safari" to get name of first window' },
+  { name: 'Terminal', script: 'tell application "Terminal" to get name of first window' },
+];
+
+/**
+ * Triggers Automation (AppleEvents) permission for multiple target apps at once.
+ * Each call causes a TCC popup for apps not yet authorized.
+ * Returns per-app results.
+ */
+export async function triggerBulkAutomationPermissions(): Promise<PermissionCheckResult[]> {
+  console.log('\n  Triggering Automation permissions for common apps...');
+  console.log('  Multiple permission popups may appear. Click "Allow" on each.\n');
+
+  const results: PermissionCheckResult[] = [];
+  for (const app of TCC_TARGET_APPS) {
+    process.stdout.write(`  ${app.name}... `);
+    try {
+      await execFileAsync('osascript', ['-e', app.script], { timeout: 15_000 });
+      console.log('ok');
+      results.push({ name: app.name, granted: true });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      if (msg.includes('not allowed') || msg.includes('1743') || msg.includes('not permitted')) {
+        console.log('denied (click Allow if popup appeared)');
+        results.push({ name: app.name, granted: false, error: 'Permission denied' });
+      } else {
+        // App not running or other non-permission error — treat as ok
+        console.log('ok (app not running)');
+        results.push({ name: app.name, granted: true });
+      }
+    }
+  }
+
+  const denied = results.filter(r => !r.granted);
+  if (denied.length === 0) {
+    console.log('\n  All Automation permissions granted!');
+  } else {
+    console.log(`\n  ${denied.length} app(s) need permission. Re-run or add manually in System Settings.`);
+  }
+
+  return results;
 }
 
 /**
