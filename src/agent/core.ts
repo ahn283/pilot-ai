@@ -12,7 +12,7 @@ import { analyzeProjectIfNew } from './project-analyzer.js';
 import { buildSkillsContext } from './skills.js';
 import { buildToolDescriptions } from './tool-descriptions.js';
 import { getMcpConfigPathIfExists } from '../tools/figma-mcp.js';
-import { buildMcpContext } from './mcp-manager.js';
+import { buildMcpContext, getInstalledServers } from './mcp-manager.js';
 import { PilotError } from '../utils/errors.js';
 import { getSession, createSession, touchSession, cleanupSessions } from './session.js';
 import { detectPermissionError, PermissionWatcher } from '../security/permissions.js';
@@ -320,6 +320,11 @@ You have a credential store at ~/.pilot/credentials/. Use it to store and retrie
 
     const mcpConfigPath = await getMcpConfigPathIfExists() ?? undefined;
 
+    // Build allowedTools list including MCP server tools
+    const installedServers = await getInstalledServers();
+    const mcpToolPatterns = installedServers.map((id) => `mcp__${id}`);
+    const allowedTools = [...DEFAULT_ALLOWED_TOOLS, ...mcpToolPatterns];
+
     // Throttled thinking reporter — sends thinking snippets to messenger at most once per 5 seconds
     let lastThinkingReport = 0;
     let thinkingBuffer = '';
@@ -329,7 +334,7 @@ You have a credential store at ~/.pilot/credentials/. Use it to store and retrie
       prompt: msg.text,
       systemPrompt: resumeSessionId ? undefined : systemPrompt, // Only send system prompt on first turn
       cwd: projectPath,
-      allowedTools: DEFAULT_ALLOWED_TOOLS,
+      allowedTools,
       mcpConfigPath,
       onToolUse: (status) => onStatus?.(status),
       onThinking: this.config.agent?.showThinking !== false ? (text) => {
