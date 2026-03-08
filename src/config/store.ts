@@ -12,12 +12,15 @@ export function getConfigPath(): string {
   return path.join(getPilotDir(), 'config.json');
 }
 
-const PILOT_SUBDIRS = ['logs', 'memory', 'memory/projects', 'memory/history', 'skills'];
+const PILOT_SUBDIRS = ['logs', 'memory', 'memory/projects', 'memory/history', 'skills', 'credentials'];
 
 export async function ensurePilotDir(): Promise<void> {
-  await fs.mkdir(getPilotDir(), { recursive: true });
+  await fs.mkdir(getPilotDir(), { recursive: true, mode: 0o700 });
   for (const sub of PILOT_SUBDIRS) {
-    await fs.mkdir(path.join(getPilotDir(), sub), { recursive: true });
+    const dirPath = path.join(getPilotDir(), sub);
+    // credentials directory gets stricter permissions
+    const mode = sub === 'credentials' ? 0o700 : undefined;
+    await fs.mkdir(dirPath, { recursive: true, mode });
   }
 }
 

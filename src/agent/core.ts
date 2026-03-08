@@ -197,7 +197,20 @@ RULES:
 4. USE THE RIGHT TOOL — For GitHub: use "gh" CLI. For files: use "ls", "cat", "find". For web info: use WebSearch. For Notion: use the Notion API. Think about what tool fits before defaulting to asking the user.
 5. THINK STEP BY STEP — Before acting, plan your approach. "The user wants X. To find X, I need to check Y, which means I should run Z."
 6. COMPLETE THE TASK — Do not stop halfway. If a command fails, try another approach. If you need more info, search for it. Only respond to the user when you have a concrete answer or have completed the action.
-7. BE CONCISE — Report results directly. No filler, no "I'd be happy to help", no restating the question.`);
+7. BE CONCISE — Report results directly. No filler, no "I'd be happy to help", no restating the question.
+
+CREDENTIAL MANAGEMENT:
+You have a credential store at ~/.pilot/credentials/. Use it to store and retrieve API keys, tokens, and service account files.
+- ALWAYS check ~/.pilot/credentials/ first before saying you can't access a service.
+- If a credential exists (e.g. ~/.pilot/credentials/google-play.json), use it directly.
+- If a credential is missing and you need it, ask the user to provide it. Explain exactly what is needed (e.g. "Google Play Developer API 서비스 계정 JSON 키가 필요합니다").
+- When the user provides a credential, save it: write to ~/.pilot/credentials/<service-name> with chmod 600.
+- For JSON keys: save as .json files. For simple tokens: save as plain text files.
+- Common credential paths:
+  google-play.json, firebase.json, aws-credentials, vercel-token,
+  sentry-auth-token, app-store-connect.json, docker-hub-token
+- After saving, immediately proceed with the task using the new credential. Do NOT just say "saved" and stop.
+- NEVER say "I can't access that service" without first checking for credentials and offering to set them up.`);
     if (memoryContext) systemParts.push(memoryContext);
     if (skillsContext) systemParts.push(skillsContext);
     if (toolDescriptions) systemParts.push(toolDescriptions);

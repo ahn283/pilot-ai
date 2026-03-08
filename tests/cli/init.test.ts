@@ -58,7 +58,7 @@ describe('runInit - CLI mode with Slack', () => {
     vi.mocked(checkClaudeCliAuth).mockResolvedValue(true);
     vi.mocked(inquirer.prompt)
       .mockResolvedValueOnce({ useApi: false }) // Claude: use CLI
-      .mockResolvedValueOnce({ platform: 'slack' }) // Messenger: Slack
+      .mockResolvedValueOnce({ platformChoice: '1' }) // Messenger: Slack
       .mockResolvedValueOnce({
         botToken: 'xoxb-test',
         appToken: 'xapp-test',
@@ -89,7 +89,7 @@ describe('runInit - API mode with Telegram', () => {
     vi.mocked(checkClaudeCli).mockResolvedValue(false);
     vi.mocked(inquirer.prompt)
       .mockResolvedValueOnce({ apiKey: 'sk-test-key' }) // API key (no CLI)
-      .mockResolvedValueOnce({ platform: 'telegram' }) // Messenger: Telegram
+      .mockResolvedValueOnce({ platformChoice: '2' }) // Messenger: Telegram
       .mockResolvedValueOnce({
         botToken: '123456:ABC-DEF',
         chatId: '99999',
@@ -119,7 +119,7 @@ describe('runInit - CLI exists but choose API', () => {
     vi.mocked(inquirer.prompt)
       .mockResolvedValueOnce({ useApi: true }) // Choose API despite CLI
       .mockResolvedValueOnce({ apiKey: 'sk-my-key' }) // Enter API key
-      .mockResolvedValueOnce({ platform: 'telegram' })
+      .mockResolvedValueOnce({ platformChoice: '2' })
       .mockResolvedValueOnce({
         botToken: '111:TOKEN',
         chatId: '12345',

@@ -125,17 +125,17 @@ interface MessengerSetupResult {
 async function setupMessenger(): Promise<MessengerSetupResult> {
   console.log('\n── Messenger Setup ──\n');
 
-  const { platform } = await inquirer.prompt([
+  console.log('  1. Slack');
+  console.log('  2. Telegram\n');
+  const { platformChoice } = await inquirer.prompt([
     {
-      type: 'list',
-      name: 'platform',
-      message: 'Select messenger platform:',
-      choices: [
-        { name: 'Slack', value: 'slack' },
-        { name: 'Telegram', value: 'telegram' },
-      ],
+      type: 'input',
+      name: 'platformChoice',
+      message: 'Select messenger platform (1 or 2):',
+      validate: (input: string) => ['1', '2'].includes(input.trim()) || 'Enter 1 or 2.',
     },
   ]);
+  const platform = platformChoice.trim() === '1' ? 'slack' : 'telegram';
 
   if (platform === 'slack') {
     return setupSlack();
