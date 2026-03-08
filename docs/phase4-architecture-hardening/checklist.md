@@ -164,11 +164,11 @@
 
 ## 4.11 [P1] 에러 처리 통일
 
-- [ ] `src/utils/errors.ts` 생성 (PilotError, AuthError, ToolError, ConfigError, ExternalApiError, TimeoutError)
-- [ ] 각 에러에 `code`, `userMessage`, `cause` 포함
-- [ ] `core.ts` 에러 타입별 분기 처리 + 사용자 친화적 메시지
-- [ ] 기존 silent catch(`.catch(() => {})`) 제거 — 최소한 로깅 추가
-- [ ] 에러 클래스 단위 테스트
+- [x] `src/utils/errors.ts` 생성 (PilotError, AuthError, ToolError, ConfigError, ExternalApiError, TimeoutError)
+- [x] 각 에러에 `code`, `userMessage`, `cause` 포함
+- [x] `core.ts` 에러 타입별 분기 처리 + 사용자 친화적 메시지
+- [x] 기존 silent catch(`.catch(() => {})`) 제거 — 최소한 로깅 추가
+- [x] 에러 클래스 단위 테스트
 
 ---
 

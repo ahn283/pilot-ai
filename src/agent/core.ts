@@ -13,6 +13,7 @@ import { buildSkillsContext } from './skills.js';
 import { buildToolDescriptions } from './tool-descriptions.js';
 import { getMcpConfigPathIfExists } from '../tools/figma-mcp.js';
 import { buildMcpContext } from './mcp-manager.js';
+import { PilotError } from '../utils/errors.js';
 import { getSession, createSession, touchSession, cleanupSessions } from './session.js';
 import { detectPermissionError, PermissionWatcher } from '../security/permissions.js';
 import { isGhAuthenticated } from '../tools/github.js';
@@ -178,11 +179,17 @@ export class AgentCore {
         await this.messenger.removeReaction?.(msg.channelId, incomingTs, 'gear');
         await this.messenger.addReaction?.(msg.channelId, incomingTs, 'x');
 
-        // Check if this is a macOS permission error and provide actionable guidance
-        const permissionHint = detectPermissionError(errorMsg);
-        const displayMsg = permissionHint
-          ? `❌ ${permissionHint}`
-          : `❌ Error: ${errorMsg}`;
+        // Determine user-friendly message based on error type
+        let displayMsg: string;
+        if (err instanceof PilotError) {
+          displayMsg = `❌ ${err.userMessage}`;
+        } else {
+          // Check if this is a macOS permission error and provide actionable guidance
+          const permissionHint = detectPermissionError(errorMsg);
+          displayMsg = permissionHint
+            ? `❌ ${permissionHint}`
+            : `❌ Error: ${errorMsg}`;
+        }
         await this.messenger.updateText(msg.channelId, statusMsgId, displayMsg);
 
         await writeAuditLog({
