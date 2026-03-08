@@ -1,5 +1,7 @@
 import http from 'node:http';
 import crypto from 'node:crypto';
+import { getMetrics } from '../utils/logger.js';
+import { getClaudeCircuitState } from '../agent/claude.js';
 
 export interface CommandRequest {
   command: string;
@@ -85,9 +87,23 @@ export class ApiServer {
       return;
     }
 
-    // Health check
+    // Health check with component statuses
     if (req.method === 'GET' && req.url === '/health') {
-      this.sendJson(res, 200, { ok: true, status: 'running' });
+      const claudeState = getClaudeCircuitState();
+      const metrics = getMetrics();
+      const components = {
+        claude: claudeState === 'CLOSED' ? 'healthy' : claudeState === 'HALF_OPEN' ? 'degraded' : 'unhealthy',
+        api: 'healthy',
+      };
+      const overallStatus = Object.values(components).includes('unhealthy') ? 'degraded' : 'running';
+
+      this.sendJson(res, 200, {
+        ok: overallStatus !== 'degraded',
+        status: overallStatus,
+        components,
+        metrics,
+        uptime: Math.floor(process.uptime()),
+      });
       return;
     }
 

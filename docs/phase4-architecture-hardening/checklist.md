@@ -221,6 +221,6 @@
 
 ## 4.16 [P3] 헬스체크 강화
 
-- [ ] `/health` 응답에 messenger/claude/github/queue 상태 포함
-- [ ] 비정상 시 `status: "degraded"` 반환
-- [ ] 헬스체크 단위 테스트
+- [x] `/health` 응답에 messenger/claude/github/queue 상태 포함
+- [x] 비정상 시 `status: "degraded"` 반환
+- [x] 헬스체크 단위 테스트

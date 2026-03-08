@@ -46,10 +46,15 @@ afterEach(async () => {
 });
 
 describe('ApiServer', () => {
-  it('health check', async () => {
+  it('health check returns component statuses and metrics', async () => {
     const { status, data } = await request('GET', '/health');
     expect(status).toBe(200);
     expect(data.ok).toBe(true);
+    expect(data.status).toBe('running');
+    expect(data.components).toBeDefined();
+    expect((data.components as Record<string, string>).claude).toBe('healthy');
+    expect(data.metrics).toBeDefined();
+    expect(typeof data.uptime).toBe('number');
   });
 
   it('POST /api/command with valid token', async () => {
