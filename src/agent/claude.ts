@@ -13,6 +13,10 @@ export interface ClaudeCliOptions {
   mcpConfigPath?: string;
   timeoutMs?: number;
   onToolUse?: (status: string) => void;
+  /** Start a new session with this UUID */
+  sessionId?: string;
+  /** Resume an existing session by its UUID */
+  resumeSessionId?: string;
 }
 
 export interface ClaudeCliResult {
@@ -108,9 +112,19 @@ function describeToolUse(toolName: string, input?: Record<string, unknown>): str
  * Runs `claude -p --output-format json` and parses the JSON response.
  */
 export async function invokeClaudeCli(options: ClaudeCliOptions): Promise<ClaudeCliResult> {
-  const { prompt, systemPrompt, cwd, allowedTools, mcpConfigPath, timeoutMs = DEFAULT_TIMEOUT_MS, onToolUse } = options;
+  const { prompt, systemPrompt, cwd, allowedTools, mcpConfigPath, timeoutMs = DEFAULT_TIMEOUT_MS, onToolUse, sessionId, resumeSessionId } = options;
 
-  const args = ['-p', '--output-format', 'json'];
+  const args: string[] = [];
+
+  // Session management: --resume takes precedence (continuing existing session)
+  if (resumeSessionId) {
+    args.push('-p', '--resume', resumeSessionId, '--output-format', 'json');
+  } else {
+    args.push('-p', '--output-format', 'json');
+    if (sessionId) {
+      args.push('--session-id', sessionId);
+    }
+  }
 
   if (cwd) {
     args.push('--cwd', cwd);

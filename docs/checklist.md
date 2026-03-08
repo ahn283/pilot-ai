@@ -381,6 +381,18 @@
 - [x] `agent/tool-descriptions.ts` - installMcpServer, uninstallMcpServer, listMcpServers 도구 추가
 - [x] `agent/core.ts` - MCP 컨텍스트를 시스템 프롬프트에 주입
 
+### 3.12 Session Continuity (멀티턴 코딩)
+- [x] `agent/session.ts` - 세션 스토어
+  - [x] 메신저 스레드 ID ↔ Claude 세션 ID 매핑
+  - [x] 세션 생성/조회/갱신
+  - [x] TTL 기반 자동 만료 (24시간)
+  - [x] JSON 파일 영속화 (`~/.pilot/sessions.json`)
+- [x] `agent/claude.ts` - `--session-id` (새 세션), `--resume` (기존 세션 이어가기) 플래그 지원
+- [x] `agent/core.ts` - 스레드 기반 세션 연속성 통합
+  - [x] 같은 스레드 메시지는 동일 Claude 세션으로 이어감
+  - [x] 첫 턴에만 시스템 프롬프트 전송 (이후 턴은 resume만)
+  - [x] 코딩 워크플로우 시스템 프롬프트 규칙 추가 (Rule 8)
+
 ### 3.7 Voice Input/Output
 - [x] TTS: macOS `say` 명령 (voice, rate, output file)
 - [x] STT: Whisper API 연동

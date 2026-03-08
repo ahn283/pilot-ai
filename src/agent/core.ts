@@ -13,6 +13,7 @@ import { buildSkillsContext } from './skills.js';
 import { buildToolDescriptions } from './tool-descriptions.js';
 import { getMcpConfigPathIfExists } from '../tools/figma-mcp.js';
 import { buildMcpContext } from './mcp-manager.js';
+import { getSession, createSession, touchSession, cleanupSessions } from './session.js';
 import { detectPermissionError, PermissionWatcher } from '../security/permissions.js';
 
 function log(message: string): void {
@@ -165,6 +166,7 @@ export class AgentCore {
 
   /**
    * Resolves project from message, builds memory context, and invokes Claude.
+   * Uses session continuity: messages in the same thread share a Claude session.
    */
   private async invokeClaudeWithContext(
     msg: IncomingMessage,
@@ -199,6 +201,7 @@ RULES:
 5. THINK STEP BY STEP — Before acting, plan your approach. "The user wants X. To find X, I need to check Y, which means I should run Z."
 6. COMPLETE THE TASK — Do not stop halfway. If a command fails, try another approach. If you need more info, search for it. Only respond to the user when you have a concrete answer or have completed the action.
 7. BE CONCISE — Report results directly. No filler, no "I'd be happy to help", no restating the question.
+8. CODING TASKS — When asked to write or modify code, follow this workflow: understand → implement → build → test → fix errors → report. You have full access to the filesystem and shell. Write code, run builds, execute tests, and iterate until the task is done. Never say "I can't write code" — you absolutely can.
 
 CREDENTIAL MANAGEMENT:
 You have a credential store at ~/.pilot/credentials/. Use it to store and retrieve API keys, tokens, and service account files.
@@ -233,14 +236,38 @@ You have a credential store at ~/.pilot/credentials/. Use it to store and retrie
       });
     }
 
+    // Session continuity: map messenger threads to Claude sessions
+    const threadId = msg.threadId ?? msg.channelId;
+    const existingSession = await getSession(msg.platform, msg.channelId, threadId);
+
+    let sessionId: string | undefined;
+    let resumeSessionId: string | undefined;
+
+    if (existingSession) {
+      // Resume existing session — Claude retains full conversation context
+      resumeSessionId = existingSession.sessionId;
+      await touchSession(msg.platform, msg.channelId, threadId);
+      log(`Resuming session ${resumeSessionId} (turn ${existingSession.turnCount + 1})`);
+    } else {
+      // New session — create and store mapping
+      const session = await createSession(msg.platform, msg.channelId, threadId, projectPath);
+      sessionId = session.sessionId;
+      log(`New session ${sessionId}`);
+    }
+
+    // Periodically clean up expired sessions (non-blocking)
+    cleanupSessions().catch(() => {});
+
     const mcpConfigPath = await getMcpConfigPathIfExists() ?? undefined;
     const result = await invokeClaudeCli({
       prompt: msg.text,
-      systemPrompt,
+      systemPrompt: resumeSessionId ? undefined : systemPrompt, // Only send system prompt on first turn
       cwd: projectPath,
       allowedTools: DEFAULT_ALLOWED_TOOLS,
       mcpConfigPath,
       onToolUse: (status) => onStatus?.(status),
+      sessionId,
+      resumeSessionId,
     });
     return result.result;
   }

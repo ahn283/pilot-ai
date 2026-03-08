@@ -56,6 +56,8 @@ Pilot-AI is a local AI agent that lives on your Mac. Send it natural-language co
 - **Notion integration** — search, create, update pages and databases
 - **Google integration** — Gmail, Google Calendar, and Google Drive via OAuth2
 - **MCP auto-discovery** — agent detects needed MCP servers and proposes installation with one-click approval
+- **Coding agent** — writes code, runs builds, executes tests, and iterates until the task is done
+- **Session continuity** — messages in the same thread share a Claude session with full conversation context
 - **Scheduled tasks** — cron-like jobs with natural language scheduling
 - **Skills system** — teach the agent reusable procedures
 - **Project awareness** — resolves projects, remembers context per project
@@ -125,6 +127,27 @@ Just message your agent in Slack or Telegram:
 | `Check my Google Calendar for today's schedule` | Reads Google Calendar events and summarizes |
 | `Send a draft email to john@example.com` | Composes a Gmail draft with the given content |
 | `List files in my Google Drive "Projects" folder` | Browses Google Drive and lists folder contents |
+
+### Coding Sessions
+
+The agent can write, build, test, and iterate on code — just like Claude Code. Messages in the same thread maintain full conversation context:
+
+```
+You:    "Add a /health endpoint to the API server in fridgify"
+Agent:  ✏️ Editing file... ⚡ Running: npm run build... ✅ Done!
+        Added GET /health endpoint returning { status: "ok", uptime: ... }
+        Build passes, tests pass.
+
+You:    "Also add a test for it"             ← same thread, agent remembers context
+Agent:  ✏️ Writing test... ⚡ Running: npm test...
+        Added test in tests/api/health.test.ts — 3 assertions, all pass.
+
+You:    "Commit and push"
+Agent:  📂 Checking git... ⚡ Running: git commit...
+        Committed: "feat: add /health endpoint" and pushed to origin/main.
+```
+
+Each Slack/Telegram thread maps to a persistent Claude session. The agent retains full context across messages — no need to repeat yourself.
 
 ## CLI Reference
 
