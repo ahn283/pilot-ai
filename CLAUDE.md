@@ -64,6 +64,12 @@ Every project/feature MUST follow this two-phase process. Never skip or reorder 
 - 커밋은 체크리스트 항목 단위로 atomic하게.
 - 구현 중 요구사항 변경 시, Phase A로 돌아가 PRD/체크리스트 먼저 수정.
 
+## Versioning
+
+- Default: patch bump (세 번째 자리, e.g. 0.5.0 → 0.5.1). 일반 업데이트, 버그 수정, 기능 추가 모두 patch.
+- Minor bump (두 번째 자리, e.g. 0.5.x → 0.6.0): 사용자가 명시적으로 요청할 때만.
+- 아직 pre-1.0 테스트 단계이므로 버전을 보수적으로 관리.
+
 ## Conventions
 
 - ESM modules (`"type": "module"` in package.json)
