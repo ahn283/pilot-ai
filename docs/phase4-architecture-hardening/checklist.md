@@ -144,11 +144,11 @@
 
 ## 4.9 [P1] 재시도 & 서킷 브레이커
 
-- [ ] `src/utils/retry.ts` 구현 (지수 백오프, jitter, 최대 3회)
-- [ ] `src/utils/circuit-breaker.ts` 구현 (CLOSED/OPEN/HALF-OPEN 상태 머신)
-- [ ] `claude.ts`에 서킷 브레이커 적용
-- [ ] 외부 API 도구(Notion, Linear, Google)에 재시도 적용
-- [ ] 재시도/서킷 브레이커 단위 테스트
+- [x] `src/utils/retry.ts` 구현 (지수 백오프, jitter, 최대 3회)
+- [x] `src/utils/circuit-breaker.ts` 구현 (CLOSED/OPEN/HALF-OPEN 상태 머신)
+- [x] `claude.ts`에 서킷 브레이커 적용
+- [x] 외부 API 도구(Notion, Linear, Google)에 재시도 적용
+- [x] 재시도/서킷 브레이커 단위 테스트
 
 ---
 

@@ -2,8 +2,15 @@ import { spawn } from 'node:child_process';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import Anthropic from '@anthropic-ai/sdk';
+import { CircuitBreaker } from '../utils/circuit-breaker.js';
 
 const execFileAsync = promisify(execFile);
+
+/** Circuit breaker for Claude CLI invocations */
+const claudeCircuit = new CircuitBreaker({
+  failureThreshold: 3,
+  resetTimeout: 120_000, // 2 minutes
+});
 
 export interface ClaudeCliOptions {
   prompt: string;
@@ -107,11 +114,21 @@ function describeToolUse(toolName: string, input?: Record<string, unknown>): str
   }
 }
 
+/** Expose circuit breaker state for health checks */
+export function getClaudeCircuitState() {
+  return claudeCircuit.getState();
+}
+
 /**
  * Invokes the Claude Code CLI as a subprocess.
  * Runs `claude -p --output-format json` and parses the JSON response.
+ * Protected by a circuit breaker to fail fast when Claude CLI is unavailable.
  */
 export async function invokeClaudeCli(options: ClaudeCliOptions): Promise<ClaudeCliResult> {
+  return claudeCircuit.execute(() => invokeClaudeCliInner(options));
+}
+
+async function invokeClaudeCliInner(options: ClaudeCliOptions): Promise<ClaudeCliResult> {
   const { prompt, systemPrompt, cwd, allowedTools, mcpConfigPath, timeoutMs = DEFAULT_TIMEOUT_MS, onToolUse, sessionId, resumeSessionId } = options;
 
   const args: string[] = [];
