@@ -1,9 +1,7 @@
 <p align="center">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="design/logo_dark.svg" />
-    <source media="(prefers-color-scheme: light)" srcset="design/logo_light.svg" />
-    <img src="design/logo_light.svg" alt="Pilot-AI Logo" width="360" />
-  </picture>
+  <a href="https://github.com/ahn283/pilot-ai">
+    <img src="https://raw.githubusercontent.com/ahn283/pilot-ai/main/design/logo_light.svg" alt="Pilot-AI Logo" width="360" />
+  </a>
 </p>
 
 <p align="center">
