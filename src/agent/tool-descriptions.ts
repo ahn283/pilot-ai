@@ -46,5 +46,20 @@ export function buildToolDescriptions(): string {
 <tool name="listSkills">
   <description>List all registered skills.</description>
 </tool>
+<tool name="installMcpServer">
+  <description>Install an MCP server to extend your capabilities. The user will be asked to approve and provide credentials if needed. Use this when a task requires a service integration you don't have yet.</description>
+  <params>
+    <param name="serverId" type="string">Server ID from the registry (e.g. "github", "notion", "slack", "postgres")</param>
+  </params>
+</tool>
+<tool name="uninstallMcpServer">
+  <description>Remove an installed MCP server.</description>
+  <params>
+    <param name="serverId" type="string">Server ID to remove</param>
+  </params>
+</tool>
+<tool name="listMcpServers">
+  <description>List all MCP servers — both installed and available from the registry.</description>
+</tool>
 </AVAILABLE_TOOLS>`;
 }

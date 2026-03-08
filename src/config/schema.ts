@@ -41,6 +41,13 @@ export const configSchema = z.object({
       personalAccessToken: z.string(),
     })
     .optional(),
+  google: z
+    .object({
+      clientId: z.string(),
+      clientSecret: z.string(),
+      services: z.array(z.enum(['gmail', 'calendar', 'drive'])).default([]),
+    })
+    .optional(),
   safety: z.object({
     dangerousActionsRequireApproval: z.boolean().default(true),
     approvalTimeoutMinutes: z.number().default(30),

@@ -87,6 +87,16 @@ async function resolveKeychainSecrets(config: PilotConfig): Promise<PilotConfig>
     resolved.linear.apiKey = (await getSecret('linear-api-key')) ?? '';
   }
 
+  // Google
+  if (resolved.google) {
+    if (resolved.google.clientId === '***keychain***') {
+      resolved.google.clientId = (await getSecret('google-client-id')) ?? '';
+    }
+    if (resolved.google.clientSecret === '***keychain***') {
+      resolved.google.clientSecret = (await getSecret('google-client-secret')) ?? '';
+    }
+  }
+
   return resolved;
 }
 

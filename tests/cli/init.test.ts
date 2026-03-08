@@ -68,6 +68,7 @@ describe('runInit - CLI mode with Slack', () => {
       .mockResolvedValueOnce({ setupNotion: false })
       .mockResolvedValueOnce({ setupObsidian: false })
       .mockResolvedValueOnce({ setupFigma: false })
+      .mockResolvedValueOnce({ setupGoogle: false })
       .mockResolvedValueOnce({ setupLinear: false })
       .mockResolvedValueOnce({ install: false });
 
@@ -97,6 +98,7 @@ describe('runInit - API mode with Telegram', () => {
       .mockResolvedValueOnce({ setupNotion: false })
       .mockResolvedValueOnce({ setupObsidian: false })
       .mockResolvedValueOnce({ setupFigma: false })
+      .mockResolvedValueOnce({ setupGoogle: false })
       .mockResolvedValueOnce({ setupLinear: false })
       .mockResolvedValueOnce({ install: false });
 
@@ -127,6 +129,7 @@ describe('runInit - CLI exists but choose API', () => {
       .mockResolvedValueOnce({ setupNotion: false })
       .mockResolvedValueOnce({ setupObsidian: false })
       .mockResolvedValueOnce({ setupFigma: false })
+      .mockResolvedValueOnce({ setupGoogle: false })
       .mockResolvedValueOnce({ setupLinear: false })
       .mockResolvedValueOnce({ install: false });
 

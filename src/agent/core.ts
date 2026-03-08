@@ -12,6 +12,7 @@ import { analyzeProjectIfNew } from './project-analyzer.js';
 import { buildSkillsContext } from './skills.js';
 import { buildToolDescriptions } from './tool-descriptions.js';
 import { getMcpConfigPathIfExists } from '../tools/figma-mcp.js';
+import { buildMcpContext } from './mcp-manager.js';
 import { detectPermissionError, PermissionWatcher } from '../security/permissions.js';
 
 function log(message: string): void {
@@ -211,6 +212,10 @@ You have a credential store at ~/.pilot/credentials/. Use it to store and retrie
   sentry-auth-token, app-store-connect.json, docker-hub-token
 - After saving, immediately proceed with the task using the new credential. Do NOT just say "saved" and stop.
 - NEVER say "I can't access that service" without first checking for credentials and offering to set them up.`);
+    // MCP server context (installed + available servers)
+    const mcpContext = await buildMcpContext();
+    if (mcpContext) systemParts.push(mcpContext);
+
     if (memoryContext) systemParts.push(memoryContext);
     if (skillsContext) systemParts.push(skillsContext);
     if (toolDescriptions) systemParts.push(toolDescriptions);

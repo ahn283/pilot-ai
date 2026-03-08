@@ -346,6 +346,41 @@
   - [x] 시간대 자동 처리
   - [x] 빈 시간 검색 (focus block 자동 생성)
 
+### 3.10 Google Integration (통합 OAuth2)
+- [x] `tools/google-auth.ts` - 공유 Google OAuth2 모듈
+  - [x] OAuth2 인증 URL 생성 (Gmail/Calendar/Drive 통합 스코프)
+  - [x] Authorization code → 토큰 교환
+  - [x] 토큰 자동 refresh
+  - [x] 안전한 토큰 저장 (`~/.pilot/credentials/google-tokens.json`)
+- [x] `tools/google-calendar.ts` - Google Calendar API
+  - [x] 캘린더 목록 조회
+  - [x] 이벤트 조회 (오늘/이번 주/날짜 범위)
+  - [x] 이벤트 생성/삭제
+  - [x] 빈 시간 검색
+- [x] `tools/google-drive.ts` - Google Drive API
+  - [x] 파일/폴더 목록 조회
+  - [x] 파일 검색
+  - [x] 파일 내용 다운로드 (Docs/Sheets 자동 변환)
+  - [x] 파일 생성 (multipart upload)
+  - [x] 폴더 탐색/검색
+- [x] `config/schema.ts` - Google 설정 섹션 (clientId, clientSecret, services)
+- [x] `cli/init.ts` - 온보딩에 Google 연동 추가 (서비스 선택 포함)
+
+### 3.11 MCP Server Auto-Discovery
+- [x] `tools/mcp-registry.ts` - MCP 서버 레지스트리
+  - [x] 13+ 개 알려진 MCP 서버 내장 (Figma, GitHub, Slack, Notion, Linear, PostgreSQL, SQLite, Puppeteer, Filesystem, Memory, Brave Search, Google Drive, Sentry)
+  - [x] 키워드 기반 자동 매칭 (findMatchingServers)
+  - [x] 카테고리 분류 (design, productivity, development, data, communication)
+- [x] `agent/mcp-manager.ts` - MCP 자동 관리
+  - [x] 설치된 서버 목록 조회 (getInstalledServers)
+  - [x] 필요 서버 자동 감지 (detectNeededServers)
+  - [x] 서버 설치 (installMcpServer) - npm 패키지 + 환경변수 keychain 저장
+  - [x] 서버 제거 (uninstallMcpServer)
+  - [x] 승인 메시지 생성 (buildApprovalMessage)
+  - [x] 시스템 프롬프트 컨텍스트 빌드 (buildMcpContext)
+- [x] `agent/tool-descriptions.ts` - installMcpServer, uninstallMcpServer, listMcpServers 도구 추가
+- [x] `agent/core.ts` - MCP 컨텍스트를 시스템 프롬프트에 주입
+
 ### 3.7 Voice Input/Output
 - [x] TTS: macOS `say` 명령 (voice, rate, output file)
 - [x] STT: Whisper API 연동

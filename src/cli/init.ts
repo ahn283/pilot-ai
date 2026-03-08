@@ -330,6 +330,63 @@ async function setupIntegrations(): Promise<Partial<PilotConfig>> {
     console.log('  Figma configured (MCP server registered).\n');
   }
 
+  // Google (Gmail, Calendar, Drive)
+  const { setupGoogle } = await inquirer.prompt([
+    { type: 'confirm', name: 'setupGoogle', message: 'Set up Google (Gmail, Calendar, Drive)?', default: false },
+  ]);
+  if (setupGoogle) {
+    console.log('\n📋 Google OAuth2 Setup Guide:');
+    console.log('  1. Go to https://console.cloud.google.com/apis/credentials');
+    console.log('  2. Create a new OAuth 2.0 Client ID (Desktop app)');
+    console.log('  3. Enable these APIs in your project:');
+    console.log('     - Gmail API');
+    console.log('     - Google Calendar API');
+    console.log('     - Google Drive API');
+    console.log('  4. Copy the Client ID and Client Secret\n');
+
+    const googleAnswers = await inquirer.prompt([
+      {
+        type: 'password',
+        name: 'clientId',
+        message: 'Google OAuth Client ID:',
+        mask: '*',
+        validate: (input: string) => input.length > 10 || 'Valid Client ID required.',
+      },
+      {
+        type: 'password',
+        name: 'clientSecret',
+        message: 'Google OAuth Client Secret:',
+        mask: '*',
+        validate: (input: string) => input.length > 5 || 'Valid Client Secret required.',
+      },
+    ]);
+
+    console.log('\n  Select which Google services to enable:\n');
+    const { googleServices } = await inquirer.prompt([
+      {
+        type: 'checkbox',
+        name: 'googleServices',
+        message: 'Google services:',
+        choices: [
+          { name: 'Gmail', value: 'gmail', checked: true },
+          { name: 'Google Calendar', value: 'calendar', checked: true },
+          { name: 'Google Drive', value: 'drive', checked: true },
+        ],
+      },
+    ]);
+
+    await setSecret('google-client-id', googleAnswers.clientId);
+    await setSecret('google-client-secret', googleAnswers.clientSecret);
+    result.google = {
+      clientId: '***keychain***',
+      clientSecret: '***keychain***',
+      services: googleServices as Array<'gmail' | 'calendar' | 'drive'>,
+    };
+
+    console.log(`  Google configured (${(googleServices as string[]).join(', ')}).`);
+    console.log('  OAuth token setup will happen on first use via chat.\n');
+  }
+
   // Linear
   const { setupLinear } = await inquirer.prompt([
     { type: 'confirm', name: 'setupLinear', message: 'Set up Linear?', default: false },

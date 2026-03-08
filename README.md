@@ -37,6 +37,9 @@ Pilot-AI is a local AI agent that lives on your Mac. Send it natural-language co
                     ▼             ▼             ▼
               📝 Notion     🔗 GitHub     📋 Linear
               (API)         (CLI)         (API)
+                    ▼             ▼             ▼
+              📧 Gmail      📅 Calendar  📁 Google Drive
+              (OAuth2)      (OAuth2)      (OAuth2)
 ```
 
 - **Runs locally** — your data never leaves your machine
@@ -51,6 +54,8 @@ Pilot-AI is a local AI agent that lives on your Mac. Send it natural-language co
 - **File & shell access** — read, write, search files and run shell commands
 - **GitHub integration** — releases, PRs, issues via `gh` CLI
 - **Notion integration** — search, create, update pages and databases
+- **Google integration** — Gmail, Google Calendar, and Google Drive via OAuth2
+- **MCP auto-discovery** — agent detects needed MCP servers and proposes installation with one-click approval
 - **Scheduled tasks** — cron-like jobs with natural language scheduling
 - **Skills system** — teach the agent reusable procedures
 - **Project awareness** — resolves projects, remembers context per project
@@ -86,7 +91,7 @@ The interactive wizard guides you through:
 
 1. **Claude connection** — detects CLI auth or configures API key
 2. **Messenger** — choose Slack or Telegram, enter tokens
-3. **Integrations** — optionally connect Notion, Obsidian, Figma, Linear
+3. **Integrations** — optionally connect Google (Gmail, Calendar, Drive), Notion, Obsidian, Figma, Linear
 4. **Browser** — installs Playwright Chromium
 5. **Permissions** — requests macOS permissions (Accessibility, Automation, etc.)
 
@@ -112,12 +117,14 @@ Just message your agent in Slack or Telegram:
 
 | Command | What happens |
 |---------|-------------|
-| `~/Github에 어떤 프로젝트가 있어?` | Lists directories, shows project names |
-| `fridgify 최근 배포 내역 알려줘` | Finds the repo, runs `gh release list` |
-| `Notion에 오늘 회의록 작성해줘` | Creates a new Notion page with meeting notes |
-| `브라우저 열어서 Hacker News 탑 5 보여줘` | Opens Playwright, scrapes HN, reports results |
-| `매일 오전 9시에 GitHub PR 리뷰 알려줘` | Creates a scheduled cron job |
-| `Google Play 심사 상태 확인해줘` | Checks for API key, asks if missing, then queries |
+| `What projects are in ~/Github?` | Lists directories, shows project names |
+| `Show me recent releases for fridgify` | Finds the repo, runs `gh release list` |
+| `Create today's meeting notes in Notion` | Creates a new Notion page with meeting notes |
+| `Open browser and show top 5 from Hacker News` | Opens Playwright, scrapes HN, reports results |
+| `Every day at 9am, notify me of GitHub PR reviews` | Creates a scheduled cron job |
+| `Check my Google Calendar for today's schedule` | Reads Google Calendar events and summarizes |
+| `Send a draft email to john@example.com` | Composes a Gmail draft with the given content |
+| `List files in my Google Drive "Projects" folder` | Browses Google Drive and lists folder contents |
 
 ## CLI Reference
 
@@ -149,6 +156,83 @@ pilot-ai project remove <name>           # Remove a project
 1. Message [@BotFather](https://t.me/BotFather) → `/newbot`
 2. Copy the bot token
 3. Use it in `pilot-ai init`
+
+## Google Integration Setup
+
+Pilot-AI supports **Gmail**, **Google Calendar**, and **Google Drive** via Google OAuth2.
+
+### 1. Create a Google Cloud Project
+
+1. Go to [Google Cloud Console](https://console.cloud.google.com/)
+2. Create a new project (or select an existing one)
+3. Navigate to **APIs & Services** > **Library**
+
+### 2. Enable APIs
+
+Enable the following APIs for your project:
+
+- **Gmail API** — for reading/sending emails
+- **Google Calendar API** — for viewing/creating calendar events
+- **Google Drive API** — for browsing/reading/creating files
+
+### 3. Create OAuth 2.0 Credentials
+
+1. Go to **APIs & Services** > **Credentials**
+2. Click **Create Credentials** > **OAuth client ID**
+3. If prompted, configure the **OAuth consent screen**:
+   - User Type: **External** (or Internal for Workspace)
+   - Add your email as a test user
+4. Application type: **Desktop app**
+5. Copy the **Client ID** and **Client Secret**
+
+### 4. Configure in Pilot-AI
+
+Run `pilot-ai init` and select **Yes** when asked about Google integration. Enter your Client ID and Client Secret, and choose which services to enable.
+
+### 5. Authorize on First Use
+
+When you first ask the agent to access Gmail, Calendar, or Drive, it will:
+1. Send you an OAuth authorization URL via Slack/Telegram
+2. You open the URL in a browser and grant permissions
+3. Copy the authorization code back to the agent
+4. The agent stores the tokens securely and proceeds with the task
+
+After initial authorization, tokens refresh automatically — no further action needed.
+
+### Supported Commands
+
+| Service | Example commands |
+|---------|-----------------|
+| **Gmail** | `Check my recent emails`, `Send a draft to john@example.com`, `Search emails about "invoice"` |
+| **Google Calendar** | `What's on my calendar today?`, `Schedule a meeting tomorrow at 2pm`, `Find free time this week` |
+| **Google Drive** | `List files in my Drive`, `Search for "budget" in Drive`, `Read the contents of "Meeting Notes"` |
+
+## MCP Server Auto-Discovery
+
+Pilot-AI includes a built-in registry of 13+ MCP (Model Context Protocol) servers. Instead of manually configuring each integration, the agent **automatically detects** when a task needs an MCP server and proposes installation.
+
+### How it works
+
+1. You ask the agent to do something (e.g., "Check my Sentry errors")
+2. The agent detects that the Sentry MCP server would help
+3. It sends you an approval message via Slack/Telegram:
+   > 🔌 **MCP Server: Sentry** — View and manage Sentry error tracking issues
+   > Package: `@modelcontextprotocol/server-sentry`
+   > Required: SENTRY_AUTH_TOKEN
+4. You approve and provide the required credentials
+5. The server is installed and immediately available
+
+### Built-in Registry
+
+| Category | Servers |
+|----------|---------|
+| **Design** | Figma |
+| **Development** | GitHub, Sentry, Puppeteer, Filesystem |
+| **Productivity** | Notion, Google Drive, Memory, Brave Search |
+| **Communication** | Slack |
+| **Data** | PostgreSQL, SQLite |
+
+You can also manually manage MCP servers by telling the agent: `List MCP servers`, `Install the GitHub MCP server`, or `Remove the Slack MCP server`.
 
 ## Architecture
 
