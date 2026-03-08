@@ -210,12 +210,12 @@
 
 ## 4.15 [P3] 리소스 관리 개선
 
-- [ ] `session.ts` — Promise 기반 로딩 직렬화
-- [ ] `safety.ts` — 승인 타임아웃 후 Map 엔트리 자동 정리
-- [ ] `claude.ts` — lineBuffer 최대 크기 제한 (1MB)
-- [ ] `filesystem.ts` — searchFiles() 최대 재귀 깊이 제한 (기본 20)
-- [ ] `memory.ts` — history 파일 보관 기간 제한 (기본 30일, 자동 삭제)
-- [ ] `heartbeat.ts` — HEARTBEAT.md 파싱 캐싱 (mtime 기반 무효화)
+- [x] `session.ts` — Promise 기반 로딩 직렬화
+- [x] `safety.ts` — 승인 타임아웃 후 Map 엔트리 자동 정리
+- [x] `claude.ts` — lineBuffer 최대 크기 제한 (1MB)
+- [x] `filesystem.ts` — searchFiles() 최대 재귀 깊이 제한 (기본 20)
+- [x] `memory.ts` — history 파일 보관 기간 제한 (기본 30일, 자동 삭제)
+- [x] `heartbeat.ts` — HEARTBEAT.md 파싱 캐싱 (mtime 기반 무효화)
 
 ---
 

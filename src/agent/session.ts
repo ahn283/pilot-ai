@@ -34,7 +34,7 @@ function getSessionStorePath(): string {
 }
 
 let sessions: Map<string, SessionEntry> = new Map();
-let loaded = false;
+let loadPromise: Promise<void> | null = null;
 
 /**
  * Builds a unique key for thread identification.
@@ -44,18 +44,20 @@ function threadKey(platform: string, channelId: string, threadId: string): strin
 }
 
 /**
- * Loads sessions from disk.
+ * Loads sessions from disk. Serialized via Promise to prevent race conditions.
  */
 async function ensureLoaded(): Promise<void> {
-  if (loaded) return;
-  try {
-    const data = await fs.readFile(getSessionStorePath(), 'utf-8');
-    const entries = JSON.parse(data) as SessionEntry[];
-    sessions = new Map(entries.map((e) => [threadKey(e.platform, e.channelId, e.threadId), e]));
-  } catch {
-    sessions = new Map();
-  }
-  loaded = true;
+  if (loadPromise) return loadPromise;
+  loadPromise = (async () => {
+    try {
+      const data = await fs.readFile(getSessionStorePath(), 'utf-8');
+      const entries = JSON.parse(data) as SessionEntry[];
+      sessions = new Map(entries.map((e) => [threadKey(e.platform, e.channelId, e.threadId), e]));
+    } catch {
+      sessions = new Map();
+    }
+  })();
+  return loadPromise;
 }
 
 /**
@@ -171,5 +173,5 @@ export async function getSessionCount(): Promise<number> {
  */
 export function resetSessionStore(): void {
   sessions = new Map();
-  loaded = false;
+  loadPromise = null;
 }

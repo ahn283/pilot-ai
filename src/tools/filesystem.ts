@@ -59,6 +59,8 @@ export async function listDir(dirPath: string, config: PilotConfig): Promise<str
   return entries.map((e) => (e.isDirectory() ? `${e.name}/` : e.name));
 }
 
+const MAX_SEARCH_DEPTH = 20;
+
 export async function searchFiles(
   dirPath: string,
   pattern: string,
@@ -68,19 +70,20 @@ export async function searchFiles(
   const results: string[] = [];
   const regex = new RegExp(pattern, 'i');
 
-  async function walk(dir: string): Promise<void> {
+  async function walk(dir: string, depth: number): Promise<void> {
+    if (depth > MAX_SEARCH_DEPTH) return;
     const entries = await fs.readdir(dir, { withFileTypes: true });
     for (const entry of entries) {
       const fullPath = path.join(dir, entry.name);
       if (entry.name === 'node_modules' || entry.name === '.git') continue;
       if (entry.isDirectory()) {
-        await walk(fullPath);
+        await walk(fullPath, depth + 1);
       } else if (regex.test(entry.name)) {
         results.push(path.relative(resolved, fullPath));
       }
     }
   }
 
-  await walk(resolved);
+  await walk(resolved, 0);
   return results;
 }

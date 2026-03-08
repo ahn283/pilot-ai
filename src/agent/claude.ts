@@ -187,6 +187,10 @@ async function invokeClaudeCliInner(options: ClaudeCliOptions): Promise<ClaudeCl
       // Stream-parse JSONL lines to detect tool usage in real-time
       if (onToolUse) {
         lineBuffer += chunk;
+        // Prevent unbounded buffer growth (max 1MB)
+        if (lineBuffer.length > 1_048_576) {
+          lineBuffer = lineBuffer.slice(-524_288); // Keep last 512KB
+        }
         const lines = lineBuffer.split('\n');
         lineBuffer = lines.pop() ?? '';
         for (const line of lines) {
