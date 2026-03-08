@@ -137,10 +137,12 @@ async function invokeClaudeCliInner(options: ClaudeCliOptions): Promise<ClaudeCl
 
   // Session management: --resume takes precedence (continuing existing session)
   // Use stream-json with --verbose to capture thinking deltas
+  // --dangerously-skip-permissions: pilot-ai runs headless — no one can approve CLI prompts.
+  // pilot-ai has its own auth (allowedUsers) and safety (ApprovalManager) layer.
   if (resumeSessionId) {
-    args.push('-p', '--resume', resumeSessionId, '--output-format', 'stream-json', '--verbose');
+    args.push('-p', '--resume', resumeSessionId, '--output-format', 'stream-json', '--verbose', '--dangerously-skip-permissions');
   } else {
-    args.push('-p', '--output-format', 'stream-json', '--verbose');
+    args.push('-p', '--output-format', 'stream-json', '--verbose', '--dangerously-skip-permissions');
     if (sessionId) {
       args.push('--session-id', sessionId);
     }
