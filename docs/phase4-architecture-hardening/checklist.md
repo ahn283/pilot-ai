@@ -196,15 +196,15 @@
 
 ## 4.14 [P2] OAuth 토큰 관리 통합
 
-- [ ] `src/utils/oauth-manager.ts` 생성 (Keychain 연동)
-- [ ] 자동 refresh (만료 5분 전 선제 갱신)
-- [ ] refresh 실패 시 재시도 (retry 유틸 활용)
-- [ ] `email.ts` 토큰 로직 → OAuthManager 위임
-- [ ] `google-auth.ts` 토큰 로직 → OAuthManager 위임
-- [ ] `google-calendar.ts` 토큰 로직 → OAuthManager 위임
-- [ ] `google-drive.ts` 토큰 로직 → OAuthManager 위임
-- [ ] 중복 코드 제거 확인
-- [ ] OAuthManager 단위 테스트
+- [x] `src/utils/oauth-manager.ts` 생성 (Keychain 연동)
+- [x] 자동 refresh (만료 5분 전 선제 갱신)
+- [x] refresh 실패 시 재시도 (retry 유틸 활용)
+- [x] `email.ts` 토큰 로직 → OAuthManager 위임
+- [x] `google-auth.ts` 토큰 로직 → OAuthManager 위임
+- [x] `google-calendar.ts` 토큰 로직 → OAuthManager 위임
+- [x] `google-drive.ts` 토큰 로직 → OAuthManager 위임
+- [x] 중복 코드 제거 확인
+- [x] OAuthManager 단위 테스트
 
 ---
 
