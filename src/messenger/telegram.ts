@@ -1,5 +1,6 @@
 import { Telegraf } from 'telegraf';
 import type { MessengerAdapter, IncomingMessage, ImageAttachment } from './adapter.js';
+import { splitMessage, MAX_MESSAGE_LENGTH } from './split.js';
 
 export interface TelegramConfig {
   botToken: string;
@@ -104,11 +105,16 @@ export class TelegramAdapter implements MessengerAdapter {
   }
 
   async sendText(channelId: string, text: string, threadId?: string): Promise<string> {
-    const result = await this.bot.telegram.sendMessage(channelId, text, {
-      parse_mode: 'Markdown',
-      ...(threadId ? { reply_parameters: { message_id: parseInt(threadId, 10) } } : {}),
-    });
-    return String(result.message_id);
+    const chunks = splitMessage(text, MAX_MESSAGE_LENGTH.telegram);
+    let lastId = '';
+    for (const chunk of chunks) {
+      const result = await this.bot.telegram.sendMessage(channelId, chunk, {
+        parse_mode: 'Markdown',
+        ...(threadId ? { reply_parameters: { message_id: parseInt(threadId, 10) } } : {}),
+      });
+      lastId = String(result.message_id);
+    }
+    return lastId;
   }
 
   async updateText(channelId: string, messageId: string, text: string): Promise<void> {

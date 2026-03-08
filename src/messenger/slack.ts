@@ -1,5 +1,6 @@
 import { App, type LogLevel } from '@slack/bolt';
 import type { MessengerAdapter, IncomingMessage, ImageAttachment } from './adapter.js';
+import { splitMessage, MAX_MESSAGE_LENGTH } from './split.js';
 
 export interface SlackConfig {
   botToken: string;
@@ -135,12 +136,17 @@ export class SlackAdapter implements MessengerAdapter {
   }
 
   async sendText(channelId: string, text: string, threadId?: string): Promise<string> {
-    const result = await this.app.client.chat.postMessage({
-      channel: channelId,
-      text,
-      thread_ts: threadId,
-    });
-    return result.ts ?? '';
+    const chunks = splitMessage(text, MAX_MESSAGE_LENGTH.slack);
+    let lastTs = '';
+    for (const chunk of chunks) {
+      const result = await this.app.client.chat.postMessage({
+        channel: channelId,
+        text: chunk,
+        thread_ts: threadId,
+      });
+      lastTs = result.ts ?? '';
+    }
+    return lastTs;
   }
 
   async updateText(channelId: string, messageId: string, text: string): Promise<void> {

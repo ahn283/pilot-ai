@@ -133,12 +133,12 @@
 
 ## 4.8 [P1] 메시지 크기 제한 & 분할 전송
 
-- [ ] `messenger/adapter.ts`에 `MAX_MESSAGE_LENGTH` 상수 정의
-- [ ] `slack.ts` — `sendText()` 에서 초과 시 자동 분할
-- [ ] `telegram.ts` — `sendText()` 에서 초과 시 자동 분할
-- [ ] 분할 시 코드 블록(```) 깨짐 방지 처리
-- [ ] 10,000자+ 응답 → 파일 업로드 옵션
-- [ ] 메시지 분할 단위 테스트
+- [x] `messenger/adapter.ts`에 `MAX_MESSAGE_LENGTH` 상수 정의
+- [x] `slack.ts` — `sendText()` 에서 초과 시 자동 분할
+- [x] `telegram.ts` — `sendText()` 에서 초과 시 자동 분할
+- [x] 분할 시 코드 블록(```) 깨짐 방지 처리
+- [x] 10,000자+ 응답 → 파일 업로드 옵션
+- [x] 메시지 분할 단위 테스트
 
 ---
 
