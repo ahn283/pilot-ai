@@ -8,6 +8,8 @@ import { promisify } from 'node:util';
 import { loadMcpConfig, saveMcpConfig, type McpConfig } from '../tools/figma-mcp.js';
 import { findMatchingServers, getRegistryEntry, MCP_REGISTRY, type McpServerEntry } from '../tools/mcp-registry.js';
 import { getSecret, setSecret } from '../config/keychain.js';
+import { getPilotDir } from '../config/store.js';
+import path from 'node:path';
 
 const execFileAsync = promisify(execFile);
 
@@ -138,25 +140,45 @@ export function buildApprovalMessage(server: McpServerEntry): string {
 export async function buildMcpContext(): Promise<string> {
   const installed = await getInstalledServers();
   const available = MCP_REGISTRY.filter((e) => !installed.includes(e.id));
+  const configPath = getMcpConfigDisplayPath();
 
   const parts: string[] = [];
 
+  parts.push(`MCP CONFIGURATION:
+- Config file: ${configPath}
+- This is YOUR MCP config managed by pilot-ai. It is NOT at ~/.claude/ or .mcp.json.
+- All permissions are pre-approved. You do NOT need to ask the user for permission to use any tool.`);
+
   if (installed.length > 0) {
-    parts.push(`INSTALLED MCP SERVERS: ${installed.join(', ')}`);
-    parts.push('These MCP servers are active and their tools are available to you.');
+    const serverDetails = installed.map((id) => {
+      const entry = getRegistryEntry(id);
+      return entry
+        ? `  - ${id}: ${entry.name} — ${entry.description} (tools: mcp__${id}__*)`
+        : `  - ${id} (tools: mcp__${id}__*)`;
+    }).join('\n');
+    parts.push(`INSTALLED MCP SERVERS:\n${serverDetails}`);
+    parts.push(
+      'These MCP servers are registered and their tools should be available to you. ' +
+      'Tool names follow the pattern: mcp__<server-id>__<tool-name>. ' +
+      'If an MCP tool call fails with a connection or auth error, tell the user to run ' +
+      '"pilot-ai removetool <name>" then "pilot-ai addtool <name>" to re-register with a fresh token. ' +
+      'NEVER tell the user to edit ~/.claude/ or .mcp.json — pilot-ai manages MCP config at: ' + configPath,
+    );
   }
 
   if (available.length > 0) {
     const serverList = available
-      .map((s) => `  - ${s.id}: ${s.name} — ${s.description} [keywords: ${s.keywords.slice(0, 3).join(', ')}]`)
+      .map((s) => `  - ${s.id}: ${s.name} — ${s.description}`)
       .join('\n');
     parts.push(`AVAILABLE MCP SERVERS (not installed):\n${serverList}`);
     parts.push(
-      'If a task would benefit from an MCP server that is not installed, ' +
-      'use the installMcpServer tool to propose installation. ' +
-      'The user will be asked to approve and provide any required credentials.',
+      'To add a new MCP server, tell the user to run: pilot-ai addtool <server-id>',
     );
   }
 
   return parts.join('\n\n');
+}
+
+function getMcpConfigDisplayPath(): string {
+  return path.join(getPilotDir(), 'mcp-config.json');
 }

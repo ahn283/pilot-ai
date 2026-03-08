@@ -156,11 +156,10 @@ async function invokeClaudeCliInner(options: ClaudeCliOptions): Promise<ClaudeCl
     args.push('--append-system-prompt', systemPrompt);
   }
 
-  if (allowedTools && allowedTools.length > 0) {
-    for (const tool of allowedTools) {
-      args.push('--allowedTools', tool);
-    }
-  }
+  // NOTE: --allowedTools is intentionally NOT used.
+  // --dangerously-skip-permissions already permits all tools.
+  // Combining --allowedTools with bypass mode is buggy (GitHub #12232)
+  // and can silently block MCP tools.
 
   if (mcpConfigPath) {
     args.push('--mcp-config', mcpConfigPath);
@@ -211,7 +210,14 @@ async function invokeClaudeCliInner(options: ClaudeCliOptions): Promise<ClaudeCl
     });
 
     child.stderr.on('data', (data: Buffer) => {
-      stderr += data.toString();
+      const chunk = data.toString();
+      stderr += chunk;
+      // Log stderr in real-time to surface MCP server errors
+      for (const line of chunk.split('\n')) {
+        if (line.trim()) {
+          console.error(`[claude-cli] ${line}`);
+        }
+      }
     });
 
     child.on('error', (err) => {

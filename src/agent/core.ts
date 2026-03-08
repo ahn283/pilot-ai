@@ -2,7 +2,7 @@ import type { MessengerAdapter, IncomingMessage } from '../messenger/adapter.js'
 import type { PilotConfig } from '../config/schema.js';
 import { isAuthorizedUser } from '../security/auth.js';
 import { writeAuditLog } from '../security/audit.js';
-import { invokeClaudeCli, invokeClaudeApi, DEFAULT_ALLOWED_TOOLS } from './claude.js';
+import { invokeClaudeCli, invokeClaudeApi } from './claude.js';
 import { ApprovalManager } from './safety.js';
 import { buildMemoryContext } from './memory.js';
 import { resolveProject, touchProject } from './project.js';
@@ -12,7 +12,7 @@ import { analyzeProjectIfNew } from './project-analyzer.js';
 import { buildSkillsContext } from './skills.js';
 import { buildToolDescriptions } from './tool-descriptions.js';
 import { getMcpConfigPathIfExists } from '../tools/figma-mcp.js';
-import { buildMcpContext, getInstalledServers } from './mcp-manager.js';
+import { buildMcpContext } from './mcp-manager.js';
 import { PilotError } from '../utils/errors.js';
 import { getSession, createSession, touchSession, cleanupSessions } from './session.js';
 import { detectPermissionError, PermissionWatcher } from '../security/permissions.js';
@@ -319,11 +319,11 @@ You have a credential store at ~/.pilot/credentials/. Use it to store and retrie
     cleanupSessions().catch(() => {});
 
     const mcpConfigPath = await getMcpConfigPathIfExists() ?? undefined;
+    log(`MCP config: ${mcpConfigPath ?? 'none'}`);
 
-    // Build allowedTools list including MCP server tools
-    const installedServers = await getInstalledServers();
-    const mcpToolPatterns = installedServers.map((id) => `mcp__${id}`);
-    const allowedTools = [...DEFAULT_ALLOWED_TOOLS, ...mcpToolPatterns];
+    // No --allowedTools: --dangerously-skip-permissions already permits all tools.
+    // Passing --allowedTools with bypass mode is buggy (GitHub #12232) and can
+    // silently block MCP tools even though they should be allowed.
 
     // Throttled thinking reporter — sends thinking snippets to messenger at most once per 5 seconds
     let lastThinkingReport = 0;
@@ -334,7 +334,6 @@ You have a credential store at ~/.pilot/credentials/. Use it to store and retrie
       prompt: msg.text,
       systemPrompt: resumeSessionId ? undefined : systemPrompt, // Only send system prompt on first turn
       cwd: projectPath,
-      allowedTools,
       mcpConfigPath,
       onToolUse: (status) => onStatus?.(status),
       onThinking: this.config.agent?.showThinking !== false ? (text) => {
