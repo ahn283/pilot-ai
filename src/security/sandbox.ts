@@ -44,6 +44,7 @@ export function isPathAllowed(targetPath: string, config: PilotConfig): boolean 
 
 /**
  * Checks whether a shell command matches the blocklist.
+ * Also splits chained commands (&&, ||, ;, |) and checks each part individually.
  */
 const BLOCKED_PATTERNS: RegExp[] = [
   /rm\s+(-[a-zA-Z]*f[a-zA-Z]*\s+|.*-rf\s+)[\/~]/,  // rm -rf / or rm -rf ~
@@ -56,8 +57,46 @@ const BLOCKED_PATTERNS: RegExp[] = [
   /:(){ :\|:& };:/,                                    // fork bomb
 ];
 
+/** Max command length to prevent DoS via extremely long commands */
+const MAX_COMMAND_LENGTH = 10_000;
+
 export function isCommandBlocked(command: string): boolean {
-  return BLOCKED_PATTERNS.some((pattern) => pattern.test(command));
+  // Length limit
+  if (command.length > MAX_COMMAND_LENGTH) return true;
+
+  // Check the full command first
+  if (BLOCKED_PATTERNS.some((pattern) => pattern.test(command))) return true;
+
+  // Split on shell operators and check each sub-command
+  const subCommands = command.split(/\s*(?:&&|\|\||;)\s*/);
+  for (const sub of subCommands) {
+    const trimmed = sub.trim();
+    if (trimmed && BLOCKED_PATTERNS.some((pattern) => pattern.test(trimmed))) {
+      return true;
+    }
+  }
+
+  // Check inside subshell expressions $(...) and backticks
+  const subshellMatches = command.match(/\$\(([^)]+)\)/g);
+  if (subshellMatches) {
+    for (const match of subshellMatches) {
+      const inner = match.slice(2, -1);
+      if (BLOCKED_PATTERNS.some((pattern) => pattern.test(inner))) {
+        return true;
+      }
+    }
+  }
+  const backtickMatches = command.match(/`([^`]+)`/g);
+  if (backtickMatches) {
+    for (const match of backtickMatches) {
+      const inner = match.slice(1, -1);
+      if (BLOCKED_PATTERNS.some((pattern) => pattern.test(inner))) {
+        return true;
+      }
+    }
+  }
+
+  return false;
 }
 
 /**

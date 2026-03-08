@@ -78,6 +78,35 @@ describe('isCommandBlocked', () => {
   it('npm install은 허용', () => {
     expect(isCommandBlocked('npm install express')).toBe(false);
   });
+
+  it('chained command with dangerous part is blocked', () => {
+    expect(isCommandBlocked('ls && rm -rf /')).toBe(true);
+  });
+
+  it('semicolon-separated dangerous command is blocked', () => {
+    expect(isCommandBlocked('echo hi; rm -rf ~/')).toBe(true);
+  });
+
+  it('or-chained dangerous command is blocked', () => {
+    expect(isCommandBlocked('false || chmod 777 /tmp')).toBe(true);
+  });
+
+  it('subshell dangerous command is blocked', () => {
+    expect(isCommandBlocked('echo $(rm -rf /)')).toBe(true);
+  });
+
+  it('backtick dangerous command is blocked', () => {
+    expect(isCommandBlocked('echo `chmod 777 /tmp`')).toBe(true);
+  });
+
+  it('very long command is blocked (DoS protection)', () => {
+    const longCmd = 'a'.repeat(10_001);
+    expect(isCommandBlocked(longCmd)).toBe(true);
+  });
+
+  it('safe chained commands are allowed', () => {
+    expect(isCommandBlocked('ls && cat README.md')).toBe(false);
+  });
 });
 
 describe('createSafeEnv', () => {
