@@ -34,22 +34,22 @@
 ## 5.2 [P1] 사고 과정(Thinking) 스트리밍
 
 ### Claude CLI 호출 변경
-- [ ] `claude.ts` — `--output-format json` → `--output-format stream-json --verbose` 전환
-- [ ] `ClaudeCliOptions`에 `onThinking?: (text: string) => void` 콜백 추가
-- [ ] stream-json NDJSON 파싱 — `thinking_delta` 이벤트 감지 및 `onThinking` 콜백 호출
-- [ ] `parseClaudeJsonOutput()` → stream-json 포맷 호환되도록 리팩토링
-- [ ] 기존 `onToolUse` 파싱 로직이 stream-json에서도 작동하도록 수정
+- [x] `claude.ts` — `--output-format json` → `--output-format stream-json --verbose` 전환
+- [x] `ClaudeCliOptions`에 `onThinking?: (text: string) => void` 콜백 추가
+- [x] stream-json NDJSON 파싱 — `thinking_delta` 이벤트 감지 및 `onThinking` 콜백 호출
+- [x] `parseClaudeJsonOutput()` → stream-json 포맷 호환되도록 리팩토링
+- [x] 기존 `onToolUse` 파싱 로직이 stream-json에서도 작동하도록 수정
 
 ### 메신저 전달
-- [ ] `core.ts` — `onThinking` 콜백 연결, throttle 적용 (5초 간격)
-- [ ] thinking 내용을 메신저에 `💭 {요약}` 형태로 전달
-- [ ] 너무 긴 thinking은 200자로 잘라서 전달
+- [x] `core.ts` — `onThinking` 콜백 연결, throttle 적용 (5초 간격)
+- [x] thinking 내용을 메신저에 `💭 {요약}` 형태로 전달
+- [x] 너무 긴 thinking은 200자로 잘라서 전달
 
 ### 설정
-- [ ] `schema.ts` — `agent.showThinking: boolean` (default: true) 추가
-- [ ] `core.ts` — `showThinking` 설정에 따라 thinking 전달 on/off
+- [x] `schema.ts` — `agent.showThinking: boolean` (default: true) 추가
+- [x] `core.ts` — `showThinking` 설정에 따라 thinking 전달 on/off
 
 ### 테스트
-- [ ] stream-json 파싱 단위 테스트 — thinking_delta, text_delta, tool_use 이벤트
-- [ ] throttle 로직 테스트
-- [ ] 기존 claude.ts 테스트가 stream-json 전환 후에도 통과하는지 확인
+- [x] stream-json 파싱 단위 테스트 — thinking_delta, text_delta, tool_use 이벤트
+- [x] throttle 로직 테스트
+- [x] 기존 claude.ts 테스트가 stream-json 전환 후에도 통과하는지 확인

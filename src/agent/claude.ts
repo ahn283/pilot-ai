@@ -20,6 +20,8 @@ export interface ClaudeCliOptions {
   mcpConfigPath?: string;
   timeoutMs?: number;
   onToolUse?: (status: string) => void;
+  /** Callback for thinking/reasoning content streamed in real-time */
+  onThinking?: (text: string) => void;
   /** Start a new session with this UUID */
   sessionId?: string;
   /** Resume an existing session by its UUID */
@@ -129,15 +131,16 @@ export async function invokeClaudeCli(options: ClaudeCliOptions): Promise<Claude
 }
 
 async function invokeClaudeCliInner(options: ClaudeCliOptions): Promise<ClaudeCliResult> {
-  const { prompt, systemPrompt, cwd, allowedTools, mcpConfigPath, timeoutMs = DEFAULT_TIMEOUT_MS, onToolUse, sessionId, resumeSessionId } = options;
+  const { prompt, systemPrompt, cwd, allowedTools, mcpConfigPath, timeoutMs = DEFAULT_TIMEOUT_MS, onToolUse, onThinking, sessionId, resumeSessionId } = options;
 
   const args: string[] = [];
 
   // Session management: --resume takes precedence (continuing existing session)
+  // Use stream-json with --verbose to capture thinking deltas
   if (resumeSessionId) {
-    args.push('-p', '--resume', resumeSessionId, '--output-format', 'json');
+    args.push('-p', '--resume', resumeSessionId, '--output-format', 'stream-json', '--verbose');
   } else {
-    args.push('-p', '--output-format', 'json');
+    args.push('-p', '--output-format', 'stream-json', '--verbose');
     if (sessionId) {
       args.push('--session-id', sessionId);
     }
@@ -184,8 +187,8 @@ async function invokeClaudeCliInner(options: ClaudeCliOptions): Promise<ClaudeCl
       const chunk = data.toString();
       stdout += chunk;
 
-      // Stream-parse JSONL lines to detect tool usage in real-time
-      if (onToolUse) {
+      // Stream-parse NDJSON lines to detect tool usage and thinking in real-time
+      if (onToolUse || onThinking) {
         lineBuffer += chunk;
         // Prevent unbounded buffer growth (max 1MB)
         if (lineBuffer.length > 1_048_576) {
@@ -197,14 +200,7 @@ async function invokeClaudeCliInner(options: ClaudeCliOptions): Promise<ClaudeCl
           if (!line.trim()) continue;
           try {
             const msg = JSON.parse(line);
-            // Detect tool_use blocks in assistant messages
-            if (msg.type === 'assistant' && Array.isArray(msg.content)) {
-              for (const block of msg.content) {
-                if (block.type === 'tool_use' && block.name) {
-                  onToolUse(describeToolUse(block.name, block.input));
-                }
-              }
-            }
+            parseStreamEvent(msg, onToolUse, onThinking);
           } catch {
             // Not valid JSON yet, skip
           }
@@ -235,8 +231,42 @@ async function invokeClaudeCliInner(options: ClaudeCliOptions): Promise<ClaudeCl
 }
 
 /**
- * Parses Claude CLI JSON output and extracts the final text result.
- * --output-format json outputs multiple messages in JSONL format.
+ * Parses a single stream-json event for tool use and thinking callbacks.
+ * Handles both legacy json format (assistant messages) and stream-json format (stream_event).
+ */
+export function parseStreamEvent(
+  msg: Record<string, unknown>,
+  onToolUse?: (status: string) => void,
+  onThinking?: (text: string) => void,
+): void {
+  // stream-json format: { type: "assistant", message: { content: [...] } }
+  if (msg.type === 'assistant') {
+    const content = (msg as ClaudeJsonMessage).content
+      ?? ((msg.message as Record<string, unknown>)?.content as ClaudeJsonMessage['content']);
+    if (onToolUse && Array.isArray(content)) {
+      for (const block of content) {
+        if (block.type === 'tool_use' && (block as Record<string, unknown>).name) {
+          onToolUse(describeToolUse(
+            (block as Record<string, unknown>).name as string,
+            (block as Record<string, unknown>).input as Record<string, unknown> | undefined,
+          ));
+        }
+      }
+    }
+  }
+
+  // stream-json thinking delta: { type: "content_block_delta", delta: { type: "thinking_delta", thinking: "..." } }
+  if (onThinking && msg.type === 'content_block_delta') {
+    const delta = msg.delta as Record<string, unknown> | undefined;
+    if (delta?.type === 'thinking_delta' && typeof delta.thinking === 'string') {
+      onThinking(delta.thinking);
+    }
+  }
+}
+
+/**
+ * Parses Claude CLI stream-json output and extracts the final text result.
+ * Supports both legacy json format and stream-json format.
  */
 export function parseClaudeJsonOutput(output: string): string {
   const lines = output.trim().split('\n').filter(Boolean);
@@ -246,7 +276,7 @@ export function parseClaudeJsonOutput(output: string): string {
     try {
       const msg: ClaudeJsonMessage = JSON.parse(line);
 
-      // Extract text from assistant messages
+      // Legacy json format: assistant messages with content blocks
       if (msg.type === 'assistant' && Array.isArray(msg.content)) {
         for (const block of msg.content) {
           if (block.type === 'text' && block.text) {
@@ -255,7 +285,20 @@ export function parseClaudeJsonOutput(output: string): string {
         }
       }
 
-      // Result message
+      // stream-json format: assistant message wrapper
+      if (msg.type === 'assistant' && msg.message) {
+        const message = msg.message as Record<string, unknown>;
+        const content = message.content as Array<{ type: string; text?: string }> | undefined;
+        if (Array.isArray(content)) {
+          for (const block of content) {
+            if (block.type === 'text' && block.text) {
+              texts.push(block.text);
+            }
+          }
+        }
+      }
+
+      // Result message (both formats)
       if (msg.type === 'result' && typeof msg.result === 'string') {
         texts.push(msg.result);
       }

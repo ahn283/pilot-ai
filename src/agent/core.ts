@@ -319,6 +319,12 @@ You have a credential store at ~/.pilot/credentials/. Use it to store and retrie
     cleanupSessions().catch(() => {});
 
     const mcpConfigPath = await getMcpConfigPathIfExists() ?? undefined;
+
+    // Throttled thinking reporter — sends thinking snippets to messenger at most once per 5 seconds
+    let lastThinkingReport = 0;
+    let thinkingBuffer = '';
+    const THINKING_THROTTLE_MS = 5_000;
+
     const result = await invokeClaudeCli({
       prompt: msg.text,
       systemPrompt: resumeSessionId ? undefined : systemPrompt, // Only send system prompt on first turn
@@ -326,6 +332,18 @@ You have a credential store at ~/.pilot/credentials/. Use it to store and retrie
       allowedTools: DEFAULT_ALLOWED_TOOLS,
       mcpConfigPath,
       onToolUse: (status) => onStatus?.(status),
+      onThinking: this.config.agent?.showThinking !== false ? (text) => {
+        thinkingBuffer += text;
+        const now = Date.now();
+        if (now - lastThinkingReport > THINKING_THROTTLE_MS && thinkingBuffer.length > 0) {
+          const snippet = thinkingBuffer.length > 200
+            ? thinkingBuffer.slice(-200) + '...'
+            : thinkingBuffer;
+          onStatus?.(`💭 ${snippet}`);
+          thinkingBuffer = '';
+          lastThinkingReport = now;
+        }
+      } : undefined,
       sessionId,
       resumeSessionId,
     });

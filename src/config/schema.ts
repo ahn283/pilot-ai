@@ -55,6 +55,10 @@ export const configSchema = z.object({
       services: z.array(z.enum(['gmail', 'calendar', 'drive'])).default([]),
     })
     .optional(),
+  agent: z.object({
+    /** Whether to stream thinking/reasoning snippets to messenger */
+    showThinking: z.boolean().default(true),
+  }).default({ showThinking: true }),
   safety: z.object({
     dangerousActionsRequireApproval: z.boolean().default(true),
     approvalTimeoutMinutes: z.number().default(30),

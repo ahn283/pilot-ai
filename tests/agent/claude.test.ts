@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { parseClaudeJsonOutput, checkClaudeCli } from '../../src/agent/claude.js';
+import { parseClaudeJsonOutput, parseStreamEvent, checkClaudeCli } from '../../src/agent/claude.js';
 
 describe('parseClaudeJsonOutput', () => {
   it('result 타입 메시지에서 텍스트를 추출한다', () => {
@@ -59,6 +59,94 @@ describe('parseClaudeJsonOutput', () => {
       ],
     });
     expect(parseClaudeJsonOutput(output)).toBe('파일을 읽었습니다');
+  });
+});
+
+describe('parseClaudeJsonOutput - stream-json format', () => {
+  it('extracts text from stream-json assistant message wrapper', () => {
+    const output = JSON.stringify({
+      type: 'assistant',
+      message: {
+        content: [{ type: 'text', text: 'Hello from stream-json' }],
+      },
+    });
+    expect(parseClaudeJsonOutput(output)).toBe('Hello from stream-json');
+  });
+
+  it('extracts result from stream-json result message', () => {
+    const output = JSON.stringify({ type: 'result', result: 'Done via stream' });
+    expect(parseClaudeJsonOutput(output)).toBe('Done via stream');
+  });
+
+  it('handles mixed legacy and stream-json lines', () => {
+    const lines = [
+      JSON.stringify({ type: 'assistant', content: [{ type: 'text', text: 'legacy line' }] }),
+      JSON.stringify({ type: 'assistant', message: { content: [{ type: 'text', text: 'stream line' }] } }),
+      JSON.stringify({ type: 'result', result: 'final' }),
+    ];
+    const result = parseClaudeJsonOutput(lines.join('\n'));
+    expect(result).toContain('legacy line');
+    expect(result).toContain('stream line');
+    expect(result).toContain('final');
+  });
+});
+
+describe('parseStreamEvent', () => {
+  it('detects thinking_delta events', () => {
+    const thinkingChunks: string[] = [];
+    const msg = {
+      type: 'content_block_delta',
+      delta: { type: 'thinking_delta', thinking: 'Let me analyze this...' },
+    };
+    parseStreamEvent(msg, undefined, (text) => thinkingChunks.push(text));
+    expect(thinkingChunks).toEqual(['Let me analyze this...']);
+  });
+
+  it('detects tool_use in assistant content', () => {
+    const toolStatuses: string[] = [];
+    const msg = {
+      type: 'assistant',
+      content: [
+        { type: 'tool_use', name: 'Bash', input: { command: 'ls' } },
+      ],
+    };
+    parseStreamEvent(msg, (status) => toolStatuses.push(status));
+    expect(toolStatuses.length).toBe(1);
+    expect(toolStatuses[0]).toContain('Running');
+  });
+
+  it('detects tool_use in stream-json assistant message wrapper', () => {
+    const toolStatuses: string[] = [];
+    const msg = {
+      type: 'assistant',
+      message: {
+        content: [
+          { type: 'tool_use', name: 'Read', input: {} },
+        ],
+      },
+    };
+    parseStreamEvent(msg, (status) => toolStatuses.push(status));
+    expect(toolStatuses.length).toBe(1);
+    expect(toolStatuses[0]).toContain('Reading');
+  });
+
+  it('ignores non-thinking content_block_delta', () => {
+    const thinkingChunks: string[] = [];
+    const msg = {
+      type: 'content_block_delta',
+      delta: { type: 'text_delta', text: 'Hello' },
+    };
+    parseStreamEvent(msg, undefined, (text) => thinkingChunks.push(text));
+    expect(thinkingChunks).toEqual([]);
+  });
+
+  it('does nothing when callbacks are undefined', () => {
+    const msg = {
+      type: 'content_block_delta',
+      delta: { type: 'thinking_delta', thinking: 'test' },
+    };
+    // Should not throw
+    parseStreamEvent(msg, undefined, undefined);
   });
 });
 
