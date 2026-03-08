@@ -15,6 +15,7 @@ import { getMcpConfigPathIfExists } from '../tools/figma-mcp.js';
 import { buildMcpContext } from './mcp-manager.js';
 import { getSession, createSession, touchSession, cleanupSessions } from './session.js';
 import { detectPermissionError, PermissionWatcher } from '../security/permissions.js';
+import { isGhAuthenticated } from '../tools/github.js';
 
 function log(message: string): void {
   console.log(`[${new Date().toISOString()}] ${message}`);
@@ -25,6 +26,7 @@ export class AgentCore {
   private config: PilotConfig;
   private approvalManager: ApprovalManager;
   private permissionWatcher: PermissionWatcher;
+  private githubCheckInterval: ReturnType<typeof setInterval> | null = null;
 
   constructor(messenger: MessengerAdapter, config: PilotConfig) {
     this.messenger = messenger;
@@ -57,9 +59,41 @@ export class AgentCore {
     log('Messenger connected. Waiting for messages...');
     await this.permissionWatcher.start();
     log('Permission watcher started.');
+
+    // Check GitHub auth status on startup and periodically (every hour)
+    this.checkGitHubAuth().catch(() => {});
+    if (this.config.github?.enabled) {
+      this.githubCheckInterval = setInterval(() => {
+        this.checkGitHubAuth().catch(() => {});
+      }, 60 * 60 * 1000);
+    }
+  }
+
+  private async checkGitHubAuth(): Promise<void> {
+    if (!this.config.github?.enabled) return;
+
+    const authed = await isGhAuthenticated();
+    if (!authed) {
+      log('GitHub CLI is not authenticated.');
+      const users = this.config.messenger.platform === 'slack'
+        ? this.config.security.allowedUsers.slack
+        : this.config.security.allowedUsers.telegram;
+      if (users.length > 0) {
+        await this.messenger.sendText(
+          users[0],
+          '⚠️ GitHub CLI is not authenticated. Run `gh auth login` to reconnect.',
+        );
+      }
+    } else {
+      log('GitHub CLI authenticated.');
+    }
   }
 
   async stop(): Promise<void> {
+    if (this.githubCheckInterval) {
+      clearInterval(this.githubCheckInterval);
+      this.githubCheckInterval = null;
+    }
     this.permissionWatcher.stop();
     log('Stopping messenger...');
     await this.messenger.stop();

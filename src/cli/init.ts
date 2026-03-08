@@ -9,6 +9,7 @@ import { defaultConfig } from '../config/schema.js';
 import { testSlackConnection, testTelegramConnection } from './connection-test.js';
 import { registerFigmaMcp } from '../tools/figma-mcp.js';
 import { requestPermissions } from '../security/permissions.js';
+import { isGhAuthenticated } from '../tools/github.js';
 
 const execFileAsync = promisify(execFile);
 
@@ -264,6 +265,12 @@ async function setupIntegrations(): Promise<Partial<PilotConfig>> {
 
   const result: Partial<PilotConfig> = {};
 
+  // GitHub
+  const githubConfig = await setupGithub();
+  if (githubConfig) {
+    result.github = githubConfig;
+  }
+
   // Notion
   const { setupNotion } = await inquirer.prompt([
     { type: 'confirm', name: 'setupNotion', message: 'Set up Notion Integration?', default: false },
@@ -411,6 +418,55 @@ async function setupIntegrations(): Promise<Partial<PilotConfig>> {
   }
 
   return result;
+}
+
+async function setupGithub(): Promise<PilotConfig['github'] | null> {
+  const { setupGh } = await inquirer.prompt([
+    { type: 'confirm', name: 'setupGh', message: 'Set up GitHub Integration?', default: true },
+  ]);
+  if (!setupGh) return null;
+
+  // Check if gh CLI is installed
+  try {
+    await execFileAsync('which', ['gh']);
+  } catch {
+    console.log('\n  GitHub CLI (gh) is not installed.');
+    console.log('  Install it with: brew install gh');
+    console.log('  Skipping GitHub setup.\n');
+    return null;
+  }
+
+  console.log('  GitHub CLI detected.');
+
+  // Check if already authenticated
+  const authed = await isGhAuthenticated();
+  if (authed) {
+    console.log('  Already authenticated!\n');
+    return { enabled: true };
+  }
+
+  // Guide user to authenticate
+  console.log('\n  GitHub CLI is not authenticated. Please run:\n');
+  console.log('    gh auth login --scopes repo,read:org,workflow\n');
+  console.log('  Complete the login in your browser, then press Enter to continue.\n');
+
+  await inquirer.prompt([
+    {
+      type: 'input',
+      name: 'continue',
+      message: 'Press Enter after completing gh auth login...',
+    },
+  ]);
+
+  // Verify authentication
+  const authedNow = await isGhAuthenticated();
+  if (authedNow) {
+    console.log('  GitHub authenticated successfully!\n');
+    return { enabled: true };
+  }
+
+  console.log('  Warning: GitHub authentication not detected. You can run "gh auth login" later.\n');
+  return { enabled: false };
 }
 
 async function installPlaywright(): Promise<void> {

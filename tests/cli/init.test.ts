@@ -28,6 +28,11 @@ vi.mock('../../src/agent/claude.js', () => ({
   checkClaudeCliAuth: vi.fn(),
 }));
 
+// Mock github check
+vi.mock('../../src/tools/github.js', () => ({
+  isGhAuthenticated: vi.fn().mockResolvedValue(false),
+}));
+
 // Mock child_process for Playwright install
 vi.mock('node:child_process', () => ({
   execFile: vi.fn((_cmd: string, _args: string[], _opts: object, cb: (err: Error | null) => void) => { cb(null); }),
@@ -65,6 +70,7 @@ describe('runInit - CLI mode with Slack', () => {
         signingSecret: 'secret123',
         userId: 'U12345',
       })
+      .mockResolvedValueOnce({ setupGh: false }) // GitHub: skip
       .mockResolvedValueOnce({ setupNotion: false })
       .mockResolvedValueOnce({ setupObsidian: false })
       .mockResolvedValueOnce({ setupFigma: false })
@@ -95,6 +101,7 @@ describe('runInit - API mode with Telegram', () => {
         botToken: '123456:ABC-DEF',
         chatId: '99999',
       })
+      .mockResolvedValueOnce({ setupGh: false }) // GitHub: skip
       .mockResolvedValueOnce({ setupNotion: false })
       .mockResolvedValueOnce({ setupObsidian: false })
       .mockResolvedValueOnce({ setupFigma: false })
@@ -126,6 +133,7 @@ describe('runInit - CLI exists but choose API', () => {
         botToken: '111:TOKEN',
         chatId: '12345',
       })
+      .mockResolvedValueOnce({ setupGh: false }) // GitHub: skip
       .mockResolvedValueOnce({ setupNotion: false })
       .mockResolvedValueOnce({ setupObsidian: false })
       .mockResolvedValueOnce({ setupFigma: false })

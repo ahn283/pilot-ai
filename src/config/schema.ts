@@ -41,6 +41,13 @@ export const configSchema = z.object({
       personalAccessToken: z.string(),
     })
     .optional(),
+  github: z
+    .object({
+      enabled: z.boolean().default(false),
+      defaultOrg: z.string().optional(),
+      defaultRepo: z.string().optional(),
+    })
+    .optional(),
   google: z
     .object({
       clientId: z.string(),
