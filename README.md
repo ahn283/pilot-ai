@@ -149,6 +149,55 @@ Agent:  📂 Checking git... ⚡ Running: git commit...
 
 Each Slack/Telegram thread maps to a persistent Claude session. The agent retains full context across messages — no need to repeat yourself.
 
+### Project Development
+
+For larger features or new projects, the agent follows a structured development workflow — planning first, then implementing step by step:
+
+```
+You:    "Add OAuth2 login to the fridgify API"
+Agent:  📋 Let me plan this out first.
+
+        **PRD (Product Requirements)**
+        - Add OAuth2 authorization code flow with Google provider
+        - Endpoints: /auth/login, /auth/callback, /auth/me
+        - Store tokens in DB, issue JWT sessions
+        - ...
+
+        **Checklist**
+        - [ ] Add google-auth config schema
+        - [ ] Implement /auth/login redirect endpoint
+        - [ ] Implement /auth/callback token exchange
+        - [ ] Add JWT session middleware
+        - [ ] Add /auth/me endpoint
+        - [ ] Write tests for each endpoint
+
+        Does this look good?
+
+You:    "Looks good, go ahead"
+Agent:  ⚡ Starting checklist item 1: google-auth config schema
+        ✏️ Writing src/config/auth.ts...
+        🔨 npm run build — ✅ passed
+        🧪 npm test — ✅ 3 new tests pass
+        ✅ Committed: "feat: add google-auth config schema"
+
+        ⚡ Item 2: /auth/login redirect endpoint
+        ✏️ Writing src/routes/auth.ts...
+        🔨 npm run build — ✅ passed
+        🧪 npm test — ✅ 5 new tests pass
+        ✅ Committed: "feat: add /auth/login redirect endpoint"
+
+        ... (continues through checklist)
+
+        ✅ All 6 checklist items complete. OAuth2 login is ready.
+
+You:    "Actually, also support GitHub login"      ← requirements change
+Agent:  📋 Updating PRD and checklist first...
+        Added 3 new checklist items for GitHub provider.
+        Proceeding with implementation...
+```
+
+The agent writes a PRD and checklist before touching any code, gets your confirmation, then works through each item with build/test verification — just like a real development workflow.
+
 ## CLI Reference
 
 ```bash
