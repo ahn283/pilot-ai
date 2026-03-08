@@ -174,13 +174,13 @@
 
 ## 4.12 [P2] 구조화 로깅 & 관측성
 
-- [ ] `src/utils/logger.ts` 생성 (JSON 로그, 레벨, correlationId)
-- [ ] 로그 파일 출력 `~/.pilot/logs/pilot.log` (일별 로테이션)
-- [ ] 메시지 수신 시 correlationId 생성 & 전파
-- [ ] `audit.jsonl`에 correlationId 추가
-- [ ] 기본 메트릭스 (요청 수, 응답 시간, 에러율)
-- [ ] `/health`에 메트릭스 포함
-- [ ] 기존 `console.error()` → 구조화 로거로 교체
+- [x] `src/utils/logger.ts` 생성 (JSON 로그, 레벨, correlationId)
+- [x] 로그 파일 출력 `~/.pilot/logs/pilot.log` (일별 로테이션)
+- [x] 메시지 수신 시 correlationId 생성 & 전파
+- [x] `audit.jsonl`에 correlationId 추가
+- [x] 기본 메트릭스 (요청 수, 응답 시간, 에러율)
+- [x] `/health`에 메트릭스 포함
+- [x] 기존 `console.error()` → 구조화 로거로 교체
 
 ---
 
