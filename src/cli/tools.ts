@@ -117,9 +117,9 @@ export async function runAddTool(toolName: string): Promise<void> {
       console.log('  3. Add the Integration via "Connections" on your pages/DBs\n');
       break;
     case 'figma':
-      console.log('\n  Figma Remote MCP Server:');
-      console.log('  Registers Figma\'s official remote MCP server (https://mcp.figma.com/mcp).');
-      console.log('  After setup, authenticate via /mcp command in Claude Code.\n');
+      console.log('\n  Figma Personal Access Token Guide:');
+      console.log('  1. Figma > Account Settings > Personal access tokens');
+      console.log('  2. Click "Generate new token" and copy it\n');
       break;
     case 'linear':
       console.log('\n  Linear API Key Guide:');
@@ -178,8 +178,14 @@ export async function runAddTool(toolName: string): Promise<void> {
     const config = await loadConfig();
     await saveConfig({ ...config, notion: { apiKey: '***keychain***' } });
   } else if (toolId === 'figma') {
-    // Figma uses remote HTTP transport — no credentials needed here.
-    // Authentication happens via OAuth in Claude Code after registration.
+    const { figmaToken } = await inquirer.prompt([{
+      type: 'password', name: 'figmaToken', message: 'Figma Personal Access Token:', mask: '*',
+      validate: (input: string) => input.length > 10 || 'Valid Figma token required.',
+    }]);
+    await setSecret('figma-personal-access-token', figmaToken);
+    envValues['FIGMA_API_KEY'] = figmaToken;
+    const config = await loadConfig();
+    await saveConfig({ ...config, figma: { personalAccessToken: '***keychain***' } });
   } else if (toolId === 'linear') {
     const { linearApiKey } = await inquirer.prompt([{
       type: 'password', name: 'linearApiKey', message: 'Linear API Key:', mask: '*',
@@ -239,9 +245,10 @@ export async function runRemoveTool(toolName: string): Promise<void> {
  * Syncs all pilot-ai MCP servers to Claude Code native settings (user scope).
  */
 export async function runSyncMcp(): Promise<void> {
-  const { loadMcpConfig } = await import('../tools/figma-mcp.js');
-  const { syncAllToClaudeCode } = await import('../config/claude-code-sync.js');
+  const { loadMcpConfig, saveMcpConfig } = await import('../tools/figma-mcp.js');
+  const { syncToClaudeCode, syncHttpToClaudeCode } = await import('../config/claude-code-sync.js');
   const { checkClaudeCli } = await import('../agent/claude.js');
+  const { getRegistryEntry } = await import('../tools/mcp-registry.js');
 
   const cliExists = await checkClaudeCli();
   if (!cliExists) {
@@ -259,7 +266,65 @@ export async function runSyncMcp(): Promise<void> {
 
   console.log('\nSyncing MCP servers to Claude Code (user scope)...');
 
-  const { synced, failed } = await syncAllToClaudeCode(config.mcpServers);
+  // Migrate outdated configs using the registry as source of truth
+  let configChanged = false;
+  for (const serverId of serverIds) {
+    const entry = getRegistryEntry(serverId);
+    if (!entry) continue;
+    const current = config.mcpServers[serverId];
+
+    if (entry.transport === 'http' && entry.url) {
+      // Migrate to HTTP transport marker
+      if (current.command !== '__http__') {
+        config.mcpServers[serverId] = { command: '__http__', args: [entry.url] };
+        configChanged = true;
+      }
+    } else {
+      // Ensure it's a stdio server with the correct package name
+      const expectedArgs = ['-y', entry.npmPackage, ...(entry.args ?? [])];
+      const currentPkg = current.args?.[1];
+      if (current.command !== 'npx' || currentPkg !== entry.npmPackage) {
+        // Migrate env: map old env key names to new ones if needed
+        const env = current.env ?? {};
+        // Figma: FIGMA_PERSONAL_ACCESS_TOKEN → FIGMA_API_KEY
+        if (serverId === 'figma' && env['FIGMA_PERSONAL_ACCESS_TOKEN'] && !env['FIGMA_API_KEY']) {
+          env['FIGMA_API_KEY'] = env['FIGMA_PERSONAL_ACCESS_TOKEN'];
+          delete env['FIGMA_PERSONAL_ACCESS_TOKEN'];
+        }
+        config.mcpServers[serverId] = {
+          command: 'npx',
+          args: expectedArgs,
+          ...(Object.keys(env).length > 0 ? { env } : {}),
+        };
+        configChanged = true;
+      }
+    }
+  }
+  if (configChanged) {
+    await saveMcpConfig(config);
+    console.log('  (migrated outdated configs to latest package names)');
+  }
+
+  // Sync: separate HTTP and stdio servers
+  const synced: string[] = [];
+  const failed: string[] = [];
+
+  for (const serverId of serverIds) {
+    const serverConfig = config.mcpServers[serverId];
+    let result: { success: boolean; error?: string };
+
+    if (serverConfig.command === '__http__' && serverConfig.args?.[0]) {
+      result = await syncHttpToClaudeCode(serverId, serverConfig.args[0]);
+    } else {
+      result = await syncToClaudeCode(serverId, serverConfig);
+    }
+
+    if (result.success) {
+      synced.push(serverId);
+    } else {
+      failed.push(serverId);
+    }
+  }
 
   for (const id of synced) {
     console.log(`  ✅ ${id} — synced`);
