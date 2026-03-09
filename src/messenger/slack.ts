@@ -12,9 +12,11 @@ export interface SlackConfig {
 export class SlackAdapter implements MessengerAdapter {
   private app: App;
   private botToken: string;
+  private botUserId?: string;
   private messageHandler?: (msg: IncomingMessage) => void | Promise<void>;
   private approvalHandler?: (taskId: string, approved: boolean) => void;
   private rateLimiter = new RateLimiter(5, 1); // Slack: ~1 msg/sec, burst 5
+  private processedMessages = new Set<string>(); // Dedup message/app_mention events
 
   constructor(config: SlackConfig) {
     this.botToken = config.botToken;
@@ -31,6 +33,21 @@ export class SlackAdapter implements MessengerAdapter {
     });
 
     this.setupListeners();
+  }
+
+  /**
+   * Dedup guard: returns true if this message ts was already processed.
+   * Prevents duplicate handling when Slack sends both message and app_mention events.
+   */
+  private isDuplicate(ts: string): boolean {
+    if (this.processedMessages.has(ts)) return true;
+    this.processedMessages.add(ts);
+    // Keep set bounded — clear old entries when it gets large
+    if (this.processedMessages.size > 1000) {
+      const entries = [...this.processedMessages];
+      this.processedMessages = new Set(entries.slice(-500));
+    }
+    return false;
   }
 
   private setupListeners(): void {
@@ -56,6 +73,12 @@ export class SlackAdapter implements MessengerAdapter {
       };
       if (!msg.user) return;
       if (!msg.text && !msg.files?.length) return;
+
+      // Dedup: skip if already handled (e.g. via app_mention)
+      if (this.isDuplicate(msg.ts ?? '')) {
+        console.log(`[${new Date().toISOString()}] Slack: skipping duplicate message ts=${msg.ts}`);
+        return;
+      }
 
       // Extract image attachments from Slack files (requires files:read scope)
       const images: ImageAttachment[] = [];
@@ -87,6 +110,12 @@ export class SlackAdapter implements MessengerAdapter {
     this.app.event('app_mention', async ({ event }) => {
       console.log(`[${new Date().toISOString()}] Slack event: app_mention from ${event.user} in ${event.channel}`);
       if (!this.messageHandler) return;
+
+      // Dedup: skip if already handled via message event
+      if (this.isDuplicate(event.ts)) {
+        console.log(`[${new Date().toISOString()}] Slack: skipping duplicate app_mention ts=${event.ts}`);
+        return;
+      }
 
       // Strip the bot mention from the text
       const text = (event.text ?? '').replace(/<@[A-Z0-9]+>/g, '').trim();

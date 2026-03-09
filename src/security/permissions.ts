@@ -217,21 +217,26 @@ tell application "System Events"
 end tell`;
 
       const { stdout } = await execFileAsync('osascript', ['-e', script], { timeout: 8_000 });
+      // Successful scan (with or without dialogs) resets the failure counter
+      this.consecutiveFailures = 0;
       const approved = stdout.trim();
       if (approved) {
-        this.consecutiveFailures = 0;
         const dialogNames = approved.split('|').filter(Boolean);
         for (const name of dialogNames) {
           this.notify(`Auto-approved macOS permission: "${name}"`);
         }
       }
-    } catch {
-      this.consecutiveFailures++;
-      if (this.consecutiveFailures === 3) {
-        this.notify(
-          'Auto-approve failed 3 times in a row. ' +
-          'Please manually handle macOS permission popups or check Accessibility settings.',
-        );
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      // Only count permission-related failures, not timeouts or transient errors
+      if (msg.includes('not allowed') || msg.includes('1743') || msg.includes('assistive')) {
+        this.consecutiveFailures++;
+        if (this.consecutiveFailures === 3) {
+          this.notify(
+            'Auto-approve failed 3 times in a row. ' +
+            'Please manually handle macOS permission popups or check Accessibility settings.',
+          );
+        }
       }
     }
   }
