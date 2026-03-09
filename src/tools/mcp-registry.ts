@@ -10,7 +10,7 @@ export interface McpServerEntry {
   name: string;
   /** What this server provides */
   description: string;
-  /** npm package to run via npx */
+  /** npm package to run via npx (for stdio transport) */
   npmPackage: string;
   /** Extra args after the package name */
   args?: string[];
@@ -20,6 +20,10 @@ export interface McpServerEntry {
   keywords: string[];
   /** Category for grouping */
   category: 'design' | 'productivity' | 'development' | 'data' | 'communication';
+  /** Transport type: 'stdio' (default, npx) or 'http' (remote URL) */
+  transport?: 'stdio' | 'http';
+  /** Remote URL for http transport servers */
+  url?: string;
 }
 
 /**
@@ -32,8 +36,10 @@ export const MCP_REGISTRY: McpServerEntry[] = [
     id: 'figma',
     name: 'Figma',
     description: 'Access Figma designs, components, variables, and comments',
-    npmPackage: '@anthropic-ai/figma-mcp',
-    envVars: { FIGMA_PERSONAL_ACCESS_TOKEN: 'Figma Personal Access Token' },
+    npmPackage: '',
+    transport: 'http',
+    url: 'https://mcp.figma.com/mcp',
+    envVars: {},
     keywords: ['figma', 'design', 'ui', 'component', 'prototype', 'frame', 'design token'],
     category: 'design',
   },
@@ -59,7 +65,7 @@ export const MCP_REGISTRY: McpServerEntry[] = [
     id: 'google-drive',
     name: 'Google Drive',
     description: 'Search, read, and create files in Google Drive',
-    npmPackage: '@anthropic-ai/google-drive-mcp',
+    npmPackage: '@modelcontextprotocol/server-gdrive',
     envVars: {
       GOOGLE_CLIENT_ID: 'Google OAuth Client ID',
       GOOGLE_CLIENT_SECRET: 'Google OAuth Client Secret',
@@ -80,8 +86,8 @@ export const MCP_REGISTRY: McpServerEntry[] = [
     id: 'linear',
     name: 'Linear',
     description: 'Manage Linear issues, projects, and cycles',
-    npmPackage: '@anthropic-ai/linear-mcp',
-    envVars: { LINEAR_API_KEY: 'Linear API Key (lin_api_...)' },
+    npmPackage: '@tacticlaunch/mcp-linear',
+    envVars: { LINEAR_API_TOKEN: 'Linear API Token' },
     keywords: ['linear', 'linear issue', 'sprint', 'cycle', 'backlog'],
     category: 'development',
   },
@@ -98,7 +104,7 @@ export const MCP_REGISTRY: McpServerEntry[] = [
     id: 'sqlite',
     name: 'SQLite',
     description: 'Query SQLite databases',
-    npmPackage: '@modelcontextprotocol/server-sqlite',
+    npmPackage: 'mcp-server-sqlite-npx',
     envVars: {},
     keywords: ['sqlite', 'sqlite3', 'local database'],
     category: 'data',
@@ -107,7 +113,7 @@ export const MCP_REGISTRY: McpServerEntry[] = [
     id: 'puppeteer',
     name: 'Puppeteer',
     description: 'Browser automation and web scraping via Puppeteer',
-    npmPackage: '@anthropic-ai/puppeteer-mcp',
+    npmPackage: '@modelcontextprotocol/server-puppeteer',
     envVars: {},
     keywords: ['puppeteer', 'headless browser', 'web scraping', 'screenshot'],
     category: 'development',
@@ -143,7 +149,7 @@ export const MCP_REGISTRY: McpServerEntry[] = [
     id: 'sentry',
     name: 'Sentry',
     description: 'View and manage Sentry error tracking issues',
-    npmPackage: '@modelcontextprotocol/server-sentry',
+    npmPackage: '@sentry/mcp-server',
     envVars: { SENTRY_AUTH_TOKEN: 'Sentry Auth Token' },
     keywords: ['sentry', 'error tracking', 'crash', 'exception'],
     category: 'development',

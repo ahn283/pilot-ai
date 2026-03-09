@@ -117,9 +117,9 @@ export async function runAddTool(toolName: string): Promise<void> {
       console.log('  3. Add the Integration via "Connections" on your pages/DBs\n');
       break;
     case 'figma':
-      console.log('\n  Figma Personal Access Token Guide:');
-      console.log('  1. Figma > Account Settings > Personal access tokens');
-      console.log('  2. Click "Generate new token" and copy it\n');
+      console.log('\n  Figma Remote MCP Server:');
+      console.log('  Registers Figma\'s official remote MCP server (https://mcp.figma.com/mcp).');
+      console.log('  After setup, authenticate via /mcp command in Claude Code.\n');
       break;
     case 'linear':
       console.log('\n  Linear API Key Guide:');
@@ -178,21 +178,15 @@ export async function runAddTool(toolName: string): Promise<void> {
     const config = await loadConfig();
     await saveConfig({ ...config, notion: { apiKey: '***keychain***' } });
   } else if (toolId === 'figma') {
-    const { figmaToken } = await inquirer.prompt([{
-      type: 'password', name: 'figmaToken', message: 'Figma Personal Access Token:', mask: '*',
-      validate: (input: string) => input.length > 10 || 'Valid Figma token required.',
-    }]);
-    await setSecret('figma-personal-access-token', figmaToken);
-    envValues['FIGMA_PERSONAL_ACCESS_TOKEN'] = figmaToken;
-    const config = await loadConfig();
-    await saveConfig({ ...config, figma: { personalAccessToken: '***keychain***' } });
+    // Figma uses remote HTTP transport — no credentials needed here.
+    // Authentication happens via OAuth in Claude Code after registration.
   } else if (toolId === 'linear') {
     const { linearApiKey } = await inquirer.prompt([{
       type: 'password', name: 'linearApiKey', message: 'Linear API Key:', mask: '*',
       validate: (input: string) => input.startsWith('lin_api_') || 'Please enter a key starting with lin_api_.',
     }]);
     await setSecret('linear-api-key', linearApiKey);
-    envValues['LINEAR_API_KEY'] = linearApiKey;
+    envValues['LINEAR_API_TOKEN'] = linearApiKey;
     const config = await loadConfig();
     await saveConfig({ ...config, linear: { apiKey: '***keychain***' } });
   } else if (toolId === 'google-drive') {

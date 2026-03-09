@@ -25,6 +25,7 @@ vi.mock('node:child_process', () => ({
 vi.mock('../../src/config/claude-code-sync.js', () => ({
   syncToClaudeCode: vi.fn().mockResolvedValue({ success: true }),
   removeFromClaudeCode: vi.fn().mockResolvedValue({ success: true }),
+  syncHttpToClaudeCode: vi.fn().mockResolvedValue({ success: true }),
 }));
 
 import {
@@ -73,16 +74,14 @@ describe('mcp-manager', () => {
     expect(needed).toHaveLength(0);
   });
 
-  it('installMcpServer adds server to config', async () => {
-    const result = await installMcpServer('figma', {
-      FIGMA_PERSONAL_ACCESS_TOKEN: 'figd_test123',
-    });
+  it('installMcpServer adds figma as HTTP transport server', async () => {
+    const result = await installMcpServer('figma', {});
     expect(result.success).toBe(true);
     expect(mockMcpConfig.mcpServers).toHaveProperty('figma');
-    expect(setSecret).toHaveBeenCalledWith(
-      'mcp-figma-figma-personal-access-token',
-      'figd_test123',
-    );
+    // Figma uses HTTP transport — saved with __http__ marker
+    const figmaConfig = mockMcpConfig.mcpServers['figma'] as { command: string; args: string[] };
+    expect(figmaConfig.command).toBe('__http__');
+    expect(figmaConfig.args[0]).toContain('figma');
   });
 
   it('installMcpServer returns error for unknown server', async () => {
@@ -112,11 +111,11 @@ describe('mcp-manager', () => {
   });
 
   it('installMcpServer registers linear with correct config', async () => {
-    await installMcpServer('linear', { LINEAR_API_KEY: 'lin_api_test' }, { skipVerify: true });
+    await installMcpServer('linear', { LINEAR_API_TOKEN: 'lin_api_test' }, { skipVerify: true });
     const linearConfig = mockMcpConfig.mcpServers['linear'] as { command: string; args: string[]; env: Record<string, string> };
     expect(linearConfig.command).toBe('npx');
-    expect(linearConfig.args).toContain('@anthropic-ai/linear-mcp');
-    expect(linearConfig.env?.LINEAR_API_KEY).toBe('lin_api_test');
+    expect(linearConfig.args).toContain('@tacticlaunch/mcp-linear');
+    expect(linearConfig.env?.LINEAR_API_TOKEN).toBe('lin_api_test');
   });
 
   it('installMcpServer registers google-drive with correct config', async () => {
@@ -126,7 +125,7 @@ describe('mcp-manager', () => {
     }, { skipVerify: true });
     const driveConfig = mockMcpConfig.mcpServers['google-drive'] as { command: string; args: string[]; env: Record<string, string> };
     expect(driveConfig.command).toBe('npx');
-    expect(driveConfig.args).toContain('@anthropic-ai/google-drive-mcp');
+    expect(driveConfig.args).toContain('@modelcontextprotocol/server-gdrive');
     expect(driveConfig.env?.GOOGLE_CLIENT_ID).toBe('client-id');
   });
 

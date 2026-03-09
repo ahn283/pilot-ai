@@ -58,6 +58,22 @@ export async function installMcpServer(
   const entry = getRegistryEntry(serverId);
   if (!entry) return { success: false, error: `Unknown MCP server: ${serverId}` };
 
+  // HTTP transport servers (e.g. Figma remote) use `claude mcp add --transport http`
+  if (entry.transport === 'http' && entry.url) {
+    const { syncHttpToClaudeCode } = await import('../config/claude-code-sync.js');
+    const syncResult = await syncHttpToClaudeCode(serverId, entry.url);
+    if (syncResult.success) {
+      // Also record in local config so pilot-ai knows it's "installed"
+      const config = await loadMcpConfig();
+      config.mcpServers[serverId] = { command: '__http__', args: [entry.url] };
+      await saveMcpConfig(config);
+      console.log(`  (registered as remote HTTP MCP server)`);
+      return { success: true };
+    } else {
+      return { success: false, error: syncResult.error ?? 'Failed to register HTTP MCP server' };
+    }
+  }
+
   if (!options.skipVerify) {
     try {
       // Verify the package exists by trying to resolve it

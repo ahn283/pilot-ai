@@ -16,7 +16,8 @@ describe('mcp-registry', () => {
     const entry = getRegistryEntry('figma');
     expect(entry).toBeDefined();
     expect(entry!.name).toBe('Figma');
-    expect(entry!.npmPackage).toContain('figma');
+    expect(entry!.transport).toBe('http');
+    expect(entry!.url).toContain('figma');
   });
 
   it('getRegistryEntry returns undefined for unknown ID', () => {
@@ -48,7 +49,10 @@ describe('mcp-registry', () => {
       expect(entry.id).toBeTruthy();
       expect(entry.name).toBeTruthy();
       expect(entry.description).toBeTruthy();
-      expect(entry.npmPackage).toBeTruthy();
+      // HTTP transport servers don't need npmPackage
+      if (entry.transport !== 'http') {
+        expect(entry.npmPackage).toBeTruthy();
+      }
       expect(entry.keywords.length).toBeGreaterThan(0);
       expect(entry.category).toBeTruthy();
     }

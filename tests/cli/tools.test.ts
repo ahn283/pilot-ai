@@ -43,6 +43,14 @@ vi.mock('inquirer', () => ({
   default: { prompt: vi.fn() },
 }));
 
+// Mock claude-code-sync
+vi.mock('../../src/config/claude-code-sync.js', () => ({
+  checkClaudeCodeSync: vi.fn().mockResolvedValue(true),
+  syncToClaudeCode: vi.fn().mockResolvedValue({ success: true }),
+  removeFromClaudeCode: vi.fn().mockResolvedValue({ success: true }),
+  syncHttpToClaudeCode: vi.fn().mockResolvedValue({ success: true }),
+}));
+
 import { runTools, runAddTool, runRemoveTool } from '../../src/cli/tools.js';
 import { installMcpServer, uninstallMcpServer } from '../../src/agent/mcp-manager.js';
 

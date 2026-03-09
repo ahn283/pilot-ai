@@ -98,7 +98,13 @@ export async function syncAllToClaudeCode(
   const failed: string[] = [];
 
   for (const [serverId, config] of Object.entries(mcpServers)) {
-    const result = await syncToClaudeCode(serverId, config);
+    // HTTP transport servers use a different sync path
+    let result: { success: boolean; error?: string };
+    if (config.command === '__http__' && config.args?.[0]) {
+      result = await syncHttpToClaudeCode(serverId, config.args[0]);
+    } else {
+      result = await syncToClaudeCode(serverId, config);
+    }
     if (result.success) {
       synced.push(serverId);
     } else {
@@ -107,6 +113,40 @@ export async function syncAllToClaudeCode(
   }
 
   return { synced, failed };
+}
+
+/**
+ * Register a remote HTTP MCP server in Claude Code.
+ * Runs: claude mcp add --transport http -s user <name> <url>
+ */
+export async function syncHttpToClaudeCode(
+  serverId: string,
+  url: string,
+): Promise<{ success: boolean; error?: string }> {
+  const cliExists = await checkClaudeCli();
+  if (!cliExists) {
+    return { success: false, error: 'Claude Code CLI not installed' };
+  }
+
+  try {
+    // Remove existing server first (handles updates)
+    await execFileAsync('claude', ['mcp', 'remove', '-s', 'user', serverId], {
+      timeout: TIMEOUT_MS,
+    }).catch(() => {});
+
+    await execFileAsync('claude', [
+      'mcp', 'add',
+      '--transport', 'http',
+      '-s', 'user',
+      serverId,
+      url,
+    ], { timeout: TIMEOUT_MS });
+
+    return { success: true };
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    return { success: false, error: msg };
+  }
 }
 
 /**
