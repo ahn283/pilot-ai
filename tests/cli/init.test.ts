@@ -156,7 +156,7 @@ describe('runInit - MCP registration via checkbox selection', () => {
     await runInit();
 
     expect(installMcpServer).toHaveBeenCalledWith('linear', {
-      LINEAR_API_KEY: 'lin_api_test123',
+      LINEAR_API_TOKEN: 'lin_api_test123',
     }, { skipVerify: true });
   });
 
@@ -177,7 +177,7 @@ describe('runInit - MCP registration via checkbox selection', () => {
     await runInit();
 
     expect(installMcpServer).toHaveBeenCalledWith('figma', {
-      FIGMA_PERSONAL_ACCESS_TOKEN: 'figd_test_token',
+      FIGMA_API_KEY: 'figd_test_token',
     }, { skipVerify: true });
   });
 

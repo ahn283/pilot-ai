@@ -445,7 +445,7 @@ async function collectAndRegisterMcpTool(toolId: string, result: Partial<PilotCo
         validate: (input: string) => input.length > 10 || 'Valid Figma token required.',
       }]);
       await setSecret('figma-personal-access-token', figmaToken);
-      envValues['FIGMA_PERSONAL_ACCESS_TOKEN'] = figmaToken;
+      envValues['FIGMA_API_KEY'] = figmaToken;
       result.figma = { personalAccessToken: '***keychain***' };
       break;
     }
@@ -458,7 +458,7 @@ async function collectAndRegisterMcpTool(toolId: string, result: Partial<PilotCo
         validate: (input: string) => input.startsWith('lin_api_') || 'Please enter a key starting with lin_api_.',
       }]);
       await setSecret('linear-api-key', linearApiKey);
-      envValues['LINEAR_API_KEY'] = linearApiKey;
+      envValues['LINEAR_API_TOKEN'] = linearApiKey;
       result.linear = { apiKey: '***keychain***' };
       break;
     }

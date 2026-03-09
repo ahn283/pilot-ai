@@ -45,8 +45,8 @@ describe('registerFigmaMcp', () => {
     const config = await loadMcpConfig();
     expect(config.mcpServers['figma']).toBeDefined();
     expect(config.mcpServers['figma'].command).toBe('npx');
-    expect(config.mcpServers['figma'].args).toContain('@anthropic-ai/figma-mcp');
-    expect(config.mcpServers['figma'].env?.FIGMA_PERSONAL_ACCESS_TOKEN).toBe('figd_test_token');
+    expect(config.mcpServers['figma'].args).toContain('figma-developer-mcp');
+    expect(config.mcpServers['figma'].env?.FIGMA_API_KEY).toBe('figd_test_token');
   });
 
   it('preserves existing MCP servers', async () => {

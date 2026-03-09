@@ -44,9 +44,9 @@ export async function registerFigmaMcp(personalAccessToken: string): Promise<str
 
   config.mcpServers['figma'] = {
     command: 'npx',
-    args: ['-y', '@anthropic-ai/figma-mcp'],
+    args: ['-y', 'figma-developer-mcp', '--stdio'],
     env: {
-      FIGMA_PERSONAL_ACCESS_TOKEN: personalAccessToken,
+      FIGMA_API_KEY: personalAccessToken,
     },
   };
 
