@@ -21,6 +21,12 @@ vi.mock('node:child_process', () => ({
   execFile: vi.fn((_cmd: string, _args: string[], _opts: object, cb: (err: Error | null) => void) => { cb(null); }),
 }));
 
+// Mock claude-code-sync
+vi.mock('../../src/config/claude-code-sync.js', () => ({
+  syncToClaudeCode: vi.fn().mockResolvedValue({ success: true }),
+  removeFromClaudeCode: vi.fn().mockResolvedValue({ success: true }),
+}));
+
 import {
   getInstalledServers,
   detectNeededServers,

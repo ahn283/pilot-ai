@@ -34,5 +34,5 @@
 ## 6. 빌드 & 검증
 
 - [x] `npm run build` 성공
-- [ ] `pilot-ai sync-mcp` 실행 → `claude mcp list`에서 서버 확인 (수동 검증)
-- [ ] Claude Code 직접 실행 시 MCP 도구 사용 가능 확인 (수동 검증)
+- [x] `pilot-ai sync-mcp` 실행 → `claude mcp list`에서 서버 확인 (수동 검증)
+- [x] Claude Code 직접 실행 시 MCP 도구 사용 가능 확인 (수동 검증)
