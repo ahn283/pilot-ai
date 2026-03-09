@@ -1,6 +1,6 @@
 {
   "name": "pilot-ai",
-  "version": "0.5.8",
+  "version": "0.5.9",
   "description": "Personal AI agent that controls your macOS via Slack or Telegram",
   "type": "module",
   "bin": {
