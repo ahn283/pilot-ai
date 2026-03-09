@@ -9,6 +9,7 @@ import { loadMcpConfig, saveMcpConfig, type McpConfig } from '../tools/figma-mcp
 import { findMatchingServers, getRegistryEntry, MCP_REGISTRY, type McpServerEntry } from '../tools/mcp-registry.js';
 import { getSecret, setSecret } from '../config/keychain.js';
 import { getPilotDir } from '../config/store.js';
+import { syncToClaudeCode, removeFromClaudeCode } from '../config/claude-code-sync.js';
 import path from 'node:path';
 
 const execFileAsync = promisify(execFile);
@@ -89,6 +90,14 @@ export async function installMcpServer(
   config.mcpServers[serverId] = serverConfig;
   await saveMcpConfig(config);
 
+  // Sync to Claude Code native settings (non-blocking, warn on failure)
+  const syncResult = await syncToClaudeCode(serverId, serverConfig);
+  if (syncResult.success) {
+    console.log(`  (synced to Claude Code)`);
+  } else if (syncResult.error !== 'Claude Code CLI not installed') {
+    console.log(`  Note: Claude Code sync failed (${syncResult.error})`);
+  }
+
   return { success: true };
 }
 
@@ -99,6 +108,9 @@ export async function uninstallMcpServer(serverId: string): Promise<void> {
   const config = await loadMcpConfig();
   delete config.mcpServers[serverId];
   await saveMcpConfig(config);
+
+  // Also remove from Claude Code (ignore failures)
+  await removeFromClaudeCode(serverId).catch(() => {});
 }
 
 /**

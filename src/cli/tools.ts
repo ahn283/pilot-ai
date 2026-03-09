@@ -4,6 +4,7 @@ import { getInstalledServers, installMcpServer, uninstallMcpServer } from '../ag
 import { setSecret } from '../config/keychain.js';
 import { isGhAuthenticated } from '../tools/github.js';
 import { loadConfig, saveConfig } from '../config/store.js';
+import { checkClaudeCodeSync } from '../config/claude-code-sync.js';
 
 interface ToolStatus {
   id: string;
@@ -11,6 +12,7 @@ interface ToolStatus {
   status: 'active' | 'inactive';
   type: 'MCP' | 'CLI' | 'Local';
   category: string;
+  claudeCode?: 'synced' | 'not synced' | '—';
 }
 
 /**
@@ -24,12 +26,14 @@ export async function runTools(): Promise<void> {
 
   // MCP tools from registry
   for (const entry of MCP_REGISTRY) {
+    const isActive = installed.has(entry.id);
     tools.push({
       id: entry.id,
       name: entry.name,
-      status: installed.has(entry.id) ? 'active' : 'inactive',
+      status: isActive ? 'active' : 'inactive',
       type: 'MCP',
       category: entry.category,
+      claudeCode: isActive ? (await checkClaudeCodeSync(entry.id) ? 'synced' : 'not synced') : '—',
     });
   }
 
@@ -40,6 +44,7 @@ export async function runTools(): Promise<void> {
     status: config.github?.enabled ? 'active' : 'inactive',
     type: 'CLI',
     category: 'development',
+    claudeCode: '—',
   });
   tools.push({
     id: 'obsidian',
@@ -47,6 +52,7 @@ export async function runTools(): Promise<void> {
     status: config.obsidian?.vaultPath ? 'active' : 'inactive',
     type: 'Local',
     category: 'productivity',
+    claudeCode: '—',
   });
 
   // Sort by category then name
@@ -54,12 +60,15 @@ export async function runTools(): Promise<void> {
   tools.sort((a, b) => (catOrder[a.category] ?? 99) - (catOrder[b.category] ?? 99) || a.name.localeCompare(b.name));
 
   // Print table
-  console.log('\nTool               Status     Type    Category');
-  console.log('─'.repeat(55));
+  console.log('\nTool               Status     Type    Claude Code');
+  console.log('─'.repeat(60));
   for (const t of tools) {
     const statusIcon = t.status === 'active' ? '\x1b[32mactive\x1b[0m  ' : '\x1b[90minactive\x1b[0m';
+    let ccStatus = '—';
+    if (t.claudeCode === 'synced') ccStatus = '\x1b[32msynced\x1b[0m';
+    else if (t.claudeCode === 'not synced') ccStatus = '\x1b[33mnot synced\x1b[0m';
     console.log(
-      `${t.name.padEnd(19)}${statusIcon.padEnd(19)}${t.type.padEnd(8)}${t.category}`,
+      `${t.name.padEnd(19)}${statusIcon.padEnd(19)}${t.type.padEnd(8)}${ccStatus}`,
     );
   }
   console.log('');
@@ -230,6 +239,42 @@ export async function runRemoveTool(toolName: string): Promise<void> {
   await uninstallMcpServer(toolId);
   const entry = MCP_REGISTRY.find((e) => e.id === toolId);
   console.log(`\n  ${entry?.name ?? toolId} MCP server removed.\n`);
+}
+
+/**
+ * Syncs all pilot-ai MCP servers to Claude Code native settings (user scope).
+ */
+export async function runSyncMcp(): Promise<void> {
+  const { loadMcpConfig } = await import('../tools/figma-mcp.js');
+  const { syncAllToClaudeCode } = await import('../config/claude-code-sync.js');
+  const { checkClaudeCli } = await import('../agent/claude.js');
+
+  const cliExists = await checkClaudeCli();
+  if (!cliExists) {
+    console.log('\n  Claude Code CLI is not installed. Cannot sync.\n');
+    return;
+  }
+
+  const config = await loadMcpConfig();
+  const serverIds = Object.keys(config.mcpServers);
+
+  if (serverIds.length === 0) {
+    console.log('\n  No MCP servers configured in pilot-ai.\n');
+    return;
+  }
+
+  console.log('\nSyncing MCP servers to Claude Code (user scope)...');
+
+  const { synced, failed } = await syncAllToClaudeCode(config.mcpServers);
+
+  for (const id of synced) {
+    console.log(`  ✅ ${id} — synced`);
+  }
+  for (const id of failed) {
+    console.log(`  ❌ ${id} — failed`);
+  }
+
+  console.log(`\n${synced.length} server(s) synced. Run "claude mcp list" to verify.\n`);
 }
 
 async function addGitHub(): Promise<void> {

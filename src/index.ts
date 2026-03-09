@@ -146,6 +146,14 @@ program
     await runRemoveTool(name);
   });
 
+program
+  .command('sync-mcp')
+  .description('Sync MCP servers to Claude Code native settings')
+  .action(async () => {
+    const { runSyncMcp } = await import('./cli/tools.js');
+    await runSyncMcp();
+  });
+
 program.addCommand(createProjectCommand());
 
 program.parse();
