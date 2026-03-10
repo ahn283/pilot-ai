@@ -3,6 +3,7 @@ import { promisify } from 'node:util';
 import { accessSync, constants as fsConstants } from 'node:fs';
 import { checkClaudeCli, checkClaudeCliAuth } from '../agent/claude.js';
 import { isGhAuthenticated } from '../tools/github.js';
+import { getSecret } from '../config/keychain.js';
 
 const execFileAsync = promisify(execFile);
 
@@ -23,6 +24,7 @@ export async function runDoctor(): Promise<void> {
   results.push(await checkClaudeCliStatus());
   results.push(await checkGhCli());
   results.push(await checkPlaywright());
+  results.push(await checkGoogleOAuth());
   results.push(await checkAutomationPermission());
   results.push(await checkScreenRecordingPermission());
   results.push(await checkAccessibilityPermission());
@@ -113,6 +115,49 @@ async function checkGhCli(): Promise<CheckResult> {
     };
   }
   return { name: 'GitHub CLI (gh)', ok: true, detail: 'installed and authenticated' };
+}
+
+async function checkGoogleOAuth(): Promise<CheckResult> {
+  const clientId = await getSecret('google-client-id');
+  const clientSecret = await getSecret('google-client-secret');
+
+  if (!clientId || !clientSecret) {
+    return {
+      name: 'Google OAuth',
+      ok: false,
+      detail: 'credentials not configured',
+      fix: 'Run "pilot-ai init" or "pilot-ai addtool google-oauth" to set up Google OAuth',
+    };
+  }
+
+  const tokensRaw = await getSecret('google-oauth-tokens');
+  if (!tokensRaw) {
+    return {
+      name: 'Google OAuth',
+      ok: false,
+      detail: 'credentials set but not authenticated',
+      fix: 'Run "pilot-ai auth google" to complete OAuth sign-in',
+    };
+  }
+
+  try {
+    const tokens = JSON.parse(tokensRaw) as { expiresAt?: number };
+    if (tokens.expiresAt && tokens.expiresAt < Date.now()) {
+      return {
+        name: 'Google OAuth',
+        ok: true,
+        detail: 'authenticated (token expired, will auto-refresh)',
+      };
+    }
+    return { name: 'Google OAuth', ok: true, detail: 'authenticated' };
+  } catch {
+    return {
+      name: 'Google OAuth',
+      ok: false,
+      detail: 'corrupted token data',
+      fix: 'Run "pilot-ai auth google" to re-authenticate',
+    };
+  }
 }
 
 async function checkPlaywright(): Promise<CheckResult> {

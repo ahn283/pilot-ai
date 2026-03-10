@@ -129,13 +129,13 @@
 
 **수정 파일:** `src/cli/doctor.ts`
 
-- [ ] 7.7.1 Google 진단 섹션 추가: "Google OAuth" 헤더
-- [ ] 7.7.2 `getSecret('google-client-id')` 존재 확인 → 결과 출력 (✓/✗)
-- [ ] 7.7.3 `getSecret('google-client-secret')` 존재 확인 → 결과 출력
-- [ ] 7.7.4 `getSecret('google-oauth-tokens')` 존재 확인 → 결과 출력
-- [ ] 7.7.5 토큰 존재 시 `expiresAt` 파싱하여 만료 여부 표시 (만료됨/유효)
-- [ ] 7.7.6 토큰 없을 시 안내: `"Run 'pilot-ai auth google' to authenticate"`
-- [ ] 7.7.7 빌드 확인
+- [x] 7.7.1 Google 진단 섹션 추가: "Google OAuth" 헤더
+- [x] 7.7.2 `getSecret('google-client-id')` 존재 확인 → 결과 출력 (✓/✗)
+- [x] 7.7.3 `getSecret('google-client-secret')` 존재 확인 → 결과 출력
+- [x] 7.7.4 `getSecret('google-oauth-tokens')` 존재 확인 → 결과 출력
+- [x] 7.7.5 토큰 존재 시 `expiresAt` 파싱하여 만료 여부 표시 (만료됨/유효)
+- [x] 7.7.6 토큰 없을 시 안내: `"Run 'pilot-ai auth google' to authenticate"`
+- [x] 7.7.7 빌드 확인
 
 ---
 
