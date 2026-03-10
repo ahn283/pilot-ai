@@ -17,6 +17,8 @@ import { PilotError } from '../utils/errors.js';
 import { getSession, createSession, touchSession, cleanupSessions } from './session.js';
 import { detectPermissionError, PermissionWatcher } from '../security/permissions.js';
 import { isGhAuthenticated } from '../tools/github.js';
+import { configureGoogle } from '../tools/google-auth.js';
+import { configureEmail } from '../tools/email.js';
 
 function log(message: string): void {
   console.log(`[${new Date().toISOString()}] ${message}`);
@@ -55,6 +57,19 @@ export class AgentCore {
   }
 
   async start(): Promise<void> {
+    // Initialize Google OAuth module if configured
+    if (this.config.google) {
+      configureGoogle({
+        clientId: this.config.google.clientId,
+        clientSecret: this.config.google.clientSecret,
+      });
+      configureEmail({
+        clientId: this.config.google.clientId,
+        clientSecret: this.config.google.clientSecret,
+      });
+      log('Google OAuth configured.');
+    }
+
     log('Connecting to messenger...');
     await this.messenger.start();
     log('Messenger connected. Waiting for messages...');

@@ -70,13 +70,13 @@
 
 **수정 파일:** `src/agent/core.ts`
 
-- [ ] 7.4.1 `core.ts` 상단에 `configureGoogle`, `configureEmail` import 추가
-- [ ] 7.4.2 agent 초기화 경로 (constructor 또는 start 메서드) 에서 `this.config.google` 존재 여부 확인
-- [ ] 7.4.3 존재 시 `configureGoogle({ clientId, clientSecret })` 호출
-- [ ] 7.4.4 존재 시 `configureEmail({ clientId, clientSecret })` 임시 호출 (7.5 통합 전까지)
-- [ ] 7.4.5 `config.google` 없을 시 로그만 남기고 skip (에러 발생 X)
-- [ ] 7.4.6 빌드 확인
-- [ ] 7.4.7 기존 테스트 영향 없음 확인 (`npm test`)
+- [x] 7.4.1 `core.ts` 상단에 `configureGoogle`, `configureEmail` import 추가
+- [x] 7.4.2 `start()` 메서드에서 `this.config.google` 존재 여부 확인
+- [x] 7.4.3 존재 시 `configureGoogle({ clientId, clientSecret })` 호출
+- [x] 7.4.4 존재 시 `configureEmail({ clientId, clientSecret })` 임시 호출 (7.5 통합 전까지)
+- [x] 7.4.5 `config.google` 없을 시 skip (에러 발생 X)
+- [x] 7.4.6 빌드 확인
+- [x] 7.4.7 기존 테스트 영향 없음 확인 (196 tests passed)
 
 ---
 
