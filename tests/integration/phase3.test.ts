@@ -131,17 +131,21 @@ describe('pipeline multi-step (3.4)', () => {
 
 // --- 3.5 Email integration ---
 describe('email integration (3.5)', () => {
-  it('configures OAuth and manages tokens', async () => {
+  it('exports Gmail API functions and uses shared Google OAuth', async () => {
     const email = await import('../../src/tools/email.js');
-    expect(typeof email.configureEmail).toBe('function');
-    expect(typeof email.getAuthUrl).toBe('function');
-    expect(typeof email.exchangeCode).toBe('function');
     expect(typeof email.listMessages).toBe('function');
     expect(typeof email.getMessage).toBe('function');
     expect(typeof email.createDraft).toBe('function');
+    expect(typeof email.sendEmail).toBe('function');
 
-    email.configureEmail({ clientId: 'cid', clientSecret: 'csec' });
-    const url = email.getAuthUrl('http://127.0.0.1:9999/callback');
+    // OAuth is now managed by google-auth.ts
+    const googleAuth = await import('../../src/tools/google-auth.js');
+    expect(typeof googleAuth.configureGoogle).toBe('function');
+    expect(typeof googleAuth.getGoogleAuthUrl).toBe('function');
+    expect(typeof googleAuth.exchangeGoogleCode).toBe('function');
+
+    googleAuth.configureGoogle({ clientId: 'cid', clientSecret: 'csec' });
+    const url = googleAuth.getGoogleAuthUrl(['gmail'], 'http://127.0.0.1:9999/callback');
     expect(url).toContain('accounts.google.com');
     expect(url).toContain('cid');
   });

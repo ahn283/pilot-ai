@@ -59,50 +59,38 @@ describe('google-auth token Keychain integration', () => {
   });
 });
 
-describe('email token Keychain integration', () => {
-  const keychainKey = 'gmail-oauth-tokens';
-  const testTokens = {
+describe('gmail-oauth-tokens migration', () => {
+  const legacyKey = 'gmail-oauth-tokens';
+  const newKey = 'google-oauth-tokens';
+  const legacyTokens = {
     accessToken: 'gmail-access-token',
     refreshToken: 'gmail-refresh-token',
     expiresAt: Date.now() + 3600_000,
   };
 
   afterEach(async () => {
-    await deleteSecret(keychainKey);
+    await deleteSecret(legacyKey);
+    await deleteSecret(newKey);
   });
 
-  it('saveTokens stores tokens in Keychain', async () => {
-    const { saveTokens } = await import('../../src/tools/email.js');
-    await saveTokens(testTokens);
+  it('migrates gmail-oauth-tokens to google-oauth-tokens on load', async () => {
+    // Store tokens under old key
+    await setSecret(legacyKey, JSON.stringify(legacyTokens));
+    // Ensure new key is empty
+    await deleteSecret(newKey);
 
-    const stored = await getSecret(keychainKey);
-    expect(stored).not.toBeNull();
-    const parsed = JSON.parse(stored!);
-    expect(parsed.accessToken).toBe('gmail-access-token');
-  });
+    const { loadGoogleTokens } = await import('../../src/tools/google-auth.js');
+    const loaded = await loadGoogleTokens();
 
-  it('loadTokens reads from Keychain', async () => {
-    await setSecret(keychainKey, JSON.stringify(testTokens));
-
-    const { loadTokens } = await import('../../src/tools/email.js');
-    const loaded = await loadTokens();
     expect(loaded).not.toBeNull();
     expect(loaded!.accessToken).toBe('gmail-access-token');
-  });
 
-  it('loadTokens returns null when no tokens exist', async () => {
-    await deleteSecret(keychainKey);
+    // Should be migrated to new key
+    const newStored = await getSecret(newKey);
+    expect(newStored).not.toBeNull();
 
-    const { loadTokens } = await import('../../src/tools/email.js');
-    const loaded = await loadTokens();
-    expect(loaded).toBeNull();
-  });
-
-  it('deleteTokens removes tokens from Keychain', async () => {
-    await setSecret(keychainKey, JSON.stringify(testTokens));
-    const { deleteTokens } = await import('../../src/tools/email.js');
-    await deleteTokens();
-    const stored = await getSecret(keychainKey);
-    expect(stored).toBeNull();
+    // Legacy key should be removed
+    const legacyStored = await getSecret(legacyKey);
+    expect(legacyStored).toBeNull();
   });
 });

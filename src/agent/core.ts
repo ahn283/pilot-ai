@@ -18,7 +18,6 @@ import { getSession, createSession, touchSession, cleanupSessions } from './sess
 import { detectPermissionError, PermissionWatcher } from '../security/permissions.js';
 import { isGhAuthenticated } from '../tools/github.js';
 import { configureGoogle } from '../tools/google-auth.js';
-import { configureEmail } from '../tools/email.js';
 import { MAX_MESSAGE_LENGTH } from '../messenger/split.js';
 
 function log(message: string): void {
@@ -61,10 +60,6 @@ export class AgentCore {
     // Initialize Google OAuth module if configured
     if (this.config.google) {
       configureGoogle({
-        clientId: this.config.google.clientId,
-        clientSecret: this.config.google.clientSecret,
-      });
-      configureEmail({
         clientId: this.config.google.clientId,
         clientSecret: this.config.google.clientSecret,
       });

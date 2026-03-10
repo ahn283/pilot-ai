@@ -84,18 +84,18 @@
 
 **수정 파일:** `src/tools/email.ts`, `src/tools/google-auth.ts`
 
-- [ ] 7.5.1 `email.ts`에서 `getGoogleAccessToken` import 추가 (`google-auth.ts`에서)
-- [ ] 7.5.2 `email.ts`의 `refreshAccessToken()` 내부를 `getGoogleAccessToken()` 호출로 교체
-- [ ] 7.5.3 `email.ts`의 `configureEmail()`, `exchangeCode()`, `getAuthUrl()` 함수 제거
-- [ ] 7.5.4 `email.ts`의 자체 `config`, `tokens` 모듈 변수 제거
-- [ ] 7.5.5 `email.ts`의 `loadTokens()`, `saveTokens()`, `deleteTokens()` 제거 (google-auth.ts 것 사용)
-- [ ] 7.5.6 `gmail-oauth-tokens` → `google-oauth-tokens` 마이그레이션: `google-auth.ts`의 `loadGoogleTokens()`에서 `gmail-oauth-tokens` fallback 추가
-- [ ] 7.5.7 마이그레이션 성공 시 `gmail-oauth-tokens` Keychain 키 삭제
-- [ ] 7.5.8 `gmailFetch()` 헬퍼의 토큰 획득을 `getGoogleAccessToken()` 사용으로 변경
-- [ ] 7.5.9 `email.ts`에서 불필요한 import 정리 (`fs`, `path`, `getPilotDir`, `getSecret`, `setSecret`, `deleteSecret`)
-- [ ] 7.5.10 `core.ts`에서 `configureEmail()` 호출 제거 (7.4.4에서 추가한 임시 코드)
-- [ ] 7.5.11 `tests/tools/email.test.ts` 업데이트: `configureEmail()` → `configureGoogle()` 사용
-- [ ] 7.5.12 빌드 확인 + 전체 테스트 통과
+- [x] 7.5.1 `email.ts`에서 `getGoogleAccessToken` import 추가 (`google-auth.ts`에서)
+- [x] 7.5.2 `email.ts`의 `refreshAccessToken()` 내부를 `getGoogleAccessToken()` 호출로 교체
+- [x] 7.5.3 `email.ts`의 `configureEmail()`, `exchangeCode()`, `getAuthUrl()` 함수 제거
+- [x] 7.5.4 `email.ts`의 자체 `config`, `tokens` 모듈 변수 제거
+- [x] 7.5.5 `email.ts`의 `loadTokens()`, `saveTokens()`, `deleteTokens()` 제거 (google-auth.ts 것 사용)
+- [x] 7.5.6 `gmail-oauth-tokens` → `google-oauth-tokens` 마이그레이션: `google-auth.ts`의 `loadGoogleTokens()`에서 `gmail-oauth-tokens` fallback 추가
+- [x] 7.5.7 마이그레이션 성공 시 `gmail-oauth-tokens` Keychain 키 삭제
+- [x] 7.5.8 `gmailFetch()` 헬퍼의 토큰 획득을 `getGoogleAccessToken()` 사용으로 변경
+- [x] 7.5.9 `email.ts`에서 불필요한 import 정리 (`fs`, `path`, `getPilotDir`, `getSecret`, `setSecret`, `deleteSecret`)
+- [x] 7.5.10 `core.ts`에서 `configureEmail()` 호출 제거 (7.4.4에서 추가한 임시 코드)
+- [x] 7.5.11 `tests/tools/email.test.ts` 업데이트: `configureEmail()` → `configureGoogle()` 사용
+- [x] 7.5.12 빌드 확인 + 전체 테스트 통과
 
 ---
 

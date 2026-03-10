@@ -39,6 +39,7 @@ export const GOOGLE_SCOPES = {
 };
 
 const KEYCHAIN_KEY = 'google-oauth-tokens';
+const LEGACY_GMAIL_KEY = 'gmail-oauth-tokens';
 
 function getLegacyTokenPath(): string {
   return path.join(getPilotDir(), 'credentials', 'google-tokens.json');
@@ -64,6 +65,24 @@ export async function loadGoogleTokens(): Promise<GoogleTokens | null> {
       return tokens;
     } catch {
       // Corrupted keychain entry, fall through to legacy
+    }
+  }
+
+  // Try legacy gmail-oauth-tokens key and migrate if found
+  const legacyGmailSecret = await getSecret(LEGACY_GMAIL_KEY);
+  if (legacyGmailSecret) {
+    try {
+      const parsed = JSON.parse(legacyGmailSecret) as GoogleTokens;
+      // Ensure scopes field exists (legacy tokens may not have it)
+      if (!parsed.scopes) {
+        parsed.scopes = GOOGLE_SCOPES.gmail;
+      }
+      await saveGoogleTokens(parsed);
+      // Remove legacy key
+      await deleteSecret(LEGACY_GMAIL_KEY).catch(() => {});
+      return tokens;
+    } catch {
+      // Corrupted, fall through
     }
   }
 

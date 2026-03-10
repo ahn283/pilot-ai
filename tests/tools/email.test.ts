@@ -1,5 +1,4 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import fs from 'node:fs/promises';
 
 const testDir = '/tmp/pilot-email-test';
 vi.mock('../../src/config/store.js', () => ({
@@ -9,88 +8,23 @@ vi.mock('../../src/config/store.js', () => ({
 const mockFetch = vi.fn();
 global.fetch = mockFetch;
 
-const {
-  configureEmail,
-  getAuthUrl,
-  exchangeCode,
-  saveTokens,
-  refreshAccessToken,
-  listMessages,
-  getMessage,
-  createDraft,
-} = await import('../../src/tools/email.js');
+// Configure Google OAuth module (replaces configureEmail)
+const { configureGoogle, saveGoogleTokens } = await import('../../src/tools/google-auth.js');
+const { listMessages, getMessage, createDraft } = await import('../../src/tools/email.js');
 
 beforeEach(async () => {
   vi.clearAllMocks();
-  await fs.mkdir(testDir, { recursive: true });
-  try { await fs.unlink(`${testDir}/gmail-tokens.json`); } catch {}
-  configureEmail({ clientId: 'test-client', clientSecret: 'test-secret' });
-});
-
-describe('getAuthUrl', () => {
-  it('returns Google OAuth URL with loopback redirect', () => {
-    const url = getAuthUrl('http://127.0.0.1:8080/callback');
-    expect(url).toContain('accounts.google.com');
-    expect(url).toContain('test-client');
-    expect(url).toContain('gmail');
-    expect(url).toContain('redirect_uri=http%3A%2F%2F127.0.0.1%3A8080%2Fcallback');
-    expect(url).not.toContain('oob');
-  });
-});
-
-describe('exchangeCode', () => {
-  it('exchanges auth code for tokens', async () => {
-    mockFetch.mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({
-        access_token: 'at-123',
-        refresh_token: 'rt-456',
-        expires_in: 3600,
-      }),
-    });
-
-    const tokens = await exchangeCode('auth-code', 'http://127.0.0.1:8080/callback');
-    expect(tokens.accessToken).toBe('at-123');
-    expect(tokens.refreshToken).toBe('rt-456');
-  });
-});
-
-describe('refreshAccessToken', () => {
-  it('returns cached token if not expired', async () => {
-    await saveTokens({
-      accessToken: 'valid-token',
-      refreshToken: 'rt',
-      expiresAt: Date.now() + 3600_000,
-    });
-
-    const token = await refreshAccessToken();
-    expect(token).toBe('valid-token');
-    expect(mockFetch).not.toHaveBeenCalled();
-  });
-
-  it('refreshes expired token', async () => {
-    await saveTokens({
-      accessToken: 'old',
-      refreshToken: 'rt-refresh',
-      expiresAt: Date.now() - 1000,
-    });
-
-    mockFetch.mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({
-        access_token: 'new-token',
-        expires_in: 3600,
-      }),
-    });
-
-    const token = await refreshAccessToken();
-    expect(token).toBe('new-token');
-  });
+  configureGoogle({ clientId: 'test-client', clientSecret: 'test-secret' });
 });
 
 describe('getMessage', () => {
   it('fetches and parses email message', async () => {
-    await saveTokens({ accessToken: 'at', refreshToken: 'rt', expiresAt: Date.now() + 3600_000 });
+    await saveGoogleTokens({
+      accessToken: 'at',
+      refreshToken: 'rt',
+      expiresAt: Date.now() + 3600_000,
+      scopes: ['https://www.googleapis.com/auth/gmail.readonly'],
+    });
 
     mockFetch.mockResolvedValueOnce({
       ok: true,
@@ -119,7 +53,12 @@ describe('getMessage', () => {
 
 describe('createDraft', () => {
   it('creates email draft', async () => {
-    await saveTokens({ accessToken: 'at', refreshToken: 'rt', expiresAt: Date.now() + 3600_000 });
+    await saveGoogleTokens({
+      accessToken: 'at',
+      refreshToken: 'rt',
+      expiresAt: Date.now() + 3600_000,
+      scopes: ['https://www.googleapis.com/auth/gmail.readonly'],
+    });
 
     mockFetch.mockResolvedValueOnce({
       ok: true,
