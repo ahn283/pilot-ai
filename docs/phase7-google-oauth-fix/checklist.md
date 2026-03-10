@@ -47,22 +47,22 @@
 **신규 파일:** `src/cli/auth.ts`
 **수정 파일:** `src/index.ts`
 
-- [ ] 7.3.1 `src/cli/auth.ts` 생성: `authCommand` 함수 export
-- [ ] 7.3.2 `auth google` 서브커맨드 기본 골격 (commander.js)
-- [ ] 7.3.3 `--services` 옵션 파싱 (기본값: config에서 읽기, 없으면 `['gmail', 'calendar', 'drive']`)
-- [ ] 7.3.4 `loadConfig()`로 clientId/clientSecret 로드 + 누락 시 에러 메시지 ("pilot-ai init 먼저 실행")
-- [ ] 7.3.5 `configureGoogle()` 호출하여 모듈 상태 초기화
-- [ ] 7.3.6 `startOAuthCallbackServer()` 호출 → 포트 할당, redirectUri 생성
-- [ ] 7.3.7 `getGoogleAuthUrl(services)` 호출 시 redirectUri 전달
-- [ ] 7.3.8 `child_process.exec('open <url>')` (macOS)로 시스템 브라우저 열기
-- [ ] 7.3.9 콘솔에 "브라우저에서 Google 계정 인증을 완료해주세요..." 안내 출력
-- [ ] 7.3.10 `waitForCode()` 대기 → code 수신
-- [ ] 7.3.11 `exchangeGoogleCode(code, services)` 호출 → 토큰 Keychain 저장
-- [ ] 7.3.12 성공 메시지 출력 ("Google 인증 완료! 활성화된 서비스: gmail, calendar, drive")
-- [ ] 7.3.13 실패 시 에러 메시지 출력 + callback 서버 종료
-- [ ] 7.3.14 `auth google --revoke` 옵션: `deleteGoogleTokens()` 호출 + 확인 메시지
-- [ ] 7.3.15 `src/index.ts`에 `auth` 서브커맨드 등록 (`program.command('auth')`)
-- [ ] 7.3.16 빌드 확인
+- [x] 7.3.1 `src/cli/auth.ts` 생성: `runAuthGoogle` 함수 export
+- [x] 7.3.2 `auth google` 서브커맨드 기본 골격 (commander.js)
+- [x] 7.3.3 `--services` 옵션 파싱 (기본값: config에서 읽기, 없으면 `['gmail', 'calendar', 'drive']`)
+- [x] 7.3.4 Keychain에서 clientId/clientSecret 로드 + 누락 시 에러 메시지
+- [x] 7.3.5 `configureGoogle()` 호출하여 모듈 상태 초기화
+- [x] 7.3.6 `startOAuthCallbackServer()` 호출 → 포트 할당, redirectUri 생성
+- [x] 7.3.7 `getGoogleAuthUrl(services, redirectUri)` 호출
+- [x] 7.3.8 `child_process.exec('open <url>')` (macOS)로 시스템 브라우저 열기
+- [x] 7.3.9 콘솔에 안내 출력 + 브라우저 미오픈 시 URL 직접 안내
+- [x] 7.3.10 `waitForCode()` 대기 → code 수신
+- [x] 7.3.11 `exchangeGoogleCode(code, services, redirectUri)` 호출 → 토큰 Keychain 저장
+- [x] 7.3.12 성공 메시지 출력
+- [x] 7.3.13 실패 시 에러 메시지 출력 + callback 서버 종료 (finally)
+- [x] 7.3.14 `auth google --revoke` 옵션: `deleteGoogleTokens()` 호출 + 확인 메시지
+- [x] 7.3.15 `src/index.ts`에 `auth` 서브커맨드 등록
+- [x] 7.3.16 빌드 확인
 
 ---
 

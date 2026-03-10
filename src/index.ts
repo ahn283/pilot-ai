@@ -154,6 +154,19 @@ program
     await runSyncMcp();
   });
 
+// Auth subcommand
+const authCmd = new Command('auth').description('Authenticate with external services');
+authCmd
+  .command('google')
+  .description('Authenticate with Google (Gmail, Calendar, Drive)')
+  .option('--services <list>', 'Comma-separated services: gmail,calendar,drive')
+  .option('--revoke', 'Revoke stored Google OAuth tokens')
+  .action(async (opts) => {
+    const { runAuthGoogle } = await import('./cli/auth.js');
+    await runAuthGoogle(opts);
+  });
+program.addCommand(authCmd);
+
 program.addCommand(createProjectCommand());
 
 program.parse();
