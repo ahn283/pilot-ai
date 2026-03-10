@@ -183,8 +183,8 @@
 
 **수정 파일:** `src/tools/google-auth.ts`, `src/tools/email.ts`
 
-- [ ] 7.9.1 `exchangeGoogleCode()`: `res.ok` 체크 추가, HTTP 4xx/5xx 시 상태코드 포함 에러 throw
-- [ ] 7.9.2 `getGoogleAccessToken()`: refresh 실패 시 `"토큰이 만료되었습니다. 'pilot-ai auth google' 실행"` 안내 메시지
-- [ ] 7.9.3 `getGoogleAccessToken()`: `invalid_grant` 에러 감지 → 토큰 삭제 + 재인증 안내
-- [ ] 7.9.4 `email.ts`의 `gmailFetch()`: HTTP 401 시 토큰 만료 안내 메시지 추가
-- [ ] 7.9.5 빌드 확인 + 테스트 통과
+- [x] 7.9.1 `exchangeGoogleCode()`: `res.ok` 체크 추가, HTTP 4xx/5xx 시 상태코드 포함 에러 throw
+- [x] 7.9.2 `getGoogleAccessToken()`: refresh 실패 시 `"토큰이 만료되었습니다. 'pilot-ai auth google' 실행"` 안내 메시지
+- [x] 7.9.3 `getGoogleAccessToken()`: `invalid_grant` 에러 감지 → 토큰 삭제 + 재인증 안내
+- [x] 7.9.4 `email.ts`의 `gmailFetch()`: HTTP 401 시 토큰 만료 안내 메시지 추가
+- [x] 7.9.5 빌드 확인 + 테스트 통과

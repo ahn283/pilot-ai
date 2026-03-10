@@ -153,13 +153,19 @@ export async function exchangeGoogleCode(
     }),
   });
 
+  if (!res.ok) {
+    const text = await res.text().catch(() => '');
+    throw new Error(`Google OAuth token exchange failed (HTTP ${res.status}): ${text}`);
+  }
+
   const data = (await res.json()) as {
     access_token: string;
     refresh_token: string;
     expires_in: number;
     error?: string;
+    error_description?: string;
   };
-  if (data.error) throw new Error(`Google OAuth error: ${data.error}`);
+  if (data.error) throw new Error(`Google OAuth error: ${data.error} — ${data.error_description ?? ''}`);
 
   const t: GoogleTokens = {
     accessToken: data.access_token,
@@ -197,12 +203,40 @@ export async function getGoogleAccessToken(): Promise<string> {
     }),
   });
 
+  if (!res.ok) {
+    let errorBody = '';
+    try { errorBody = await res.text(); } catch {}
+
+    // Detect invalid_grant — token revoked or expired permanently
+    if (res.status === 400 && errorBody.includes('invalid_grant')) {
+      await deleteGoogleTokens();
+      throw new Error(
+        'Google token has been revoked or expired. Tokens cleared. Run "pilot-ai auth google" to re-authenticate.',
+      );
+    }
+
+    throw new Error(
+      `Google token refresh failed (HTTP ${res.status}). Run "pilot-ai auth google" to re-authenticate.`,
+    );
+  }
+
   const data = (await res.json()) as {
     access_token: string;
     expires_in: number;
     error?: string;
+    error_description?: string;
   };
-  if (data.error) throw new Error(`Google token refresh failed: ${data.error}`);
+  if (data.error) {
+    if (data.error === 'invalid_grant') {
+      await deleteGoogleTokens();
+      throw new Error(
+        'Google token has been revoked or expired. Tokens cleared. Run "pilot-ai auth google" to re-authenticate.',
+      );
+    }
+    throw new Error(
+      `Google token refresh failed: ${data.error}. Run "pilot-ai auth google" to re-authenticate.`,
+    );
+  }
 
   tokens.accessToken = data.access_token;
   tokens.expiresAt = Date.now() + data.expires_in * 1000;

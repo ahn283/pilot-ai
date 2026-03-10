@@ -29,7 +29,12 @@ async function gmailFetch<T>(path: string): Promise<T> {
   const res = await fetch(`${GMAIL_API}/users/me${path}`, {
     headers: { Authorization: `Bearer ${token}` },
   });
-  if (!res.ok) throw new Error(`Gmail API error: ${res.status}`);
+  if (!res.ok) {
+    if (res.status === 401) {
+      throw new Error('Gmail API authentication failed (401). Token may be expired. Run "pilot-ai auth google" to re-authenticate.');
+    }
+    throw new Error(`Gmail API error: ${res.status}`);
+  }
   return res.json() as Promise<T>;
 }
 
