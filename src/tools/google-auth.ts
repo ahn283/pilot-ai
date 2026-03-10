@@ -188,6 +188,20 @@ export async function exchangeGoogleCode(
 }
 
 /**
+ * Verifies that a Google access token is valid using the tokeninfo endpoint.
+ */
+export async function verifyGoogleTokens(accessToken: string): Promise<boolean> {
+  try {
+    const res = await fetch(
+      `https://oauth2.googleapis.com/tokeninfo?access_token=${accessToken}`,
+    );
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Returns a valid access token, refreshing if expired.
  */
 export async function getGoogleAccessToken(): Promise<string> {

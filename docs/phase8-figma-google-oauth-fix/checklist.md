@@ -22,17 +22,17 @@
 
 ## P1 — Google OAuth 토큰 검증
 
-- [ ] `src/tools/google-auth.ts`: `verifyGoogleTokens(accessToken)` 함수 추가 (`https://oauth2.googleapis.com/tokeninfo`)
-- [ ] `src/cli/init.ts` `runGoogleOAuthFlow()`: `exchangeGoogleCode()` 후 `verifyGoogleTokens()` 호출, 결과에 따라 성공/경고 메시지 분기
-- [ ] `npm run build` 통과
-- [ ] `npm test` 통과
+- [x] `src/tools/google-auth.ts`: `verifyGoogleTokens(accessToken)` 함수 추가 (`https://oauth2.googleapis.com/tokeninfo`)
+- [x] `src/cli/init.ts` `runGoogleOAuthFlow()`: `exchangeGoogleCode()` 후 `verifyGoogleTokens()` 호출, 결과에 따라 성공/경고 메시지 분기
+- [x] `npm run build` 통과
+- [x] `npm test` 통과
 
 ## P1 — `pilot-ai auth figma` 명령 추가
 
-- [ ] `src/cli/auth.ts`: `runAuthFigma()` 함수 추가 — Figma OAuth 인증 가이드 출력 + 등록 상태 확인
-- [ ] `src/index.ts`: `auth` 서브커맨드에 `figma` 추가
-- [ ] `npm run build` 통과
-- [ ] `npm test` 통과
+- [x] `src/cli/auth.ts`: `runAuthFigma()` 함수 추가 — Figma OAuth 인증 가이드 출력 + 등록 상태 확인
+- [x] `src/index.ts`: `auth` 서브커맨드에 `figma` 추가
+- [x] `npm run build` 통과
+- [x] `npm test` 통과
 
 ## P2 — 코드 정리
 

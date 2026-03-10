@@ -15,6 +15,7 @@ import {
   configureGoogle,
   getGoogleAuthUrl,
   exchangeGoogleCode,
+  verifyGoogleTokens,
   loadGoogleTokens,
   GOOGLE_SCOPES,
 } from '../tools/google-auth.js';
@@ -654,8 +655,14 @@ async function runGoogleOAuthFlow(
       const { code } = await server.waitForCode();
 
       console.log('  Exchanging authorization code for tokens...');
-      await exchangeGoogleCode(code, services, server.redirectUri);
-      console.log(`  ✓ Google authenticated! (${services.join(', ')})\n`);
+      const tokens = await exchangeGoogleCode(code, services, server.redirectUri);
+
+      const valid = await verifyGoogleTokens(tokens.accessToken);
+      if (valid) {
+        console.log(`  ✓ Google authenticated and verified! (${services.join(', ')})\n`);
+      } else {
+        console.log(`  ⚠ Tokens saved but verification failed. Try: pilot-ai auth google\n`);
+      }
     } finally {
       server.close();
     }

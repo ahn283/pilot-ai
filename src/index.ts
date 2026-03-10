@@ -24,6 +24,9 @@ program
   .description('Interactive setup wizard')
   .action(async () => {
     await runInit();
+    // Force exit: inquirer readline and child processes leave open handles
+    // that prevent Node from exiting naturally after init completes.
+    process.exit(0);
   });
 
 program
@@ -165,8 +168,18 @@ authCmd
     const { runAuthGoogle } = await import('./cli/auth.js');
     await runAuthGoogle(opts);
   });
+authCmd
+  .command('figma')
+  .description('Show Figma OAuth authentication guide')
+  .action(async () => {
+    const { runAuthFigma } = await import('./cli/auth.js');
+    await runAuthFigma();
+  });
 program.addCommand(authCmd);
 
 program.addCommand(createProjectCommand());
 
-program.parse();
+program.parseAsync().catch((err) => {
+  console.error(err instanceof Error ? err.message : String(err));
+  process.exit(1);
+});
