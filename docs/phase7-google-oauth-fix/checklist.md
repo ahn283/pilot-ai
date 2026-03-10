@@ -103,25 +103,25 @@
 
 ### 7.6-A. init 가이드 개선 (`src/cli/init.ts`)
 
-- [ ] 7.6.1 Google Console 설정 가이드 문구 교체 (L353-357)
+- [x] 7.6.1 Google Console 설정 가이드 문구 교체 (L353-357)
   - Step 1: Console 설정 (OAuth client ID 생성 — Desktop app, redirect URI 불필요)
   - Step 2: API 활성화 (Gmail API, Calendar API, Drive API — 라이브러리 URL 포함)
-- [ ] 7.6.2 Client ID/Secret 입력 + 서비스 선택 후, "Step 3: Google 계정 인증" 안내 출력
-- [ ] 7.6.3 `startOAuthCallbackServer()` 호출 → 포트 할당
-- [ ] 7.6.4 `configureGoogle()` 호출하여 모듈 초기화
-- [ ] 7.6.5 `getGoogleAuthUrl(services)` 생성 (redirectUri = loopback)
-- [ ] 7.6.6 `child_process.exec('open <url>')` 로 브라우저 열기
-- [ ] 7.6.7 `waitForCode()` 대기 → `exchangeGoogleCode()` 호출 → 토큰 저장
-- [ ] 7.6.8 성공 시 `"✓ Google authenticated! (gmail, calendar, drive)"` 출력
-- [ ] 7.6.9 실패/타임아웃 시 `"⚠ Run 'pilot-ai auth google' later"` 안내 출력 (init 중단 X)
-- [ ] 7.6.10 빌드 확인
+- [x] 7.6.2 Client ID/Secret 입력 + 서비스 선택 후, "Step 3: Google 계정 인증" 안내 출력
+- [x] 7.6.3 `startOAuthCallbackServer()` 호출 → 포트 할당
+- [x] 7.6.4 `configureGoogle()` 호출하여 모듈 초기화
+- [x] 7.6.5 `getGoogleAuthUrl(services)` 생성 (redirectUri = loopback)
+- [x] 7.6.6 `child_process.exec('open <url>')` 로 브라우저 열기
+- [x] 7.6.7 `waitForCode()` 대기 → `exchangeGoogleCode()` 호출 → 토큰 저장
+- [x] 7.6.8 성공 시 `"✓ Google authenticated! (gmail, calendar, drive)"` 출력
+- [x] 7.6.9 실패/타임아웃 시 `"⚠ Run 'pilot-ai auth google' later"` 안내 출력 (init 중단 X)
+- [x] 7.6.10 빌드 확인
 
 ### 7.6-B. addtool 가이드 개선 (`src/cli/tools.ts`)
 
-- [ ] 7.6.11 google-drive addtool 시 Console 설정 가이드 추가 (L190 이전)
-- [ ] 7.6.12 Client ID/Secret 입력 후 OAuth 인증 플로우 자동 실행
-- [ ] 7.6.13 이미 `google-oauth-tokens`가 Keychain에 있으면 "Already authenticated" 표시 + 재인증 여부 confirm
-- [ ] 7.6.14 빌드 확인
+- [x] 7.6.11 google-drive addtool 시 Console 설정 가이드 추가 (L190 이전)
+- [x] 7.6.12 Client ID/Secret 입력 후 OAuth 인증 플로우 자동 실행
+- [x] 7.6.13 이미 `google-oauth-tokens`가 Keychain에 있으면 "Already authenticated" 표시 + 재인증 여부 confirm
+- [x] 7.6.14 빌드 확인
 
 ---
 

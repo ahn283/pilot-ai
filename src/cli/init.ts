@@ -1,5 +1,5 @@
 import inquirer from 'inquirer';
-import { execFile } from 'node:child_process';
+import { exec, execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { checkClaudeCli, checkClaudeCliAuth } from '../agent/claude.js';
 import { saveConfig, ensurePilotDir } from '../config/store.js';
@@ -12,6 +12,14 @@ import { installMcpServer } from '../agent/mcp-manager.js';
 import { MCP_REGISTRY, type McpServerEntry } from '../tools/mcp-registry.js';
 import { requestPermissions, triggerBulkAutomationPermissions } from '../security/permissions.js';
 import { isGhAuthenticated } from '../tools/github.js';
+import {
+  configureGoogle,
+  getGoogleAuthUrl,
+  exchangeGoogleCode,
+  loadGoogleTokens,
+  GOOGLE_SCOPES,
+} from '../tools/google-auth.js';
+import { startOAuthCallbackServer } from '../utils/oauth-callback-server.js';
 
 const execFileAsync = promisify(execFile);
 
@@ -350,11 +358,21 @@ async function setupIntegrations(): Promise<Partial<PilotConfig>> {
   }
 
   if (selected.has('google-oauth') || selected.has('google-drive')) {
-    console.log('\n  Google OAuth2 Setup Guide:');
+    console.log('\n── Google OAuth2 Setup ──\n');
+    console.log('  Step 1: Create OAuth Client ID');
+    console.log('  ─────────────────────────────');
     console.log('  1. Go to https://console.cloud.google.com/apis/credentials');
-    console.log('  2. Create a new OAuth 2.0 Client ID (Desktop app)');
-    console.log('  3. Enable Gmail API, Google Calendar API, Google Drive API');
-    console.log('  4. Copy the Client ID and Client Secret\n');
+    console.log('  2. Click "+ CREATE CREDENTIALS" → "OAuth client ID"');
+    console.log('  3. Application type: "Desktop app"');
+    console.log('  4. Name: "Pilot-AI" (or any name you prefer)');
+    console.log('  5. Click "Create" and copy the Client ID & Client Secret');
+    console.log('     (No redirect URI configuration needed — Desktop apps use loopback)\n');
+    console.log('  Step 2: Enable Google APIs');
+    console.log('  ─────────────────────────');
+    console.log('  Enable each API you want to use:');
+    console.log('  • Gmail API:     https://console.cloud.google.com/apis/library/gmail.googleapis.com');
+    console.log('  • Calendar API:  https://console.cloud.google.com/apis/library/calendar-json.googleapis.com');
+    console.log('  • Drive API:     https://console.cloud.google.com/apis/library/drive.googleapis.com\n');
 
     const googleAnswers = await inquirer.prompt([
       {
@@ -398,7 +416,10 @@ async function setupIntegrations(): Promise<Partial<PilotConfig>> {
       clientSecret: '***keychain***',
       services: googleServices as Array<'gmail' | 'calendar' | 'drive'>,
     };
-    console.log(`  Google configured (${(googleServices as string[]).join(', ')}).\n`);
+
+    // Step 3: Auto-run OAuth authentication flow
+    const services = googleServices as Array<keyof typeof GOOGLE_SCOPES>;
+    await runGoogleOAuthFlow(googleAnswers.clientId, googleAnswers.clientSecret, services);
   }
 
   // MCP tools: collect credentials and register
@@ -566,6 +587,59 @@ async function setupGithub(): Promise<PilotConfig['github'] | null> {
 
   console.log('  Warning: GitHub authentication not detected. You can run "gh auth login" later.\n');
   return { enabled: false };
+}
+
+/**
+ * Runs the Google OAuth loopback flow after credential entry.
+ * On failure, prints guidance to run `pilot-ai auth google` later (does not abort init).
+ */
+async function runGoogleOAuthFlow(
+  clientId: string,
+  clientSecret: string,
+  services: Array<keyof typeof GOOGLE_SCOPES>,
+): Promise<void> {
+  console.log('\n  Step 3: Authenticate with Google');
+  console.log('  ────────────────────────────────');
+
+  // Check if already authenticated
+  const existing = await loadGoogleTokens();
+  if (existing) {
+    const { reauth } = await inquirer.prompt([{
+      type: 'confirm',
+      name: 'reauth',
+      message: 'Google tokens already exist. Re-authenticate?',
+      default: false,
+    }]);
+    if (!reauth) {
+      console.log('  Using existing Google tokens.\n');
+      return;
+    }
+  }
+
+  try {
+    configureGoogle({ clientId, clientSecret });
+    const server = await startOAuthCallbackServer();
+
+    try {
+      const authUrl = getGoogleAuthUrl(services, server.redirectUri);
+      console.log('  Opening browser for Google sign-in...');
+      console.log(`  (If the browser doesn't open, visit: ${authUrl})\n`);
+      exec(`open "${authUrl}"`);
+
+      console.log('  Waiting for authorization...');
+      const { code } = await server.waitForCode();
+
+      console.log('  Exchanging authorization code for tokens...');
+      await exchangeGoogleCode(code, services, server.redirectUri);
+      console.log(`  ✓ Google authenticated! (${services.join(', ')})\n`);
+    } finally {
+      server.close();
+    }
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.log(`  ⚠ Google authentication failed: ${msg}`);
+    console.log('  You can authenticate later with: pilot-ai auth google\n');
+  }
 }
 
 async function installPlaywright(): Promise<void> {

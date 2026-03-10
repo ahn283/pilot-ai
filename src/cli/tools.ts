@@ -1,10 +1,19 @@
 import inquirer from 'inquirer';
+import { exec } from 'node:child_process';
 import { MCP_REGISTRY } from '../tools/mcp-registry.js';
 import { getInstalledServers, installMcpServer, uninstallMcpServer } from '../agent/mcp-manager.js';
 import { setSecret } from '../config/keychain.js';
 import { isGhAuthenticated } from '../tools/github.js';
 import { loadConfig, saveConfig } from '../config/store.js';
 import { checkClaudeCodeSync } from '../config/claude-code-sync.js';
+import {
+  configureGoogle,
+  getGoogleAuthUrl,
+  exchangeGoogleCode,
+  loadGoogleTokens,
+  GOOGLE_SCOPES,
+} from '../tools/google-auth.js';
+import { startOAuthCallbackServer } from '../utils/oauth-callback-server.js';
 
 interface ToolStatus {
   id: string;
@@ -87,6 +96,10 @@ export async function runAddTool(toolName: string): Promise<void> {
   }
   if (toolId === 'obsidian') {
     await addObsidian();
+    return;
+  }
+  if (toolId === 'google-oauth' || toolId === 'google') {
+    await addGoogleOAuth();
     return;
   }
 
@@ -188,6 +201,11 @@ export async function runAddTool(toolName: string): Promise<void> {
     const config = await loadConfig();
     await saveConfig({ ...config, linear: { apiKey: '***keychain***' } });
   } else if (toolId === 'google-drive') {
+    console.log('\n  Google OAuth2 Setup Guide:');
+    console.log('  1. Go to https://console.cloud.google.com/apis/credentials');
+    console.log('  2. Click "+ CREATE CREDENTIALS" → "OAuth client ID"');
+    console.log('  3. Application type: "Desktop app", Name: "Pilot-AI"');
+    console.log('  4. Enable Drive API: https://console.cloud.google.com/apis/library/drive.googleapis.com\n');
     const googleAnswers = await inquirer.prompt([
       { type: 'password', name: 'clientId', message: 'Google OAuth Client ID:', mask: '*', validate: (i: string) => i.length > 10 || 'Required.' },
       { type: 'password', name: 'clientSecret', message: 'Google OAuth Client Secret:', mask: '*', validate: (i: string) => i.length > 5 || 'Required.' },
@@ -196,6 +214,9 @@ export async function runAddTool(toolName: string): Promise<void> {
     await setSecret('google-client-secret', googleAnswers.clientSecret);
     envValues['GOOGLE_CLIENT_ID'] = googleAnswers.clientId;
     envValues['GOOGLE_CLIENT_SECRET'] = googleAnswers.clientSecret;
+
+    // Auto-run OAuth flow for Drive
+    await runAddToolOAuthFlow(googleAnswers.clientId, googleAnswers.clientSecret, ['drive']);
   } else if (entry.envVars) {
     for (const [key, desc] of Object.entries(entry.envVars)) {
       const { value } = await inquirer.prompt([{
@@ -350,4 +371,103 @@ async function addObsidian(): Promise<void> {
   const config = await loadConfig();
   await saveConfig({ ...config, obsidian: { vaultPath } });
   console.log(`\n  Obsidian vault configured: ${vaultPath}\n`);
+}
+
+async function addGoogleOAuth(): Promise<void> {
+  console.log('\n── Google OAuth2 Setup ──\n');
+  console.log('  Step 1: Create OAuth Client ID');
+  console.log('  ─────────────────────────────');
+  console.log('  1. Go to https://console.cloud.google.com/apis/credentials');
+  console.log('  2. Click "+ CREATE CREDENTIALS" → "OAuth client ID"');
+  console.log('  3. Application type: "Desktop app", Name: "Pilot-AI"');
+  console.log('  4. Click "Create" and copy the Client ID & Client Secret\n');
+  console.log('  Step 2: Enable Google APIs');
+  console.log('  ─────────────────────────');
+  console.log('  • Gmail API:     https://console.cloud.google.com/apis/library/gmail.googleapis.com');
+  console.log('  • Calendar API:  https://console.cloud.google.com/apis/library/calendar-json.googleapis.com');
+  console.log('  • Drive API:     https://console.cloud.google.com/apis/library/drive.googleapis.com\n');
+
+  const googleAnswers = await inquirer.prompt([
+    { type: 'password', name: 'clientId', message: 'Google OAuth Client ID:', mask: '*', validate: (i: string) => i.length > 10 || 'Required.' },
+    { type: 'password', name: 'clientSecret', message: 'Google OAuth Client Secret:', mask: '*', validate: (i: string) => i.length > 5 || 'Required.' },
+  ]);
+
+  const { googleServices } = await inquirer.prompt([{
+    type: 'checkbox',
+    name: 'googleServices',
+    message: 'Google services:',
+    choices: [
+      { name: 'Gmail', value: 'gmail', checked: true },
+      { name: 'Google Calendar', value: 'calendar', checked: true },
+      { name: 'Google Drive', value: 'drive', checked: false },
+    ],
+  }]);
+
+  await setSecret('google-client-id', googleAnswers.clientId);
+  await setSecret('google-client-secret', googleAnswers.clientSecret);
+
+  const config = await loadConfig();
+  const services = googleServices as Array<'gmail' | 'calendar' | 'drive'>;
+  await saveConfig({
+    ...config,
+    google: {
+      clientId: '***keychain***',
+      clientSecret: '***keychain***',
+      services,
+    },
+  });
+
+  await runAddToolOAuthFlow(googleAnswers.clientId, googleAnswers.clientSecret, services);
+  console.log(`  Google configured (${services.join(', ')}).\n`);
+}
+
+/**
+ * Runs OAuth flow during addtool. Non-fatal on failure.
+ */
+async function runAddToolOAuthFlow(
+  clientId: string,
+  clientSecret: string,
+  services: Array<keyof typeof GOOGLE_SCOPES>,
+): Promise<void> {
+  // Check if already authenticated
+  const existing = await loadGoogleTokens();
+  if (existing) {
+    const { reauth } = await inquirer.prompt([{
+      type: 'confirm',
+      name: 'reauth',
+      message: 'Google tokens already exist. Re-authenticate?',
+      default: false,
+    }]);
+    if (!reauth) {
+      console.log('  Using existing Google tokens.\n');
+      return;
+    }
+  }
+
+  try {
+    configureGoogle({ clientId, clientSecret });
+    const server = await startOAuthCallbackServer();
+
+    try {
+      const authUrl = getGoogleAuthUrl(services, server.redirectUri);
+      console.log('\n  Step 3: Authenticate with Google');
+      console.log('  ────────────────────────────────');
+      console.log('  Opening browser for Google sign-in...');
+      console.log(`  (If the browser doesn't open, visit: ${authUrl})\n`);
+      exec(`open "${authUrl}"`);
+
+      console.log('  Waiting for authorization...');
+      const { code } = await server.waitForCode();
+
+      console.log('  Exchanging authorization code for tokens...');
+      await exchangeGoogleCode(code, services, server.redirectUri);
+      console.log(`  ✓ Google authenticated! (${services.join(', ')})\n`);
+    } finally {
+      server.close();
+    }
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.log(`  ⚠ Google authentication failed: ${msg}`);
+    console.log('  You can authenticate later with: pilot-ai auth google\n');
+  }
 }
