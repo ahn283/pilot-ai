@@ -11,8 +11,6 @@ vi.mock('../../src/config/store.js', () => ({
 const {
   loadMcpConfig,
   saveMcpConfig,
-  registerFigmaMcp,
-  unregisterFigmaMcp,
   getMcpConfigPathIfExists,
 } = await import('../../src/tools/figma-mcp.js');
 
@@ -37,35 +35,23 @@ describe('loadMcpConfig', () => {
   });
 });
 
-describe('registerFigmaMcp', () => {
-  it('registers Figma MCP server with token', async () => {
-    const configPath = await registerFigmaMcp('figd_test_token');
-    expect(configPath).toContain('mcp-config.json');
-
+describe('saveMcpConfig', () => {
+  it('saves and loads config correctly', async () => {
+    await saveMcpConfig({ mcpServers: { figma: { command: '__http__', args: ['https://mcp.figma.com/mcp'] } } });
     const config = await loadMcpConfig();
     expect(config.mcpServers['figma']).toBeDefined();
-    expect(config.mcpServers['figma'].command).toBe('npx');
-    expect(config.mcpServers['figma'].args).toContain('figma-developer-mcp');
-    expect(config.mcpServers['figma'].env?.FIGMA_API_KEY).toBe('figd_test_token');
+    expect(config.mcpServers['figma'].command).toBe('__http__');
   });
 
   it('preserves existing MCP servers', async () => {
     await saveMcpConfig({ mcpServers: { other: { command: 'other-server' } } });
-    await registerFigmaMcp('figd_token');
-
     const config = await loadMcpConfig();
-    expect(config.mcpServers['other']).toBeDefined();
-    expect(config.mcpServers['figma']).toBeDefined();
-  });
-});
+    config.mcpServers['figma'] = { command: '__http__', args: ['https://mcp.figma.com/mcp'] };
+    await saveMcpConfig(config);
 
-describe('unregisterFigmaMcp', () => {
-  it('removes Figma MCP server', async () => {
-    await registerFigmaMcp('figd_token');
-    await unregisterFigmaMcp();
-
-    const config = await loadMcpConfig();
-    expect(config.mcpServers['figma']).toBeUndefined();
+    const updated = await loadMcpConfig();
+    expect(updated.mcpServers['other']).toBeDefined();
+    expect(updated.mcpServers['figma']).toBeDefined();
   });
 });
 
@@ -76,7 +62,7 @@ describe('getMcpConfigPathIfExists', () => {
   });
 
   it('returns path when servers exist', async () => {
-    await registerFigmaMcp('figd_token');
+    await saveMcpConfig({ mcpServers: { figma: { command: '__http__' } } });
     const result = await getMcpConfigPathIfExists();
     expect(result).toContain('mcp-config.json');
   });

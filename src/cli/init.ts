@@ -7,7 +7,6 @@ import { setSecret } from '../config/keychain.js';
 import type { PilotConfig } from '../config/schema.js';
 import { defaultConfig } from '../config/schema.js';
 import { testSlackConnection, testTelegramConnection } from './connection-test.js';
-import { registerFigmaMcp } from '../tools/figma-mcp.js';
 import { installMcpServer } from '../agent/mcp-manager.js';
 import { MCP_REGISTRY, type McpServerEntry } from '../tools/mcp-registry.js';
 import { requestPermissions, triggerBulkAutomationPermissions } from '../security/permissions.js';
@@ -460,10 +459,9 @@ async function collectAndRegisterMcpTool(toolId: string, result: Partial<PilotCo
       break;
     }
     case 'figma': {
-      console.log('\n  Figma uses the official remote MCP server (OAuth).');
-      console.log('  No API key needed — authentication happens in your browser.');
+      console.log('\n  Figma uses the official Remote MCP server with OAuth.');
       console.log('  Registering Figma MCP server...\n');
-      // HTTP transport — no env vars needed, OAuth handled by Figma remote server
+      // HTTP transport — no env vars needed, OAuth handled by Claude Code + Figma
       break;
     }
     case 'linear': {
@@ -525,13 +523,37 @@ async function collectAndRegisterMcpTool(toolId: string, result: Partial<PilotCo
     }
   }
 
-  await registerMcpTool(toolId, envValues);
+  const registered = await registerMcpTool(toolId, envValues);
+
+  // Show OAuth authentication guide for Figma after successful registration
+  if (toolId === 'figma' && registered) {
+    console.log('');
+    console.log('  ┌──────────────────────────────────────────────────────────┐');
+    console.log('  │  Figma OAuth Authentication Guide                        │');
+    console.log('  │                                                          │');
+    console.log('  │  Figma MCP server has been registered.                   │');
+    console.log('  │  To complete OAuth authentication:                       │');
+    console.log('  │                                                          │');
+    console.log('  │  1. Open Claude Code (run: claude)                       │');
+    console.log('  │  2. Type: /mcp                                          │');
+    console.log('  │  3. Select "figma" server                               │');
+    console.log('  │  4. Click "Authenticate" in the browser                 │');
+    console.log('  │  5. Allow access to your Figma account                  │');
+    console.log('  │                                                          │');
+    console.log('  │  Or run: pilot-ai auth figma                            │');
+    console.log('  └──────────────────────────────────────────────────────────┘');
+    console.log('');
+  }
 }
 
 /** Register an MCP tool with error handling */
 export async function registerMcpTool(toolId: string, envValues: Record<string, string>): Promise<boolean> {
   try {
-    await installMcpServer(toolId, envValues, { skipVerify: true });
+    const result = await installMcpServer(toolId, envValues, { skipVerify: true });
+    if (!result.success) {
+      console.log(`  MCP registration failed for ${toolId} (${result.error ?? 'unknown error'}). You can add it later with: pilot-ai addtool ${toolId}`);
+      return false;
+    }
     const entry = MCP_REGISTRY.find((e) => e.id === toolId);
     console.log(`  ${entry?.name ?? toolId} configured (MCP server registered).`);
     return true;

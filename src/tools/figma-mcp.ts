@@ -36,34 +36,6 @@ export async function saveMcpConfig(config: McpConfig): Promise<void> {
 }
 
 /**
- * Registers the Figma MCP server in the config.
- * Uses @anthropic-ai/figma-mcp or a custom Figma MCP server command.
- */
-export async function registerFigmaMcp(personalAccessToken: string): Promise<string> {
-  const config = await loadMcpConfig();
-
-  config.mcpServers['figma'] = {
-    command: 'npx',
-    args: ['-y', 'figma-developer-mcp', '--stdio'],
-    env: {
-      FIGMA_API_KEY: personalAccessToken,
-    },
-  };
-
-  await saveMcpConfig(config);
-  return getMcpConfigPath();
-}
-
-/**
- * Removes the Figma MCP server from the config.
- */
-export async function unregisterFigmaMcp(): Promise<void> {
-  const config = await loadMcpConfig();
-  delete config.mcpServers['figma'];
-  await saveMcpConfig(config);
-}
-
-/**
  * Returns the MCP config path if any servers are configured, null otherwise.
  */
 export async function getMcpConfigPathIfExists(): Promise<string | null> {

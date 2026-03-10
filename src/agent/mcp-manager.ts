@@ -60,9 +60,14 @@ export async function installMcpServer(
 
   // HTTP transport servers (e.g. Figma remote) use `claude mcp add --transport http`
   if (entry.transport === 'http' && entry.url) {
-    const { syncHttpToClaudeCode } = await import('../config/claude-code-sync.js');
+    const { syncHttpToClaudeCode, checkClaudeCodeSync } = await import('../config/claude-code-sync.js');
     const syncResult = await syncHttpToClaudeCode(serverId, entry.url);
     if (syncResult.success) {
+      // Verify the server was actually registered in Claude Code
+      const verified = await checkClaudeCodeSync(serverId);
+      if (!verified) {
+        console.log(`  Warning: Server registered but verification failed. It may still work.`);
+      }
       // Also record in local config so pilot-ai knows it's "installed"
       const config = await loadMcpConfig();
       config.mcpServers[serverId] = { command: '__http__', args: [entry.url] };

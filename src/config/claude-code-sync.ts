@@ -10,13 +10,13 @@
  * - add-json handles JSON env values (e.g. Notion OPENAPI_MCP_HEADERS) safely
  * - Matches pilot-ai's mcp-config.json structure → minimal conversion
  */
-import { execFile } from 'node:child_process';
+import { execFile, spawn } from 'node:child_process';
 import { promisify } from 'node:util';
 import { checkClaudeCli } from '../agent/claude.js';
 
 const execFileAsync = promisify(execFile);
 
-const TIMEOUT_MS = 10_000;
+const TIMEOUT_MS = 30_000;
 
 export interface McpServerConfigForSync {
   command: string;
@@ -128,19 +128,42 @@ export async function syncHttpToClaudeCode(
     return { success: false, error: 'Claude Code CLI not installed' };
   }
 
+  // HTTP transport MCP servers (e.g. Figma) may trigger OAuth in the browser,
+  // so we need a longer timeout to allow the user to complete the flow.
+  const httpTimeoutMs = 180_000; // 3 minutes
+
   try {
     // Remove existing server first (handles updates)
     await execFileAsync('claude', ['mcp', 'remove', '-s', 'user', serverId], {
       timeout: TIMEOUT_MS,
     }).catch(() => {});
 
-    await execFileAsync('claude', [
-      'mcp', 'add',
-      '--transport', 'http',
-      '-s', 'user',
-      serverId,
-      url,
-    ], { timeout: TIMEOUT_MS });
+    // Use spawn with stdio: 'inherit' so OAuth browser prompts are visible to the user
+    await new Promise<void>((resolve, reject) => {
+      const child = spawn('claude', [
+        'mcp', 'add',
+        '--transport', 'http',
+        '-s', 'user',
+        serverId,
+        url,
+      ], { stdio: 'inherit' });
+
+      const timer = setTimeout(() => {
+        child.kill();
+        reject(new Error(`claude mcp add timed out after ${httpTimeoutMs}ms`));
+      }, httpTimeoutMs);
+
+      child.on('close', (code) => {
+        clearTimeout(timer);
+        if (code === 0) resolve();
+        else reject(new Error(`claude mcp add exited with code ${code}`));
+      });
+
+      child.on('error', (err) => {
+        clearTimeout(timer);
+        reject(err);
+      });
+    });
 
     return { success: true };
   } catch (err) {

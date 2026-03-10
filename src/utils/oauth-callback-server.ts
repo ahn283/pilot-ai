@@ -55,6 +55,9 @@ export async function startOAuthCallbackServer(timeoutMs = 120_000): Promise<OAu
     codePromise.catch(() => {});
 
     const server = http.createServer((req, res) => {
+      // Prevent keep-alive connections from blocking process exit
+      res.setHeader('Connection', 'close');
+
       const url = new URL(req.url ?? '/', `http://127.0.0.1`);
 
       if (url.pathname !== '/callback') {
@@ -89,9 +92,16 @@ export async function startOAuthCallbackServer(timeoutMs = 120_000): Promise<OAu
       codeResolve!({ code, state });
     });
 
+    // Disable keep-alive to prevent connections from blocking process exit
+    server.keepAliveTimeout = 0;
+
     function cleanup(): void {
       if (timeoutHandle) clearTimeout(timeoutHandle);
       server.close();
+      // Force-close all active connections (Node 18.2+) to prevent hang
+      if (typeof server.closeAllConnections === 'function') {
+        server.closeAllConnections();
+      }
     }
 
     server.listen(0, '127.0.0.1', () => {

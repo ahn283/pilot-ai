@@ -26,6 +26,7 @@ vi.mock('../../src/config/claude-code-sync.js', () => ({
   syncToClaudeCode: vi.fn().mockResolvedValue({ success: true }),
   removeFromClaudeCode: vi.fn().mockResolvedValue({ success: true }),
   syncHttpToClaudeCode: vi.fn().mockResolvedValue({ success: true }),
+  checkClaudeCodeSync: vi.fn().mockResolvedValue(true),
 }));
 
 import {
