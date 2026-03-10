@@ -29,7 +29,7 @@ export interface MessengerAdapter {
   sendText(channelId: string, text: string, threadId?: string): Promise<string>;
 
   /** Update an existing message by its ID */
-  updateText(channelId: string, messageId: string, text: string): Promise<void>;
+  updateText(channelId: string, messageId: string, text: string, threadId?: string): Promise<void>;
 
   /** Add a reaction to a message (best-effort, no-op if unsupported) */
   addReaction?(channelId: string, messageTs: string, emoji: string): Promise<void>;

@@ -403,8 +403,10 @@ async function addGoogleOAuth(): Promise<void> {
     ],
   }]);
 
-  await setSecret('google-client-id', googleAnswers.clientId);
-  await setSecret('google-client-secret', googleAnswers.clientSecret);
+  const trimmedClientId = googleAnswers.clientId.trim();
+  const trimmedClientSecret = googleAnswers.clientSecret.trim();
+  await setSecret('google-client-id', trimmedClientId);
+  await setSecret('google-client-secret', trimmedClientSecret);
 
   const config = await loadConfig();
   const services = googleServices as Array<'gmail' | 'calendar' | 'drive'>;
@@ -417,7 +419,7 @@ async function addGoogleOAuth(): Promise<void> {
     },
   });
 
-  await runAddToolOAuthFlow(googleAnswers.clientId, googleAnswers.clientSecret, services);
+  await runAddToolOAuthFlow(trimmedClientId, trimmedClientSecret, services);
   console.log(`  Google configured (${services.join(', ')}).\n`);
 }
 

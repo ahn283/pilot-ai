@@ -18,7 +18,6 @@ import { getSession, createSession, touchSession, cleanupSessions } from './sess
 import { detectPermissionError, PermissionWatcher } from '../security/permissions.js';
 import { isGhAuthenticated } from '../tools/github.js';
 import { configureGoogle } from '../tools/google-auth.js';
-import { MAX_MESSAGE_LENGTH } from '../messenger/split.js';
 
 function log(message: string): void {
   console.log(`[${new Date().toISOString()}] ${message}`);
@@ -166,7 +165,7 @@ export class AgentCore {
 
         const response = await this.invokeClaudeWithContext(msg, async (status: string) => {
           try {
-            await this.messenger.updateText(msg.channelId, statusMsgId, status);
+            await this.messenger.updateText(msg.channelId, statusMsgId, status, msg.threadId);
           } catch {
             // Ignore update failures (e.g. message already deleted)
           }
@@ -176,16 +175,8 @@ export class AgentCore {
         await this.messenger.removeReaction?.(msg.channelId, incomingTs, 'gear');
         await this.messenger.addReaction?.(msg.channelId, incomingTs, 'white_check_mark');
 
-        // Use updateText for short responses, sendText for long ones to avoid msg_too_long
-        const maxLen = this.config.messenger.platform === 'slack'
-          ? MAX_MESSAGE_LENGTH.slack
-          : MAX_MESSAGE_LENGTH.telegram;
-        if (response.length <= maxLen) {
-          await this.messenger.updateText(msg.channelId, statusMsgId, response);
-        } else {
-          await this.messenger.updateText(msg.channelId, statusMsgId, '✅ Done');
-          await this.messenger.sendText(msg.channelId, response, msg.threadId);
-        }
+        // updateText now handles splitting internally
+        await this.messenger.updateText(msg.channelId, statusMsgId, response, msg.threadId);
 
         await writeAuditLog({
           timestamp: new Date().toISOString(),
@@ -211,16 +202,8 @@ export class AgentCore {
             ? `❌ ${permissionHint}`
             : `❌ Error: ${errorMsg}`;
         }
-        // Use updateText for short errors, sendText for long ones
-        const errMaxLen = this.config.messenger.platform === 'slack'
-          ? MAX_MESSAGE_LENGTH.slack
-          : MAX_MESSAGE_LENGTH.telegram;
-        if (displayMsg.length <= errMaxLen) {
-          await this.messenger.updateText(msg.channelId, statusMsgId, displayMsg);
-        } else {
-          await this.messenger.updateText(msg.channelId, statusMsgId, '❌ Error (see below)');
-          await this.messenger.sendText(msg.channelId, displayMsg, msg.threadId);
-        }
+        // updateText now handles splitting internally
+        await this.messenger.updateText(msg.channelId, statusMsgId, displayMsg, msg.threadId);
 
         await writeAuditLog({
           timestamp: new Date().toISOString(),

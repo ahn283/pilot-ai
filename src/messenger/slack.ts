@@ -181,16 +181,23 @@ export class SlackAdapter implements MessengerAdapter {
     return lastTs;
   }
 
-  async updateText(channelId: string, messageId: string, text: string): Promise<void> {
-    // Truncate to avoid msg_too_long from chat.update (4,000 char limit)
-    const safeText = text.length > MAX_MESSAGE_LENGTH.slack
-      ? text.slice(0, MAX_MESSAGE_LENGTH.slack - 30) + '\n\n_(truncated)_'
-      : text;
+  async updateText(channelId: string, messageId: string, text: string, threadId?: string): Promise<void> {
+    const chunks = splitMessage(text, MAX_MESSAGE_LENGTH.slack);
+    // Update the original message with the first chunk
     await this.app.client.chat.update({
       channel: channelId,
       ts: messageId,
-      text: safeText,
+      text: chunks[0],
     });
+    // Send remaining chunks as new messages in the same thread
+    for (let i = 1; i < chunks.length; i++) {
+      await this.rateLimiter.acquire();
+      await this.app.client.chat.postMessage({
+        channel: channelId,
+        text: chunks[i],
+        thread_ts: threadId ?? messageId,
+      });
+    }
   }
 
   async sendApproval(
@@ -199,40 +206,51 @@ export class SlackAdapter implements MessengerAdapter {
     taskId: string,
     threadId?: string,
   ): Promise<void> {
-    // Section block text limit is 3,000 chars
-    const safeText = text.length > 3000
-      ? text.slice(0, 2970) + '\n\n_(truncated)_'
-      : text;
-    await this.app.client.chat.postMessage({
-      channel: channelId,
-      text: safeText,
-      thread_ts: threadId,
-      blocks: [
+    const BLOCK_TEXT_LIMIT = 3000;
+    const approvalButtons = {
+      type: 'actions' as const,
+      elements: [
         {
-          type: 'section',
-          text: { type: 'mrkdwn', text: safeText },
+          type: 'button' as const,
+          text: { type: 'plain_text' as const, text: 'Approve' },
+          style: 'primary' as const,
+          action_id: 'approve_task',
+          value: taskId,
         },
         {
-          type: 'actions',
-          elements: [
-            {
-              type: 'button',
-              text: { type: 'plain_text', text: 'Approve' },
-              style: 'primary',
-              action_id: 'approve_task',
-              value: taskId,
-            },
-            {
-              type: 'button',
-              text: { type: 'plain_text', text: 'Reject' },
-              style: 'danger',
-              action_id: 'reject_task',
-              value: taskId,
-            },
-          ],
+          type: 'button' as const,
+          text: { type: 'plain_text' as const, text: 'Reject' },
+          style: 'danger' as const,
+          action_id: 'reject_task',
+          value: taskId,
         },
       ],
-    });
+    };
+
+    if (text.length > BLOCK_TEXT_LIMIT) {
+      // Send full text as regular message(s) first, then approval buttons separately
+      await this.sendText(channelId, text, threadId);
+      await this.rateLimiter.acquire();
+      await this.app.client.chat.postMessage({
+        channel: channelId,
+        text: 'Approve or reject?',
+        thread_ts: threadId,
+        blocks: [approvalButtons],
+      });
+    } else {
+      await this.app.client.chat.postMessage({
+        channel: channelId,
+        text,
+        thread_ts: threadId,
+        blocks: [
+          {
+            type: 'section' as const,
+            text: { type: 'mrkdwn' as const, text },
+          },
+          approvalButtons,
+        ],
+      });
+    }
   }
 
   async addReaction(channelId: string, messageTs: string, emoji: string): Promise<void> {

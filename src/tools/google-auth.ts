@@ -167,6 +167,16 @@ export async function exchangeGoogleCode(
   };
   if (data.error) throw new Error(`Google OAuth error: ${data.error} — ${data.error_description ?? ''}`);
 
+  if (!data.access_token || typeof data.access_token !== 'string' || data.access_token.length < 10) {
+    throw new Error(`Google OAuth returned invalid access_token. Response: ${JSON.stringify(data).slice(0, 200)}`);
+  }
+  if (!data.refresh_token || typeof data.refresh_token !== 'string' || data.refresh_token.length < 10) {
+    throw new Error(`Google OAuth returned invalid refresh_token. Ensure access_type=offline and prompt=consent are set.`);
+  }
+  if (!data.expires_in || typeof data.expires_in !== 'number') {
+    throw new Error(`Google OAuth returned invalid expires_in: ${data.expires_in}`);
+  }
+
   const t: GoogleTokens = {
     accessToken: data.access_token,
     refreshToken: data.refresh_token,

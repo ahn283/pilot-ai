@@ -404,11 +404,13 @@ async function setupIntegrations(): Promise<Partial<PilotConfig>> {
       },
     ]);
 
-    await setSecret('google-client-id', googleAnswers.clientId);
-    await setSecret('google-client-secret', googleAnswers.clientSecret);
+    const trimmedClientId = googleAnswers.clientId.trim();
+    const trimmedClientSecret = googleAnswers.clientSecret.trim();
+    await setSecret('google-client-id', trimmedClientId);
+    await setSecret('google-client-secret', trimmedClientSecret);
 
     if ((googleServices as string[]).includes('drive')) {
-      await registerMcpTool('google-drive', { GOOGLE_CLIENT_ID: googleAnswers.clientId, GOOGLE_CLIENT_SECRET: googleAnswers.clientSecret });
+      await registerMcpTool('google-drive', { GOOGLE_CLIENT_ID: trimmedClientId, GOOGLE_CLIENT_SECRET: trimmedClientSecret });
     }
 
     result.google = {
@@ -419,7 +421,7 @@ async function setupIntegrations(): Promise<Partial<PilotConfig>> {
 
     // Step 3: Auto-run OAuth authentication flow
     const services = googleServices as Array<keyof typeof GOOGLE_SCOPES>;
-    await runGoogleOAuthFlow(googleAnswers.clientId, googleAnswers.clientSecret, services);
+    await runGoogleOAuthFlow(trimmedClientId, trimmedClientSecret, services);
   }
 
   // MCP tools: collect credentials and register

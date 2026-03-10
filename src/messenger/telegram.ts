@@ -120,7 +120,7 @@ export class TelegramAdapter implements MessengerAdapter {
     return lastId;
   }
 
-  async updateText(channelId: string, messageId: string, text: string): Promise<void> {
+  async updateText(channelId: string, messageId: string, text: string, _threadId?: string): Promise<void> {
     const msgId = parseInt(messageId, 10);
     if (text.length <= MAX_MESSAGE_LENGTH.telegram) {
       await this.bot.telegram.editMessageText(
