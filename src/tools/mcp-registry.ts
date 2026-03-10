@@ -36,9 +36,9 @@ export const MCP_REGISTRY: McpServerEntry[] = [
     id: 'figma',
     name: 'Figma',
     description: 'Access Figma designs, components, variables, and comments',
-    npmPackage: 'figma-developer-mcp',
-    args: ['--stdio'],
-    envVars: { FIGMA_API_KEY: 'Figma Personal Access Token' },
+    npmPackage: 'figma-developer-mcp', // fallback for stdio, not used when transport=http
+    transport: 'http',
+    url: 'https://mcp.figma.com/mcp',
     keywords: ['figma', 'design', 'ui', 'component', 'prototype', 'frame', 'design token'],
     category: 'design',
   },

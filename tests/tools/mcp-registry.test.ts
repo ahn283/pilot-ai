@@ -16,8 +16,8 @@ describe('mcp-registry', () => {
     const entry = getRegistryEntry('figma');
     expect(entry).toBeDefined();
     expect(entry!.name).toBe('Figma');
-    expect(entry!.npmPackage).toBe('figma-developer-mcp');
-    expect(entry!.args).toContain('--stdio');
+    expect(entry!.transport).toBe('http');
+    expect(entry!.url).toBe('https://mcp.figma.com/mcp');
   });
 
   it('getRegistryEntry returns undefined for unknown ID', () => {

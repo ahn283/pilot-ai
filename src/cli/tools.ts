@@ -117,9 +117,8 @@ export async function runAddTool(toolName: string): Promise<void> {
       console.log('  3. Add the Integration via "Connections" on your pages/DBs\n');
       break;
     case 'figma':
-      console.log('\n  Figma Personal Access Token Guide:');
-      console.log('  1. Figma > Account Settings > Personal access tokens');
-      console.log('  2. Click "Generate new token" and copy it\n');
+      console.log('\n  Figma uses the official remote MCP server (OAuth).');
+      console.log('  No API key needed — authentication happens in your browser.\n');
       break;
     case 'linear':
       console.log('\n  Linear API Key Guide:');
@@ -178,14 +177,7 @@ export async function runAddTool(toolName: string): Promise<void> {
     const config = await loadConfig();
     await saveConfig({ ...config, notion: { apiKey: '***keychain***' } });
   } else if (toolId === 'figma') {
-    const { figmaToken } = await inquirer.prompt([{
-      type: 'password', name: 'figmaToken', message: 'Figma Personal Access Token:', mask: '*',
-      validate: (input: string) => input.length > 10 || 'Valid Figma token required.',
-    }]);
-    await setSecret('figma-personal-access-token', figmaToken);
-    envValues['FIGMA_API_KEY'] = figmaToken;
-    const config = await loadConfig();
-    await saveConfig({ ...config, figma: { personalAccessToken: '***keychain***' } });
+    // Figma uses HTTP transport (OAuth) — no credentials to collect
   } else if (toolId === 'linear') {
     const { linearApiKey } = await inquirer.prompt([{
       type: 'password', name: 'linearApiKey', message: 'Linear API Key:', mask: '*',

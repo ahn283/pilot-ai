@@ -437,16 +437,10 @@ async function collectAndRegisterMcpTool(toolId: string, result: Partial<PilotCo
       break;
     }
     case 'figma': {
-      console.log('\n  Figma Personal Access Token Guide:');
-      console.log('  1. Figma > Account Settings > Personal access tokens');
-      console.log('  2. Click "Generate new token" and copy it\n');
-      const { figmaToken } = await inquirer.prompt([{
-        type: 'password', name: 'figmaToken', message: 'Figma Personal Access Token:', mask: '*',
-        validate: (input: string) => input.length > 10 || 'Valid Figma token required.',
-      }]);
-      await setSecret('figma-personal-access-token', figmaToken);
-      envValues['FIGMA_API_KEY'] = figmaToken;
-      result.figma = { personalAccessToken: '***keychain***' };
+      console.log('\n  Figma uses the official remote MCP server (OAuth).');
+      console.log('  No API key needed — authentication happens in your browser.');
+      console.log('  Registering Figma MCP server...\n');
+      // HTTP transport — no env vars needed, OAuth handled by Figma remote server
       break;
     }
     case 'linear': {

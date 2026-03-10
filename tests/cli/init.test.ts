@@ -160,7 +160,7 @@ describe('runInit - MCP registration via checkbox selection', () => {
     }, { skipVerify: true });
   });
 
-  it('selecting Figma registers MCP server', async () => {
+  it('selecting Figma registers MCP server (HTTP transport, no token)', async () => {
     vi.mocked(checkClaudeCli).mockResolvedValue(true);
     vi.mocked(checkClaudeCliAuth).mockResolvedValue(true);
     vi.mocked(inquirer.prompt)
@@ -171,14 +171,11 @@ describe('runInit - MCP registration via checkbox selection', () => {
         signingSecret: 'secret123', userId: 'U12345',
       })
       .mockResolvedValueOnce({ selectedTools: ['figma'] }) // Select Figma
-      .mockResolvedValueOnce({ figmaToken: 'figd_test_token' }) // Figma token
-      .mockResolvedValueOnce({ install: false });
+      .mockResolvedValueOnce({ install: false }); // No token prompt — OAuth
 
     await runInit();
 
-    expect(installMcpServer).toHaveBeenCalledWith('figma', {
-      FIGMA_API_KEY: 'figd_test_token',
-    }, { skipVerify: true });
+    expect(installMcpServer).toHaveBeenCalledWith('figma', {}, { skipVerify: true });
   });
 
   it('selecting multiple tools registers all of them', async () => {
@@ -193,7 +190,7 @@ describe('runInit - MCP registration via checkbox selection', () => {
       })
       .mockResolvedValueOnce({ selectedTools: ['notion', 'figma'] }) // Multi-select
       .mockResolvedValueOnce({ notionApiKey: 'ntn_test_key' }) // Notion key
-      .mockResolvedValueOnce({ figmaToken: 'figd_test' }) // Figma token
+      // Figma: no token prompt (HTTP transport, OAuth)
       .mockResolvedValueOnce({ install: false });
 
     await runInit();

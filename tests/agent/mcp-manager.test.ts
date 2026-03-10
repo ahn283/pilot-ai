@@ -74,17 +74,13 @@ describe('mcp-manager', () => {
     expect(needed).toHaveLength(0);
   });
 
-  it('installMcpServer adds figma with correct config', async () => {
-    const result = await installMcpServer('figma', {
-      FIGMA_API_KEY: 'figd_test123',
-    }, { skipVerify: true });
+  it('installMcpServer adds figma as HTTP transport', async () => {
+    const result = await installMcpServer('figma', {}, { skipVerify: true });
     expect(result.success).toBe(true);
     expect(mockMcpConfig.mcpServers).toHaveProperty('figma');
-    const figmaConfig = mockMcpConfig.mcpServers['figma'] as { command: string; args: string[]; env: Record<string, string> };
-    expect(figmaConfig.command).toBe('npx');
-    expect(figmaConfig.args).toContain('figma-developer-mcp');
-    expect(figmaConfig.args).toContain('--stdio');
-    expect(figmaConfig.env?.FIGMA_API_KEY).toBe('figd_test123');
+    const figmaConfig = mockMcpConfig.mcpServers['figma'] as { command: string; args: string[] };
+    expect(figmaConfig.command).toBe('__http__');
+    expect(figmaConfig.args).toContain('https://mcp.figma.com/mcp');
   });
 
   it('installMcpServer returns error for unknown server', async () => {
