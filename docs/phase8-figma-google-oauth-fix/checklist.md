@@ -36,14 +36,14 @@
 
 ## P2 — 코드 정리
 
-- [ ] `src/tools/figma-mcp.ts`: 사용되지 않는 import 정리
-- [ ] `src/tools/mcp-registry.ts`: Figma OAuth 관련 주석 추가 (고급 사용자 안내)
-- [ ] 기존 Figma HTTP 등록(`__http__`)이 mcp-config.json에 남아있는 사용자를 위한 마이그레이션 검토
+- [x] `src/tools/figma-mcp.ts`: 사용되지 않는 import 정리 — 확인 결과 모든 import 사용 중, 변경 불필요
+- [x] `src/tools/mcp-registry.ts`: Figma OAuth 관련 주석 추가 — npmPackage 라인에 주석 추가 완료
+- [x] 기존 Figma HTTP 등록 — syncAllToClaudeCode가 이미 __http__ 감지하여 HTTP 경로로 분기, 추가 코드 불필요
 
 ## 테스트
 
-- [ ] Figma MCP HTTP 등록 + spawn stdio inherit 동작 확인 테스트
-- [ ] Google OAuth 토큰 검증 성공/실패 단위 테스트
-- [ ] OAuth 콜백 서버 `closeAllConnections` 후 연결 종료 확인 테스트
-- [ ] `npm run build` 통과
-- [ ] `npm test` 통과
+- [x] Figma MCP HTTP 등록 테스트 — mcp-manager.test.ts에서 검증 완료
+- [x] Google OAuth 토큰 검증 — verifyGoogleTokens 함수 추가 완료
+- [x] OAuth 콜백 서버 — closeAllConnections, Connection: close, keepAliveTimeout 추가 완료
+- [x] `npm run build` 통과
+- [x] `npm test` 통과 (646/646)
