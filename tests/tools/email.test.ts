@@ -28,11 +28,13 @@ beforeEach(async () => {
 });
 
 describe('getAuthUrl', () => {
-  it('returns Google OAuth URL', () => {
-    const url = getAuthUrl();
+  it('returns Google OAuth URL with loopback redirect', () => {
+    const url = getAuthUrl('http://127.0.0.1:8080/callback');
     expect(url).toContain('accounts.google.com');
     expect(url).toContain('test-client');
     expect(url).toContain('gmail');
+    expect(url).toContain('redirect_uri=http%3A%2F%2F127.0.0.1%3A8080%2Fcallback');
+    expect(url).not.toContain('oob');
   });
 });
 
@@ -47,7 +49,7 @@ describe('exchangeCode', () => {
       }),
     });
 
-    const tokens = await exchangeCode('auth-code');
+    const tokens = await exchangeCode('auth-code', 'http://127.0.0.1:8080/callback');
     expect(tokens.accessToken).toBe('at-123');
     expect(tokens.refreshToken).toBe('rt-456');
   });

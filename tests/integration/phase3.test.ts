@@ -141,7 +141,7 @@ describe('email integration (3.5)', () => {
     expect(typeof email.createDraft).toBe('function');
 
     email.configureEmail({ clientId: 'cid', clientSecret: 'csec' });
-    const url = email.getAuthUrl();
+    const url = email.getAuthUrl('http://127.0.0.1:9999/callback');
     expect(url).toContain('accounts.google.com');
     expect(url).toContain('cid');
   });

@@ -94,23 +94,33 @@ export async function deleteGoogleTokens(): Promise<void> {
 /**
  * Returns the OAuth2 authorization URL for user consent.
  * Requests all enabled scopes at once.
+ *
+ * @param services - Google services to request scopes for
+ * @param redirectUri - Loopback redirect URI (e.g. http://127.0.0.1:PORT/callback)
  */
-export function getGoogleAuthUrl(services: Array<keyof typeof GOOGLE_SCOPES>): string {
+export function getGoogleAuthUrl(
+  services: Array<keyof typeof GOOGLE_SCOPES>,
+  redirectUri: string,
+): string {
   if (!config) throw new Error('Google OAuth not configured. Run "pilot-ai init" first.');
-  const redirect = config.redirectUri ?? 'urn:ietf:wg:oauth:2.0:oob';
   const scopes = services.flatMap((s) => GOOGLE_SCOPES[s]).join(' ');
-  return `https://accounts.google.com/o/oauth2/v2/auth?client_id=${config.clientId}&redirect_uri=${encodeURIComponent(redirect)}&response_type=code&scope=${encodeURIComponent(scopes)}&access_type=offline&prompt=consent`;
+  return `https://accounts.google.com/o/oauth2/v2/auth?client_id=${config.clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=${encodeURIComponent(scopes)}&access_type=offline&prompt=consent`;
 }
 
 /**
  * Exchanges authorization code for tokens.
+ *
+ * @param code - Authorization code from OAuth callback
+ * @param services - Google services to store scopes for
+ * @param redirectUri - Must match the redirect URI used in getGoogleAuthUrl
  */
 export async function exchangeGoogleCode(
   code: string,
   services: Array<keyof typeof GOOGLE_SCOPES>,
+  redirectUri: string,
 ): Promise<GoogleTokens> {
   if (!config) throw new Error('Google OAuth not configured');
-  const redirect = config.redirectUri ?? 'urn:ietf:wg:oauth:2.0:oob';
+  const redirect = redirectUri;
 
   const res = await fetch(TOKEN_URL, {
     method: 'POST',

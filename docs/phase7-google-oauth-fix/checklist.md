@@ -30,15 +30,15 @@
 
 **수정 파일:** `src/tools/google-auth.ts`
 
-- [ ] 7.2.1 `GoogleOAuthConfig` 인터페이스에서 `redirectUri` 필드 유지 (optional → 기본값 변경)
-- [ ] 7.2.2 `getGoogleAuthUrl()`: 기본 `redirectUri` `'urn:ietf:wg:oauth:2.0:oob'` 제거, `redirectUri` 파라미터 필수화 (또는 호출 시 명시적 전달)
-- [ ] 7.2.3 `exchangeGoogleCode()`: `redirectUri` 파라미터 필수화, OOB 기본값 제거
-- [ ] 7.2.4 `email.ts`의 `getAuthUrl()`, `exchangeCode()`도 동일하게 OOB 기본값 제거 (7.5 통합 전 임시 수정)
-- [ ] 7.2.5 `tests/tools/google-auth.test.ts` 업데이트
-  - [ ] `getGoogleAuthUrl()` 호출 시 redirectUri 전달하도록 수정
-  - [ ] 생성된 URL에 `redirect_uri=http%3A%2F%2F127.0.0.1` 포함 확인
-  - [ ] OOB URI가 URL에 포함되지 않음 확인
-- [ ] 7.2.6 빌드 확인
+- [x] 7.2.1 `GoogleOAuthConfig` 인터페이스에서 `redirectUri` 필드 유지 (optional → 기본값 변경)
+- [x] 7.2.2 `getGoogleAuthUrl()`: 기본 `redirectUri` `'urn:ietf:wg:oauth:2.0:oob'` 제거, `redirectUri` 파라미터 필수화 (또는 호출 시 명시적 전달)
+- [x] 7.2.3 `exchangeGoogleCode()`: `redirectUri` 파라미터 필수화, OOB 기본값 제거
+- [x] 7.2.4 `email.ts`의 `getAuthUrl()`, `exchangeCode()`도 동일하게 OOB 기본값 제거 (7.5 통합 전 임시 수정)
+- [x] 7.2.5 `tests/tools/google-auth.test.ts` 업데이트
+  - [x] `getGoogleAuthUrl()` 호출 시 redirectUri 전달하도록 수정
+  - [x] 생성된 URL에 `redirect_uri=http%3A%2F%2F127.0.0.1` 포함 확인
+  - [x] OOB URI가 URL에 포함되지 않음 확인
+- [x] 7.2.6 빌드 확인
 
 ---
 

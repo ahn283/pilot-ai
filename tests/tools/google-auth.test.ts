@@ -28,14 +28,16 @@ describe('google-auth', () => {
     expect(getGoogleConfig()).toEqual({ clientId: 'test-id', clientSecret: 'test-secret' });
   });
 
-  it('getGoogleAuthUrl generates valid URL', () => {
+  it('getGoogleAuthUrl generates valid URL with loopback redirect', () => {
     configureGoogle({ clientId: 'my-client-id', clientSecret: 'my-secret' });
-    const url = getGoogleAuthUrl(['gmail', 'calendar']);
+    const url = getGoogleAuthUrl(['gmail', 'calendar'], 'http://127.0.0.1:12345/callback');
     expect(url).toContain('client_id=my-client-id');
     expect(url).toContain('accounts.google.com');
     expect(url).toContain('access_type=offline');
     expect(url).toContain('gmail');
     expect(url).toContain('calendar');
+    expect(url).toContain('redirect_uri=http%3A%2F%2F127.0.0.1%3A12345%2Fcallback');
+    expect(url).not.toContain('oob');
   });
 
   it('getGoogleAuthUrl throws if not configured', () => {
@@ -57,7 +59,7 @@ describe('google-auth', () => {
 
   it('getGoogleAuthUrl includes drive scopes', () => {
     configureGoogle({ clientId: 'cid', clientSecret: 'cs' });
-    const url = getGoogleAuthUrl(['drive']);
+    const url = getGoogleAuthUrl(['drive'], 'http://127.0.0.1:9999/callback');
     expect(url).toContain('drive');
   });
 });

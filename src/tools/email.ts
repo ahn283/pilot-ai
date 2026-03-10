@@ -93,19 +93,18 @@ export async function deleteTokens(): Promise<void> {
 /**
  * Returns the OAuth2 authorization URL for user consent.
  */
-export function getAuthUrl(): string {
+export function getAuthUrl(redirectUri: string): string {
   if (!config) throw new Error('Email not configured');
-  const redirect = config.redirectUri ?? 'urn:ietf:wg:oauth:2.0:oob';
   const scopes = 'https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/gmail.send https://www.googleapis.com/auth/gmail.compose';
-  return `https://accounts.google.com/o/oauth2/v2/auth?client_id=${config.clientId}&redirect_uri=${encodeURIComponent(redirect)}&response_type=code&scope=${encodeURIComponent(scopes)}&access_type=offline&prompt=consent`;
+  return `https://accounts.google.com/o/oauth2/v2/auth?client_id=${config.clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=${encodeURIComponent(scopes)}&access_type=offline&prompt=consent`;
 }
 
 /**
  * Exchanges authorization code for tokens.
  */
-export async function exchangeCode(code: string): Promise<OAuthTokens> {
+export async function exchangeCode(code: string, redirectUri: string): Promise<OAuthTokens> {
   if (!config) throw new Error('Email not configured');
-  const redirect = config.redirectUri ?? 'urn:ietf:wg:oauth:2.0:oob';
+  const redirect = redirectUri;
 
   const res = await fetch(TOKEN_URL, {
     method: 'POST',
