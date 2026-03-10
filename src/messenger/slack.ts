@@ -182,10 +182,14 @@ export class SlackAdapter implements MessengerAdapter {
   }
 
   async updateText(channelId: string, messageId: string, text: string): Promise<void> {
+    // Truncate to avoid msg_too_long from chat.update (4,000 char limit)
+    const safeText = text.length > MAX_MESSAGE_LENGTH.slack
+      ? text.slice(0, MAX_MESSAGE_LENGTH.slack - 30) + '\n\n_(truncated)_'
+      : text;
     await this.app.client.chat.update({
       channel: channelId,
       ts: messageId,
-      text,
+      text: safeText,
     });
   }
 
@@ -195,14 +199,18 @@ export class SlackAdapter implements MessengerAdapter {
     taskId: string,
     threadId?: string,
   ): Promise<void> {
+    // Section block text limit is 3,000 chars
+    const safeText = text.length > 3000
+      ? text.slice(0, 2970) + '\n\n_(truncated)_'
+      : text;
     await this.app.client.chat.postMessage({
       channel: channelId,
-      text,
+      text: safeText,
       thread_ts: threadId,
       blocks: [
         {
           type: 'section',
-          text: { type: 'mrkdwn', text },
+          text: { type: 'mrkdwn', text: safeText },
         },
         {
           type: 'actions',

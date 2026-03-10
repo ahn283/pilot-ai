@@ -121,13 +121,25 @@ export class TelegramAdapter implements MessengerAdapter {
   }
 
   async updateText(channelId: string, messageId: string, text: string): Promise<void> {
-    await this.bot.telegram.editMessageText(
-      channelId,
-      parseInt(messageId, 10),
-      undefined,
-      text,
-      { parse_mode: 'Markdown' },
-    );
+    const msgId = parseInt(messageId, 10);
+    if (text.length <= MAX_MESSAGE_LENGTH.telegram) {
+      await this.bot.telegram.editMessageText(
+        channelId, msgId, undefined, text, { parse_mode: 'Markdown' },
+      );
+    } else {
+      // Edit original with first chunk, send remaining as new messages
+      const chunks = splitMessage(text, MAX_MESSAGE_LENGTH.telegram);
+      await this.bot.telegram.editMessageText(
+        channelId, msgId, undefined, chunks[0], { parse_mode: 'Markdown' },
+      );
+      for (let i = 1; i < chunks.length; i++) {
+        await this.rateLimiter.acquire();
+        await this.bot.telegram.sendMessage(channelId, chunks[i], {
+          parse_mode: 'Markdown',
+          reply_parameters: { message_id: msgId },
+        });
+      }
+    }
   }
 
   async sendApproval(
@@ -136,7 +148,11 @@ export class TelegramAdapter implements MessengerAdapter {
     taskId: string,
     threadId?: string,
   ): Promise<void> {
-    await this.bot.telegram.sendMessage(channelId, text, {
+    // Truncate to avoid msg_too_long (4,096 char limit)
+    const safeText = text.length > MAX_MESSAGE_LENGTH.telegram
+      ? text.slice(0, MAX_MESSAGE_LENGTH.telegram - 30) + '\n\n_(truncated)_'
+      : text;
+    await this.bot.telegram.sendMessage(channelId, safeText, {
       parse_mode: 'Markdown',
       ...(threadId ? { reply_parameters: { message_id: parseInt(threadId, 10) } } : {}),
       reply_markup: {

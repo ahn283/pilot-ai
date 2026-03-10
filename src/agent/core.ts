@@ -19,6 +19,7 @@ import { detectPermissionError, PermissionWatcher } from '../security/permission
 import { isGhAuthenticated } from '../tools/github.js';
 import { configureGoogle } from '../tools/google-auth.js';
 import { configureEmail } from '../tools/email.js';
+import { MAX_MESSAGE_LENGTH } from '../messenger/split.js';
 
 function log(message: string): void {
   console.log(`[${new Date().toISOString()}] ${message}`);
@@ -179,7 +180,17 @@ export class AgentCore {
         log(`Claude response (${response.length} chars): "${response.slice(0, 100)}..."`);
         await this.messenger.removeReaction?.(msg.channelId, incomingTs, 'gear');
         await this.messenger.addReaction?.(msg.channelId, incomingTs, 'white_check_mark');
-        await this.messenger.updateText(msg.channelId, statusMsgId, response);
+
+        // Use updateText for short responses, sendText for long ones to avoid msg_too_long
+        const maxLen = this.config.messenger.platform === 'slack'
+          ? MAX_MESSAGE_LENGTH.slack
+          : MAX_MESSAGE_LENGTH.telegram;
+        if (response.length <= maxLen) {
+          await this.messenger.updateText(msg.channelId, statusMsgId, response);
+        } else {
+          await this.messenger.updateText(msg.channelId, statusMsgId, '✅ Done');
+          await this.messenger.sendText(msg.channelId, response, msg.threadId);
+        }
 
         await writeAuditLog({
           timestamp: new Date().toISOString(),
@@ -205,7 +216,16 @@ export class AgentCore {
             ? `❌ ${permissionHint}`
             : `❌ Error: ${errorMsg}`;
         }
-        await this.messenger.updateText(msg.channelId, statusMsgId, displayMsg);
+        // Use updateText for short errors, sendText for long ones
+        const errMaxLen = this.config.messenger.platform === 'slack'
+          ? MAX_MESSAGE_LENGTH.slack
+          : MAX_MESSAGE_LENGTH.telegram;
+        if (displayMsg.length <= errMaxLen) {
+          await this.messenger.updateText(msg.channelId, statusMsgId, displayMsg);
+        } else {
+          await this.messenger.updateText(msg.channelId, statusMsgId, '❌ Error (see below)');
+          await this.messenger.sendText(msg.channelId, displayMsg, msg.threadId);
+        }
 
         await writeAuditLog({
           timestamp: new Date().toISOString(),
