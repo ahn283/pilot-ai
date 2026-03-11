@@ -12,7 +12,7 @@ import { analyzeProjectIfNew } from './project-analyzer.js';
 import { buildSkillsContext } from './skills.js';
 import { buildToolDescriptions } from './tool-descriptions.js';
 import { getMcpConfigPathIfExists } from '../tools/figma-mcp.js';
-import { buildMcpContext } from './mcp-manager.js';
+import { buildMcpContext, migrateToSecureLaunchers } from './mcp-manager.js';
 import { PilotError } from '../utils/errors.js';
 import { getSession, createSession, touchSession, deleteSession, cleanupSessions } from './session.js';
 import { updateConversationSummary, getConversationSummaryText, cleanupExpiredSummaries } from './conversation-summary.js';
@@ -79,6 +79,12 @@ export class AgentCore {
       this.githubCheckInterval = setInterval(() => {
         this.checkGitHubAuth().catch(() => {});
       }, 60 * 60 * 1000);
+    }
+
+    // Migrate existing MCP servers to secure Keychain-backed launchers
+    const migration = await migrateToSecureLaunchers();
+    if (migration.migrated.length > 0) {
+      log(`Migrated MCP servers to secure launchers: ${migration.migrated.join(', ')}`);
     }
 
     // Start periodic Google OAuth token health checker

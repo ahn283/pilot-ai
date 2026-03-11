@@ -10,6 +10,7 @@ import { findMatchingServers, getRegistryEntry, MCP_REGISTRY, type McpServerEntr
 import { getSecret, setSecret } from '../config/keychain.js';
 import { getPilotDir } from '../config/store.js';
 import { syncToClaudeCode, removeFromClaudeCode } from '../config/claude-code-sync.js';
+import { generateLauncherScript, removeLauncherScript, classifyEnvVars, getLauncherPath } from './mcp-launcher.js';
 import path from 'node:path';
 
 const execFileAsync = promisify(execFile);
@@ -90,28 +91,47 @@ export async function installMcpServer(
     }
   }
 
-  // Store environment variables in keychain
-  for (const [key, value] of Object.entries(envValues)) {
+  // Classify env vars into secrets (stored in Keychain) and non-secrets (stored in script directly)
+  const { secrets, nonSecrets } = classifyEnvVars(envValues);
+
+  // Store secret environment variables in keychain
+  const keychainEnvKeys: Record<string, string> = {};
+  for (const [key, value] of Object.entries(secrets)) {
     const keychainKey = `mcp-${serverId}-${key.toLowerCase().replace(/_/g, '-')}`;
     await setSecret(keychainKey, value);
+    keychainEnvKeys[key] = keychainKey;
   }
 
-  // Build the server config
+  // Generate a wrapper script that reads secrets from Keychain at runtime
+  let serverConfig: McpConfig['mcpServers'][string];
+
+  if (Object.keys(keychainEnvKeys).length > 0) {
+    // Has secrets → use wrapper script (no plaintext secrets in config)
+    const launcherPath = await generateLauncherScript(
+      serverId,
+      entry.npmPackage,
+      keychainEnvKeys,
+      entry.args,
+      nonSecrets,
+    );
+    serverConfig = { command: 'bash', args: [launcherPath] };
+  } else {
+    // No secrets → use direct npx command
+    serverConfig = {
+      command: 'npx',
+      args: ['-y', entry.npmPackage, ...(entry.args ?? [])],
+    };
+    if (Object.keys(nonSecrets).length > 0) {
+      serverConfig.env = { ...nonSecrets };
+    }
+  }
+
+  // Save to mcp-config.json (no secrets in file)
   const config = await loadMcpConfig();
-  const serverConfig: McpConfig['mcpServers'][string] = {
-    command: 'npx',
-    args: ['-y', entry.npmPackage, ...(entry.args ?? [])],
-  };
-
-  // Add env vars
-  if (Object.keys(envValues).length > 0) {
-    serverConfig.env = { ...envValues };
-  }
-
   config.mcpServers[serverId] = serverConfig;
   await saveMcpConfig(config);
 
-  // Sync to Claude Code native settings (non-blocking, warn on failure)
+  // Sync to Claude Code native settings (no secrets in ~/.claude.json)
   const syncResult = await syncToClaudeCode(serverId, serverConfig);
   if (syncResult.success) {
     console.log(`  (synced to Claude Code)`);
@@ -162,6 +182,9 @@ export async function uninstallMcpServer(serverId: string): Promise<void> {
   const config = await loadMcpConfig();
   delete config.mcpServers[serverId];
   await saveMcpConfig(config);
+
+  // Clean up launcher script
+  await removeLauncherScript(serverId);
 
   // Also remove from Claude Code (ignore failures)
   await removeFromClaudeCode(serverId).catch(() => {});
@@ -247,4 +270,81 @@ export async function buildMcpContext(): Promise<string> {
 
 function getMcpConfigDisplayPath(): string {
   return path.join(getPilotDir(), 'mcp-config.json');
+}
+
+/**
+ * Migrates existing MCP servers from plaintext env vars to Keychain-backed wrapper scripts.
+ * Safe to call multiple times — skips servers already using wrapper scripts.
+ * Returns the number of servers migrated.
+ */
+export async function migrateToSecureLaunchers(): Promise<{ migrated: string[]; skipped: string[] }> {
+  const config = await loadMcpConfig();
+  const migrated: string[] = [];
+  const skipped: string[] = [];
+
+  for (const [serverId, serverConfig] of Object.entries(config.mcpServers)) {
+    // Skip HTTP transport servers
+    if (serverConfig.command === '__http__') {
+      skipped.push(serverId);
+      continue;
+    }
+
+    // Skip servers already using wrapper scripts
+    if (serverConfig.command === 'bash' && serverConfig.args?.[0]?.includes('mcp-launchers/')) {
+      skipped.push(serverId);
+      continue;
+    }
+
+    // Skip servers with no env vars (no secrets to protect)
+    if (!serverConfig.env || Object.keys(serverConfig.env).length === 0) {
+      skipped.push(serverId);
+      continue;
+    }
+
+    // Look up registry entry to get npmPackage and args
+    const entry = getRegistryEntry(serverId);
+    if (!entry) {
+      skipped.push(serverId);
+      continue;
+    }
+
+    // Classify and migrate
+    const { secrets, nonSecrets } = classifyEnvVars(serverConfig.env);
+
+    if (Object.keys(secrets).length === 0) {
+      skipped.push(serverId);
+      continue;
+    }
+
+    // Store secrets in Keychain and build env key map
+    const keychainEnvKeys: Record<string, string> = {};
+    for (const [key, value] of Object.entries(secrets)) {
+      const keychainKey = `mcp-${serverId}-${key.toLowerCase().replace(/_/g, '-')}`;
+      await setSecret(keychainKey, value);
+      keychainEnvKeys[key] = keychainKey;
+    }
+
+    // Generate wrapper script
+    const launcherPath = await generateLauncherScript(
+      serverId,
+      entry.npmPackage,
+      keychainEnvKeys,
+      entry.args,
+      nonSecrets,
+    );
+
+    // Update config to use wrapper script (no more env field)
+    config.mcpServers[serverId] = { command: 'bash', args: [launcherPath] };
+
+    // Re-sync to Claude Code without secrets
+    await syncToClaudeCode(serverId, config.mcpServers[serverId]).catch(() => {});
+
+    migrated.push(serverId);
+  }
+
+  if (migrated.length > 0) {
+    await saveMcpConfig(config);
+  }
+
+  return { migrated, skipped };
 }

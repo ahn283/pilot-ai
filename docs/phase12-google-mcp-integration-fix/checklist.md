@@ -40,9 +40,13 @@
 
 ## P2: 보안 및 운영
 
-- [ ] **`~/.claude.json` 시크릿 평문 노출 방지**
-  - MCP 서버 env에 직접 시크릿 대신 파일 참조 또는 wrapper script
-  - Keychain 연동 MCP launcher 검토
+- [x] **`~/.claude.json` 시크릿 평문 노출 방지**
+  - `src/agent/mcp-launcher.ts` — Keychain 연동 wrapper script 생성기 신규 작성
+  - 서버별 `~/.pilot/mcp-launchers/<id>.sh` 스크립트 자동 생성 (mode 0o700)
+  - `mcp-config.json`과 `~/.claude.json`에 시크릿 미포함 (`command: "bash"`, `args: [scriptPath]`)
+  - `classifyEnvVars()`: 시크릿(토큰, 키) vs 비시크릿(파일경로, 사이트명) 자동 분류
+  - `migrateToSecureLaunchers()`: 기존 평문 서버 자동 마이그레이션
+  - `core.ts` start()에서 마이그레이션 자동 실행
 
 - [x] **`pilot-ai start` 주기적 토큰 헬스체크**
   - 1시간마다 Google OAuth 토큰 유효성 확인
@@ -51,7 +55,7 @@
 ## 검증
 
 - [x] `npm run build` 성공
-- [x] 기존 테스트 통과 (80 files, 680 tests)
+- [x] 기존 테스트 통과 (81 files, 698 tests)
 - [ ] Gmail MCP 도구 Claude Code에서 사용 가능 확인
 - [ ] `pilot-ai auth google` 후 MCP 토큰 자동 갱신 확인
 - [ ] Google Calendar, Drive MCP 영향 없음 확인

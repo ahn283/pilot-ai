@@ -29,6 +29,28 @@ vi.mock('../../src/config/claude-code-sync.js', () => ({
   checkClaudeCodeSync: vi.fn().mockResolvedValue(true),
 }));
 
+// Mock mcp-launcher
+vi.mock('../../src/agent/mcp-launcher.js', () => ({
+  generateLauncherScript: vi.fn().mockResolvedValue('/mock/.pilot/mcp-launchers/test.sh'),
+  removeLauncherScript: vi.fn().mockResolvedValue(undefined),
+  getLauncherPath: vi.fn().mockReturnValue('/mock/.pilot/mcp-launchers/test.sh'),
+  classifyEnvVars: vi.fn().mockImplementation((envValues: Record<string, string>) => {
+    const secrets: Record<string, string> = {};
+    const nonSecrets: Record<string, string> = {};
+    for (const [key, value] of Object.entries(envValues)) {
+      if (value.startsWith('/') || value.startsWith('~') ||
+          key.toUpperCase().includes('SITE_NAME') ||
+          key.toUpperCase().includes('USER_EMAIL') ||
+          key.toUpperCase().includes('TEAM_ID')) {
+        nonSecrets[key] = value;
+      } else {
+        secrets[key] = value;
+      }
+    }
+    return { secrets, nonSecrets };
+  }),
+}));
+
 import {
   getInstalledServers,
   detectNeededServers,
@@ -37,8 +59,10 @@ import {
   listAvailableServers,
   buildApprovalMessage,
   buildMcpContext,
+  migrateToSecureLaunchers,
 } from '../../src/agent/mcp-manager.js';
 import { setSecret } from '../../src/config/keychain.js';
+import { generateLauncherScript, removeLauncherScript } from '../../src/agent/mcp-launcher.js';
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -75,14 +99,20 @@ describe('mcp-manager', () => {
     expect(needed).toHaveLength(0);
   });
 
-  it('installMcpServer adds figma as stdio with PAT', async () => {
+  it('installMcpServer with secrets uses wrapper script (no plaintext env)', async () => {
     const result = await installMcpServer('figma', { FIGMA_API_KEY: 'figd_test' }, { skipVerify: true });
     expect(result.success).toBe(true);
     expect(mockMcpConfig.mcpServers).toHaveProperty('figma');
-    const figmaConfig = mockMcpConfig.mcpServers['figma'] as { command: string; args: string[]; env: Record<string, string> };
-    expect(figmaConfig.command).toBe('npx');
-    expect(figmaConfig.args).toContain('figma-developer-mcp');
-    expect(figmaConfig.env?.FIGMA_API_KEY).toBe('figd_test');
+    const figmaConfig = mockMcpConfig.mcpServers['figma'] as { command: string; args: string[]; env?: Record<string, string> };
+    // Now uses bash wrapper script instead of npx with plaintext env
+    expect(figmaConfig.command).toBe('bash');
+    expect(figmaConfig.args).toContain('/mock/.pilot/mcp-launchers/test.sh');
+    // No env field — secrets are in Keychain, read by the wrapper script
+    expect(figmaConfig.env).toBeUndefined();
+    // Secrets should be stored in keychain
+    expect(setSecret).toHaveBeenCalledWith('mcp-figma-figma-api-key', 'figd_test');
+    // Launcher script should be generated
+    expect(generateLauncherScript).toHaveBeenCalled();
   });
 
   it('installMcpServer returns error for unknown server', async () => {
@@ -102,37 +132,46 @@ describe('mcp-manager', () => {
     expect(execFile).not.toHaveBeenCalled();
   });
 
-  it('installMcpServer registers notion with correct config', async () => {
+  it('installMcpServer registers notion with wrapper script', async () => {
     const headers = JSON.stringify({ 'Authorization': 'Bearer ntn_test', 'Notion-Version': '2022-06-28' });
     await installMcpServer('notion', { OPENAPI_MCP_HEADERS: headers }, { skipVerify: true });
-    const notionConfig = mockMcpConfig.mcpServers['notion'] as { command: string; args: string[]; env: Record<string, string> };
-    expect(notionConfig.command).toBe('npx');
-    expect(notionConfig.args).toContain('@notionhq/notion-mcp-server');
-    expect(notionConfig.env?.OPENAPI_MCP_HEADERS).toBe(headers);
+    const notionConfig = mockMcpConfig.mcpServers['notion'] as { command: string; args: string[]; env?: Record<string, string> };
+    // Secrets → wrapper script
+    expect(notionConfig.command).toBe('bash');
+    expect(notionConfig.args).toContain('/mock/.pilot/mcp-launchers/test.sh');
+    expect(notionConfig.env).toBeUndefined();
   });
 
-  it('installMcpServer registers linear with correct config', async () => {
+  it('installMcpServer registers linear with wrapper script', async () => {
     await installMcpServer('linear', { LINEAR_API_TOKEN: 'lin_api_test' }, { skipVerify: true });
-    const linearConfig = mockMcpConfig.mcpServers['linear'] as { command: string; args: string[]; env: Record<string, string> };
-    expect(linearConfig.command).toBe('npx');
-    expect(linearConfig.args).toContain('@tacticlaunch/mcp-linear');
-    expect(linearConfig.env?.LINEAR_API_TOKEN).toBe('lin_api_test');
+    const linearConfig = mockMcpConfig.mcpServers['linear'] as { command: string; args: string[]; env?: Record<string, string> };
+    expect(linearConfig.command).toBe('bash');
+    expect(linearConfig.env).toBeUndefined();
   });
 
-  it('installMcpServer registers google-drive with correct config', async () => {
+  it('installMcpServer registers google-drive with direct npx (path-only env)', async () => {
     await installMcpServer('google-drive', {
       GOOGLE_DRIVE_OAUTH_CREDENTIALS: '/path/to/creds.json',
     }, { skipVerify: true });
-    const driveConfig = mockMcpConfig.mcpServers['google-drive'] as { command: string; args: string[]; env: Record<string, string> };
+    const driveConfig = mockMcpConfig.mcpServers['google-drive'] as { command: string; args: string[]; env?: Record<string, string> };
+    // File path is a non-secret → uses direct npx, no wrapper script needed
     expect(driveConfig.command).toBe('npx');
     expect(driveConfig.args).toContain('@piotr-agier/google-drive-mcp');
     expect(driveConfig.env?.GOOGLE_DRIVE_OAUTH_CREDENTIALS).toBe('/path/to/creds.json');
   });
 
-  it('uninstallMcpServer removes server from config', async () => {
-    mockMcpConfig.mcpServers = { figma: { command: 'npx' } };
+  it('installMcpServer with no env uses direct npx', async () => {
+    await installMcpServer('puppeteer', {}, { skipVerify: true });
+    const config = mockMcpConfig.mcpServers['puppeteer'] as { command: string; args: string[] };
+    expect(config.command).toBe('npx');
+    expect(config.args).toContain('@modelcontextprotocol/server-puppeteer');
+  });
+
+  it('uninstallMcpServer removes server from config and cleans up launcher', async () => {
+    mockMcpConfig.mcpServers = { figma: { command: 'bash', args: ['/mock/.pilot/mcp-launchers/test.sh'] } };
     await uninstallMcpServer('figma');
     expect(mockMcpConfig.mcpServers).not.toHaveProperty('figma');
+    expect(removeLauncherScript).toHaveBeenCalledWith('figma');
   });
 
   it('listAvailableServers shows install status', async () => {
@@ -165,5 +204,49 @@ describe('mcp-manager', () => {
     const context = await buildMcpContext();
     expect(context).not.toContain('INSTALLED MCP SERVERS');
     expect(context).toContain('AVAILABLE MCP SERVERS');
+  });
+
+  describe('migrateToSecureLaunchers', () => {
+    it('migrates servers with plaintext env to wrapper scripts', async () => {
+      mockMcpConfig.mcpServers = {
+        figma: {
+          command: 'npx',
+          args: ['-y', 'figma-developer-mcp', '--stdio'],
+          env: { FIGMA_API_KEY: 'figd_secret' },
+        },
+      };
+      const result = await migrateToSecureLaunchers();
+      expect(result.migrated).toContain('figma');
+      expect(setSecret).toHaveBeenCalled();
+      expect(generateLauncherScript).toHaveBeenCalled();
+      const figmaConfig = mockMcpConfig.mcpServers['figma'] as { command: string; args: string[]; env?: unknown };
+      expect(figmaConfig.command).toBe('bash');
+      expect(figmaConfig.env).toBeUndefined();
+    });
+
+    it('skips servers already using wrapper scripts', async () => {
+      mockMcpConfig.mcpServers = {
+        figma: { command: 'bash', args: ['/mock/mcp-launchers/figma.sh'] },
+      };
+      const result = await migrateToSecureLaunchers();
+      expect(result.skipped).toContain('figma');
+      expect(result.migrated).toHaveLength(0);
+    });
+
+    it('skips HTTP transport servers', async () => {
+      mockMcpConfig.mcpServers = {
+        figma: { command: '__http__', args: ['https://example.com'] },
+      };
+      const result = await migrateToSecureLaunchers();
+      expect(result.skipped).toContain('figma');
+    });
+
+    it('skips servers with no env vars', async () => {
+      mockMcpConfig.mcpServers = {
+        puppeteer: { command: 'npx', args: ['-y', '@modelcontextprotocol/server-puppeteer'] },
+      };
+      const result = await migrateToSecureLaunchers();
+      expect(result.skipped).toContain('puppeteer');
+    });
   });
 });
