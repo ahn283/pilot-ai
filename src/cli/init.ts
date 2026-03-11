@@ -113,8 +113,39 @@ async function setupClaude(): Promise<PilotConfig['claude']> {
       }
     }
   } else {
-    console.log('Claude Code CLI not found. Configuring API Key mode.\n');
-    console.log('  Install CLI: npm install -g @anthropic-ai/claude-code\n');
+    console.log('⚠ Claude Code CLI not found.\n');
+    console.log('  Pilot-AI requires Claude Code CLI to run in CLI mode (recommended).');
+    console.log('  Install it with:\n');
+    console.log('    npm install -g @anthropic-ai/claude-code\n');
+    console.log('  After installing, run "claude" once to authenticate.\n');
+
+    const { retryOrApi } = await inquirer.prompt([
+      {
+        type: 'list',
+        name: 'retryOrApi',
+        message: 'What would you like to do?',
+        choices: [
+          { name: 'I installed it — check again', value: 'retry' },
+          { name: 'Use API Key mode instead (no CLI needed)', value: 'api' },
+        ],
+      },
+    ]);
+
+    if (retryOrApi === 'retry') {
+      const retryExists = await checkClaudeCli();
+      if (retryExists) {
+        console.log('  Claude Code CLI detected!\n');
+        const isAuthed = await checkClaudeCliAuth();
+        if (isAuthed) {
+          console.log('  Authenticated!\n');
+          return { mode: 'cli', cliBinary: 'claude', apiKey: null };
+        }
+        console.log('  CLI is installed but not authenticated.');
+        console.log('  Run "claude" in your terminal to log in, then re-run "npx pilot-ai init".\n');
+        throw new Error('Claude CLI authentication required. Run "claude" to log in first.');
+      }
+      console.log('  Still not found. Falling back to API Key mode.\n');
+    }
   }
 
   const { apiKey } = await inquirer.prompt([

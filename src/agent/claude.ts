@@ -26,6 +26,8 @@ export interface ClaudeCliOptions {
   sessionId?: string;
   /** Resume an existing session by its UUID */
   resumeSessionId?: string;
+  /** Path or name of the Claude CLI binary (default: 'claude') */
+  cliBinary?: string;
 }
 
 export interface ClaudeCliResult {
@@ -131,7 +133,7 @@ export async function invokeClaudeCli(options: ClaudeCliOptions): Promise<Claude
 }
 
 async function invokeClaudeCliInner(options: ClaudeCliOptions): Promise<ClaudeCliResult> {
-  const { prompt, systemPrompt, cwd, allowedTools, mcpConfigPath, timeoutMs = DEFAULT_TIMEOUT_MS, onToolUse, onThinking, sessionId, resumeSessionId } = options;
+  const { prompt, systemPrompt, cwd, allowedTools, mcpConfigPath, timeoutMs = DEFAULT_TIMEOUT_MS, onToolUse, onThinking, sessionId, resumeSessionId, cliBinary = 'claude' } = options;
 
   const args: string[] = [];
 
@@ -171,7 +173,7 @@ async function invokeClaudeCliInner(options: ClaudeCliOptions): Promise<ClaudeCl
     const env = { ...process.env };
     delete env.CLAUDECODE;
 
-    const child = spawn('claude', args, {
+    const child = spawn(cliBinary, args, {
       stdio: ['pipe', 'pipe', 'pipe'],
       timeout: timeoutMs,
       env,

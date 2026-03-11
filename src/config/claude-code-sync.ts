@@ -31,15 +31,16 @@ export interface McpServerConfigForSync {
 export async function syncToClaudeCode(
   serverId: string,
   serverConfig: McpServerConfigForSync,
+  binary: string = 'claude',
 ): Promise<{ success: boolean; error?: string }> {
-  const cliExists = await checkClaudeCli();
+  const cliExists = await checkClaudeCli(binary);
   if (!cliExists) {
     return { success: false, error: 'Claude Code CLI not installed' };
   }
 
   try {
     // Remove existing server first (handles updates)
-    await execFileAsync('claude', ['mcp', 'remove', '-s', 'user', serverId], {
+    await execFileAsync(binary, ['mcp', 'remove', '-s', 'user', serverId], {
       timeout: TIMEOUT_MS,
     }).catch(() => {}); // Ignore if not found
 
@@ -52,7 +53,7 @@ export async function syncToClaudeCode(
       jsonConfig.env = serverConfig.env;
     }
 
-    await execFileAsync('claude', [
+    await execFileAsync(binary, [
       'mcp', 'add-json', '-s', 'user',
       serverId,
       JSON.stringify(jsonConfig),
@@ -71,14 +72,15 @@ export async function syncToClaudeCode(
  */
 export async function removeFromClaudeCode(
   serverId: string,
+  binary: string = 'claude',
 ): Promise<{ success: boolean; error?: string }> {
-  const cliExists = await checkClaudeCli();
+  const cliExists = await checkClaudeCli(binary);
   if (!cliExists) {
     return { success: false, error: 'Claude Code CLI not installed' };
   }
 
   try {
-    await execFileAsync('claude', ['mcp', 'remove', '-s', 'user', serverId], {
+    await execFileAsync(binary, ['mcp', 'remove', '-s', 'user', serverId], {
       timeout: TIMEOUT_MS,
     });
     return { success: true };
@@ -93,6 +95,7 @@ export async function removeFromClaudeCode(
  */
 export async function syncAllToClaudeCode(
   mcpServers: Record<string, McpServerConfigForSync>,
+  binary: string = 'claude',
 ): Promise<{ synced: string[]; failed: string[] }> {
   const synced: string[] = [];
   const failed: string[] = [];
@@ -101,9 +104,9 @@ export async function syncAllToClaudeCode(
     // HTTP transport servers use a different sync path
     let result: { success: boolean; error?: string };
     if (config.command === '__http__' && config.args?.[0]) {
-      result = await syncHttpToClaudeCode(serverId, config.args[0]);
+      result = await syncHttpToClaudeCode(serverId, config.args[0], binary);
     } else {
-      result = await syncToClaudeCode(serverId, config);
+      result = await syncToClaudeCode(serverId, config, binary);
     }
     if (result.success) {
       synced.push(serverId);
@@ -122,8 +125,9 @@ export async function syncAllToClaudeCode(
 export async function syncHttpToClaudeCode(
   serverId: string,
   url: string,
+  binary: string = 'claude',
 ): Promise<{ success: boolean; error?: string }> {
-  const cliExists = await checkClaudeCli();
+  const cliExists = await checkClaudeCli(binary);
   if (!cliExists) {
     return { success: false, error: 'Claude Code CLI not installed' };
   }
@@ -134,13 +138,13 @@ export async function syncHttpToClaudeCode(
 
   try {
     // Remove existing server first (handles updates)
-    await execFileAsync('claude', ['mcp', 'remove', '-s', 'user', serverId], {
+    await execFileAsync(binary, ['mcp', 'remove', '-s', 'user', serverId], {
       timeout: TIMEOUT_MS,
     }).catch(() => {});
 
     // Use spawn with stdio: 'inherit' so OAuth browser prompts are visible to the user
     await new Promise<void>((resolve, reject) => {
-      const child = spawn('claude', [
+      const child = spawn(binary, [
         'mcp', 'add',
         '--transport', 'http',
         '-s', 'user',
@@ -176,11 +180,11 @@ export async function syncHttpToClaudeCode(
  * Check if a specific MCP server is registered in Claude Code.
  * Uses: claude mcp get <name>
  */
-export async function checkClaudeCodeSync(serverId: string): Promise<boolean> {
+export async function checkClaudeCodeSync(serverId: string, binary: string = 'claude'): Promise<boolean> {
   try {
-    const cliExists = await checkClaudeCli();
+    const cliExists = await checkClaudeCli(binary);
     if (!cliExists) return false;
-    await execFileAsync('claude', ['mcp', 'get', serverId], { timeout: 5_000 });
+    await execFileAsync(binary, ['mcp', 'get', serverId], { timeout: 5_000 });
     return true;
   } catch {
     return false;

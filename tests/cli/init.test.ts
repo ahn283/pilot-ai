@@ -97,6 +97,7 @@ describe('runInit - API mode with Telegram', () => {
   it('API mode + Telegram setup saves config correctly', async () => {
     vi.mocked(checkClaudeCli).mockResolvedValue(false);
     vi.mocked(inquirer.prompt)
+      .mockResolvedValueOnce({ retryOrApi: 'api' }) // CLI not found: use API mode
       .mockResolvedValueOnce({ apiKey: 'sk-test-key' }) // API key
       .mockResolvedValueOnce({ platformChoice: '2' }) // Messenger: Telegram
       .mockResolvedValueOnce({

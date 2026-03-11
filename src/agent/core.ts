@@ -356,6 +356,7 @@ You have a credential store at ~/.pilot/credentials/. Use it to store and retrie
       systemPrompt: resumeSessionId ? undefined : systemPrompt, // Only send system prompt on first turn
       cwd: projectPath,
       mcpConfigPath,
+      cliBinary: this.config.claude.cliBinary,
       onToolUse: (status) => onStatus?.(status),
       onThinking: this.config.agent?.showThinking !== false ? (text) => {
         thinkingBuffer += text;
