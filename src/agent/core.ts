@@ -15,6 +15,7 @@ import { getMcpConfigPathIfExists } from '../tools/figma-mcp.js';
 import { buildMcpContext } from './mcp-manager.js';
 import { PilotError } from '../utils/errors.js';
 import { getSession, createSession, touchSession, deleteSession, cleanupSessions } from './session.js';
+import { updateConversationSummary, getConversationSummaryText, cleanupExpiredSummaries } from './conversation-summary.js';
 import { detectPermissionError, PermissionWatcher } from '../security/permissions.js';
 import { isGhAuthenticated } from '../tools/github.js';
 import { configureGoogle } from '../tools/google-auth.js';
@@ -194,8 +195,9 @@ export class AgentCore {
         // Determine user-friendly message based on error type
         let displayMsg: string;
         if (errorMsg.includes('msg_too_long')) {
-          // Context overflow — delete the broken session so next message starts fresh
-          const threadId = msg.threadId ?? msg.channelId;
+          // Context overflow — session already handled by invokeClaudeWithContext fallback
+          // If we still get here, it means the fallback also failed — delete session as last resort
+          const threadId = msg.threadId ?? `dm-${Date.now()}`;
           await deleteSession(msg.platform, msg.channelId, threadId);
           displayMsg = '❌ Conversation too long. Session has been reset — please send your message again.';
           log(`Session deleted due to msg_too_long for ${msg.platform}:${msg.channelId}:${threadId}`);
@@ -235,13 +237,7 @@ export class AgentCore {
     // Resolve project from message text
     const project = await resolveProject(msg.text);
     const projectName = project?.name;
-    const projectPath = project?.path;
-
-    // If project resolved, analyze on first use and update lastUsed
-    if (projectName && projectPath) {
-      await touchProject(projectName);
-      await analyzeProjectIfNew(projectName, projectPath);
-    }
+    let projectPath = project?.path;
 
     // Build system-level context (memory, skills, tool descriptions)
     const memoryContext = await buildMemoryContext(projectName);
@@ -316,8 +312,6 @@ You have a credential store at ~/.pilot/credentials/. Use it to store and retrie
     }
 
     // Session continuity: map messenger threads to Claude sessions
-    // DM (no threadId) → each message gets a new session to prevent infinite context accumulation
-    const isDm = !msg.threadId;
     const threadId = msg.threadId ?? `dm-${Date.now()}`;
     const existingSession = await getSession(msg.platform, msg.channelId, threadId);
 
@@ -327,6 +321,10 @@ You have a credential store at ~/.pilot/credentials/. Use it to store and retrie
     if (existingSession) {
       // Resume existing session — Claude retains full conversation context
       resumeSessionId = existingSession.sessionId;
+      // Bug fix: restore projectPath from session when not resolved from message text
+      if (!projectPath && existingSession.projectPath) {
+        projectPath = existingSession.projectPath;
+      }
       await touchSession(msg.platform, msg.channelId, threadId);
       log(`Resuming session ${resumeSessionId} (turn ${existingSession.turnCount + 1})`);
     } else {
@@ -336,8 +334,25 @@ You have a credential store at ~/.pilot/credentials/. Use it to store and retrie
       log(`New session ${sessionId}`);
     }
 
-    // Periodically clean up expired sessions (non-blocking)
+    // If project resolved (from message or session), analyze on first use
+    if (projectName && projectPath) {
+      await touchProject(projectName);
+      await analyzeProjectIfNew(projectName, projectPath);
+    }
+
+    // Load conversation summary (used for new sessions & msg_too_long fallback)
+    const conversationSummaryText = await getConversationSummaryText(
+      msg.platform, msg.channelId, threadId,
+    );
+
+    // For new sessions with prior conversation, inject summary into system prompt
+    const fullSystemPrompt = !resumeSessionId && conversationSummaryText
+      ? `${systemPrompt}\n\n<CONVERSATION_HISTORY>\n${conversationSummaryText}\n</CONVERSATION_HISTORY>`
+      : systemPrompt;
+
+    // Periodically clean up expired sessions and summaries (non-blocking)
     cleanupSessions().catch(() => {});
+    cleanupExpiredSummaries().catch(() => {});
 
     const mcpConfigPath = await getMcpConfigPathIfExists() ?? undefined;
     log(`MCP config: ${mcpConfigPath ?? 'none'}`);
@@ -351,14 +366,9 @@ You have a credential store at ~/.pilot/credentials/. Use it to store and retrie
     let thinkingBuffer = '';
     const THINKING_THROTTLE_MS = 5_000;
 
-    const result = await invokeClaudeCli({
-      prompt: msg.text,
-      systemPrompt: resumeSessionId ? undefined : systemPrompt, // Only send system prompt on first turn
-      cwd: projectPath,
-      mcpConfigPath,
-      cliBinary: this.config.claude.cliBinary,
-      onToolUse: (status) => onStatus?.(status),
-      onThinking: this.config.agent?.showThinking !== false ? (text) => {
+    const buildThinkingHandler = () => {
+      if (this.config.agent?.showThinking === false) return undefined;
+      return (text: string) => {
         thinkingBuffer += text;
         const now = Date.now();
         if (now - lastThinkingReport > THINKING_THROTTLE_MS && thinkingBuffer.length > 0) {
@@ -369,10 +379,68 @@ You have a credential store at ~/.pilot/credentials/. Use it to store and retrie
           thinkingBuffer = '';
           lastThinkingReport = now;
         }
-      } : undefined,
-      sessionId,
-      resumeSessionId,
-    });
-    return result.result;
+      };
+    };
+
+    try {
+      const result = await invokeClaudeCli({
+        prompt: msg.text,
+        systemPrompt: resumeSessionId ? undefined : fullSystemPrompt,
+        cwd: projectPath,
+        mcpConfigPath,
+        cliBinary: this.config.claude.cliBinary,
+        onToolUse: (status) => onStatus?.(status),
+        onThinking: buildThinkingHandler(),
+        sessionId,
+        resumeSessionId,
+      });
+
+      // Save conversation summary after successful response (non-blocking)
+      updateConversationSummary(
+        msg.platform, msg.channelId, threadId,
+        msg.text, result.result, projectPath,
+      ).catch(() => {});
+
+      return result.result;
+    } catch (err) {
+      const errorMsg = err instanceof Error ? err.message : String(err);
+
+      // msg_too_long: context overflow — fallback to summary-based fresh session
+      if (errorMsg.includes('msg_too_long') && conversationSummaryText) {
+        log(`msg_too_long: falling back to summary-based fresh session for ${threadId}`);
+        await deleteSession(msg.platform, msg.channelId, threadId);
+
+        const fallbackSystemPrompt =
+          `${systemPrompt}\n\n<CONVERSATION_HISTORY>\n${conversationSummaryText}\n</CONVERSATION_HISTORY>`;
+
+        // Reset thinking state for retry
+        thinkingBuffer = '';
+        lastThinkingReport = 0;
+
+        const retryResult = await invokeClaudeCli({
+          prompt: msg.text,
+          systemPrompt: fallbackSystemPrompt,
+          cwd: projectPath,
+          mcpConfigPath,
+          cliBinary: this.config.claude.cliBinary,
+          onToolUse: (status) => onStatus?.(status),
+          onThinking: buildThinkingHandler(),
+        });
+
+        // Create a fresh session for subsequent messages
+        await createSession(msg.platform, msg.channelId, threadId, projectPath);
+
+        // Update conversation summary
+        updateConversationSummary(
+          msg.platform, msg.channelId, threadId,
+          msg.text, retryResult.result, projectPath,
+        ).catch(() => {});
+
+        return retryResult.result;
+      }
+
+      // Re-throw for other errors
+      throw err;
+    }
   }
 }
