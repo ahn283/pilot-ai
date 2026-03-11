@@ -11,6 +11,7 @@ import {
   deleteGoogleTokens,
   loadGoogleTokens,
   writeGmailMcpCredentials,
+  writeGoogleMcpTokens,
   type GoogleOAuthConfig,
   GOOGLE_SCOPES,
 } from '../tools/google-auth.js';
@@ -86,6 +87,10 @@ export async function runAuthGoogle(options: {
     if (services.includes('gmail')) {
       await syncGmailMcpTokens(clientId, clientSecret, newTokens);
     }
+
+    // Sync tokens to Calendar/Drive MCP servers
+    await writeGoogleMcpTokens(newTokens);
+    console.log('  Google MCP tokens synced to Calendar/Drive MCP servers.');
 
     console.log(`\n  Google authenticated! (${services.join(', ')})\n`);
 

@@ -178,6 +178,40 @@ export async function writeGmailMcpCredentials(
 }
 
 /**
+ * Writes token files for Google Calendar and Drive MCP servers.
+ * These packages store their own tokens at ~/.config/<package>/tokens.json
+ * and won't use pilot-ai's Keychain tokens directly.
+ */
+export async function writeGoogleMcpTokens(
+  googleTokens: GoogleTokens,
+): Promise<void> {
+  const os = await import('node:os');
+  const homedir = os.default.homedir();
+
+  const tokenData = {
+    access_token: googleTokens.accessToken,
+    refresh_token: googleTokens.refreshToken,
+    token_type: 'Bearer',
+    expiry_date: googleTokens.expiresAt,
+    scope: googleTokens.scopes.join(' '),
+  };
+
+  const targets = [
+    path.join(homedir, '.config', 'google-calendar-mcp'),
+    path.join(homedir, '.config', 'google-drive-mcp'),
+  ];
+
+  for (const dir of targets) {
+    await fs.mkdir(dir, { recursive: true });
+    await fs.writeFile(
+      path.join(dir, 'tokens.json'),
+      JSON.stringify(tokenData, null, 2),
+      { mode: 0o600 },
+    );
+  }
+}
+
+/**
  * Returns the OAuth2 authorization URL for user consent with PKCE and state.
  *
  * @param services - Google services to request scopes for

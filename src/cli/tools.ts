@@ -12,6 +12,7 @@ import {
   exchangeGoogleCode,
   loadGoogleTokens,
   writeGmailMcpCredentials,
+  writeGoogleMcpTokens,
   GOOGLE_SCOPES,
 } from '../tools/google-auth.js';
 import { startOAuthCallbackServer } from '../utils/oauth-callback-server.js';
@@ -557,6 +558,12 @@ async function runAddToolOAuthFlow(
 
       console.log('  Exchanging authorization code for tokens...');
       await exchangeGoogleCode(code, services, server.redirectUri, codeVerifier);
+
+      // Sync tokens to Calendar/Drive MCP servers
+      const freshTokens = await loadGoogleTokens();
+      if (freshTokens) {
+        await writeGoogleMcpTokens(freshTokens);
+      }
       console.log(`  ✓ Google authenticated! (${services.join(', ')})\n`);
     } finally {
       server.close();

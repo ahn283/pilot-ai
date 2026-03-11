@@ -21,6 +21,7 @@ import {
   verifyGoogleTokens,
   loadGoogleTokens,
   writeGmailMcpCredentials,
+  writeGoogleMcpTokens,
   GOOGLE_SCOPES,
 } from '../tools/google-auth.js';
 import { startOAuthCallbackServer } from '../utils/oauth-callback-server.js';
@@ -463,6 +464,12 @@ async function setupIntegrations(): Promise<Partial<PilotConfig>> {
 
     // Step 4: Register Google MCP servers using obtained OAuth tokens
     const tokens = await loadGoogleTokens();
+
+    // Write tokens for Calendar/Drive MCP servers (they manage their own token files)
+    if (tokens) {
+      await writeGoogleMcpTokens(tokens);
+      console.log('  Google MCP tokens synced to Calendar/Drive MCP servers.');
+    }
 
     if ((googleServices as string[]).includes('gmail') && tokens?.refreshToken) {
       // Write ~/.gmail-mcp/ credential files for file-based auth (required by @shinzolabs/gmail-mcp)

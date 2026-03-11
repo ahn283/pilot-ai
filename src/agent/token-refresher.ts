@@ -8,6 +8,7 @@ import {
   getGoogleAccessToken,
   verifyGoogleTokens,
   writeGmailMcpCredentials,
+  writeGoogleMcpTokens,
   configureGoogle,
   getGoogleConfig,
   type GoogleTokens,
@@ -95,6 +96,9 @@ async function syncRefreshedTokensToMcp(
   try {
     // Update ~/.gmail-mcp/ files
     await writeGmailMcpCredentials(clientId, clientSecret, tokens);
+
+    // Update Calendar/Drive MCP token files
+    await writeGoogleMcpTokens(tokens);
 
     // Update mcp-config.json
     const mcpConfig = await loadMcpConfig();
