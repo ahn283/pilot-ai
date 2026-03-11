@@ -9,11 +9,14 @@ import {
   getGoogleAuthUrl,
   exchangeGoogleCode,
   deleteGoogleTokens,
+  loadGoogleTokens,
+  writeGmailMcpCredentials,
   type GoogleOAuthConfig,
   GOOGLE_SCOPES,
 } from '../tools/google-auth.js';
 import { startOAuthCallbackServer } from '../utils/oauth-callback-server.js';
-import { checkClaudeCodeSync } from '../config/claude-code-sync.js';
+import { checkClaudeCodeSync, syncToClaudeCode } from '../config/claude-code-sync.js';
+import { loadMcpConfig, saveMcpConfig } from '../tools/figma-mcp.js';
 
 /**
  * Run the Google OAuth authentication flow.
@@ -77,9 +80,20 @@ export async function runAuthGoogle(options: {
 
     // Exchange code for tokens
     console.log('  Exchanging authorization code for tokens...');
-    await exchangeGoogleCode(code, services, server.redirectUri, codeVerifier);
+    const newTokens = await exchangeGoogleCode(code, services, server.redirectUri, codeVerifier);
+
+    // Sync Gmail MCP credentials if gmail is in the services
+    if (services.includes('gmail')) {
+      await syncGmailMcpTokens(clientId, clientSecret, newTokens);
+    }
 
     console.log(`\n  Google authenticated! (${services.join(', ')})\n`);
+
+    // Warn about Testing mode token expiry
+    console.log('  Note: If your Google Cloud OAuth app is in "Testing" mode,');
+    console.log('  refresh tokens expire after 7 days. To avoid this:');
+    console.log('  • Publish the app, or set user type to "Internal" (Google Workspace)');
+    console.log('  • Or re-run "pilot-ai auth google" every 7 days\n');
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     console.error(`\n  Authentication failed: ${msg}`);
@@ -87,6 +101,41 @@ export async function runAuthGoogle(options: {
     process.exit(1);
   } finally {
     server.close();
+  }
+}
+
+/**
+ * Sync Gmail MCP credentials after re-authentication.
+ * Updates ~/.gmail-mcp/ files, mcp-config.json, and Claude Code registration.
+ */
+async function syncGmailMcpTokens(
+  clientId: string,
+  clientSecret: string,
+  tokens: import('../tools/google-auth.js').GoogleTokens,
+): Promise<void> {
+  try {
+    // 1. Update ~/.gmail-mcp/ credential files
+    await writeGmailMcpCredentials(clientId, clientSecret, tokens);
+    console.log('  Gmail MCP credential files updated (~/.gmail-mcp/)');
+
+    // 2. Update mcp-config.json REFRESH_TOKEN
+    const mcpConfig = await loadMcpConfig();
+    const gmailServer = mcpConfig.mcpServers['gmail'];
+    if (gmailServer?.env) {
+      gmailServer.env['REFRESH_TOKEN'] = tokens.refreshToken;
+      gmailServer.env['CLIENT_ID'] = clientId;
+      gmailServer.env['CLIENT_SECRET'] = clientSecret;
+      await saveMcpConfig(mcpConfig);
+
+      // 3. Re-register in Claude Code
+      const syncResult = await syncToClaudeCode('gmail', gmailServer);
+      if (syncResult.success) {
+        console.log('  Gmail MCP server re-synced to Claude Code');
+      }
+    }
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.log(`  Note: Gmail MCP sync skipped (${msg})`);
   }
 }
 

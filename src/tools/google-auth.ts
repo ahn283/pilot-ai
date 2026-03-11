@@ -137,6 +137,47 @@ export async function deleteGoogleTokens(): Promise<void> {
 }
 
 /**
+ * Writes Gmail MCP credential files to ~/.gmail-mcp/ so that
+ * @shinzolabs/gmail-mcp can authenticate using file-based mode.
+ *
+ * Creates two files:
+ *  - gcp-oauth.keys.json  (client credentials)
+ *  - credentials.json      (access + refresh tokens)
+ */
+export async function writeGmailMcpCredentials(
+  clientId: string,
+  clientSecret: string,
+  googleTokens: GoogleTokens,
+): Promise<void> {
+  const os = await import('node:os');
+  const gmailMcpDir = path.join(os.default.homedir(), '.gmail-mcp');
+  await fs.mkdir(gmailMcpDir, { recursive: true });
+
+  await fs.writeFile(
+    path.join(gmailMcpDir, 'gcp-oauth.keys.json'),
+    JSON.stringify({
+      installed: {
+        client_id: clientId,
+        client_secret: clientSecret,
+        redirect_uris: ['http://127.0.0.1'],
+      },
+    }),
+    'utf-8',
+  );
+
+  await fs.writeFile(
+    path.join(gmailMcpDir, 'credentials.json'),
+    JSON.stringify({
+      access_token: googleTokens.accessToken,
+      refresh_token: googleTokens.refreshToken,
+      token_type: 'Bearer',
+      expiry_date: googleTokens.expiresAt,
+    }),
+    'utf-8',
+  );
+}
+
+/**
  * Returns the OAuth2 authorization URL for user consent with PKCE and state.
  *
  * @param services - Google services to request scopes for
@@ -309,7 +350,9 @@ export async function getGoogleAccessToken(): Promise<string> {
     if (res.status === 400 && errorBody.includes('invalid_grant')) {
       await deleteGoogleTokens();
       throw new Error(
-        'Google token has been revoked or expired. Tokens cleared. Run "pilot-ai auth google" to re-authenticate.',
+        'Google token has been revoked or expired. Tokens cleared.\n' +
+        '  This often happens when the OAuth app is in "Testing" mode (tokens expire after 7 days).\n' +
+        '  Run "pilot-ai auth google" to re-authenticate (this will also update Gmail MCP tokens).',
       );
     }
 

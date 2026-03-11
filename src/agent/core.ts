@@ -19,6 +19,7 @@ import { updateConversationSummary, getConversationSummaryText, cleanupExpiredSu
 import { detectPermissionError, PermissionWatcher } from '../security/permissions.js';
 import { isGhAuthenticated } from '../tools/github.js';
 import { configureGoogle } from '../tools/google-auth.js';
+import { startTokenRefresher, stopTokenRefresher } from './token-refresher.js';
 
 function log(message: string): void {
   console.log(`[${new Date().toISOString()}] ${message}`);
@@ -79,6 +80,19 @@ export class AgentCore {
         this.checkGitHubAuth().catch(() => {});
       }, 60 * 60 * 1000);
     }
+
+    // Start periodic Google OAuth token health checker
+    if (this.config.google) {
+      const users = this.config.messenger.platform === 'slack'
+        ? this.config.security.allowedUsers.slack
+        : this.config.security.allowedUsers.telegram;
+      const notifyChannel = users.length > 0 ? users[0] : undefined;
+      startTokenRefresher(
+        notifyChannel ? this.messenger : undefined,
+        notifyChannel,
+      );
+      log('Google token refresher started.');
+    }
   }
 
   private async checkGitHubAuth(): Promise<void> {
@@ -106,6 +120,7 @@ export class AgentCore {
       clearInterval(this.githubCheckInterval);
       this.githubCheckInterval = null;
     }
+    stopTokenRefresher();
     this.permissionWatcher.stop();
     log('Stopping messenger...');
     await this.messenger.stop();

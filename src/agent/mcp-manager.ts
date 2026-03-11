@@ -119,7 +119,40 @@ export async function installMcpServer(
     console.log(`  Note: Claude Code sync failed (${syncResult.error})`);
   }
 
+  // Health check: verify the MCP server process can start
+  if (!options.skipVerify) {
+    const healthy = await verifyMcpServerStartup(entry, envValues);
+    if (!healthy) {
+      console.log(`  ⚠ Warning: ${entry.name} MCP server registered but may not start correctly.`);
+      console.log(`  Run "claude mcp get ${serverId}" to check status.`);
+    }
+  }
+
   return { success: true };
+}
+
+/**
+ * Verifies that an MCP server can start by spawning it briefly.
+ * Returns true if the process doesn't immediately crash with a non-zero exit.
+ */
+async function verifyMcpServerStartup(
+  entry: McpServerEntry,
+  envValues: Record<string, string>,
+): Promise<boolean> {
+  try {
+    await execFileAsync(
+      'npx',
+      ['-y', entry.npmPackage, '--version'],
+      {
+        timeout: 15_000,
+        env: { ...process.env, ...envValues },
+      },
+    );
+    return true;
+  } catch {
+    // npx resolution failure or immediate crash
+    return false;
+  }
 }
 
 /**

@@ -20,6 +20,7 @@ import {
   exchangeGoogleCode,
   verifyGoogleTokens,
   loadGoogleTokens,
+  writeGmailMcpCredentials,
   GOOGLE_SCOPES,
 } from '../tools/google-auth.js';
 import { startOAuthCallbackServer } from '../utils/oauth-callback-server.js';
@@ -464,6 +465,10 @@ async function setupIntegrations(): Promise<Partial<PilotConfig>> {
     const tokens = await loadGoogleTokens();
 
     if ((googleServices as string[]).includes('gmail') && tokens?.refreshToken) {
+      // Write ~/.gmail-mcp/ credential files for file-based auth (required by @shinzolabs/gmail-mcp)
+      await writeGmailMcpCredentials(trimmedClientId, trimmedClientSecret, tokens);
+      console.log('  Gmail MCP credential files written to ~/.gmail-mcp/');
+
       await registerMcpTool('gmail', {
         CLIENT_ID: trimmedClientId,
         CLIENT_SECRET: trimmedClientSecret,
@@ -589,6 +594,24 @@ async function collectAndRegisterMcpTool(toolId: string, result: Partial<PilotCo
       envValues['ATLASSIAN_USER_EMAIL'] = atlassianAnswers.email;
       envValues['ATLASSIAN_API_TOKEN'] = atlassianAnswers.apiToken;
       await setSecret(`atlassian-api-token-${toolId}`, atlassianAnswers.apiToken);
+      break;
+    }
+    case 'slack': {
+      console.log('\n  Slack MCP Setup:');
+      console.log('  You need a Bot Token (xoxb-...) and your Workspace/Team ID (starts with T).');
+      console.log('  Find your Team ID: open Slack in a browser → the URL shows https://app.slack.com/client/T.../...\n');
+      const slackAnswers = await inquirer.prompt([
+        {
+          type: 'password', name: 'botToken', message: 'Slack Bot Token (xoxb-...):', mask: '*',
+          validate: (i: string) => i.startsWith('xoxb-') || 'Bot Token must start with xoxb-',
+        },
+        {
+          type: 'input', name: 'teamId', message: 'Slack Team/Workspace ID (T...):',
+          validate: (i: string) => i.startsWith('T') || 'Team ID must start with T (e.g. T01ABC23DEF)',
+        },
+      ]);
+      envValues['SLACK_BOT_TOKEN'] = slackAnswers.botToken;
+      envValues['SLACK_TEAM_ID'] = slackAnswers.teamId;
       break;
     }
     case 'wiki': {
@@ -741,6 +764,12 @@ async function runGoogleOAuthFlow(
       } else {
         console.log(`  ⚠ Tokens saved but verification failed. Try: pilot-ai auth google\n`);
       }
+
+      // Warn about Testing mode token expiry
+      console.log('  Note: If your Google Cloud OAuth app is in "Testing" mode,');
+      console.log('  refresh tokens expire after 7 days. To avoid this:');
+      console.log('  • Publish the app, or set user type to "Internal" (Google Workspace)');
+      console.log('  • Or re-run "pilot-ai auth google" every 7 days\n');
     } finally {
       server.close();
     }

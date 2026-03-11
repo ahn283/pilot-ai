@@ -11,6 +11,7 @@ import {
   getGoogleAuthUrl,
   exchangeGoogleCode,
   loadGoogleTokens,
+  writeGmailMcpCredentials,
   GOOGLE_SCOPES,
 } from '../tools/google-auth.js';
 import { startOAuthCallbackServer } from '../utils/oauth-callback-server.js';
@@ -163,7 +164,22 @@ export async function runAddTool(toolName: string): Promise<void> {
   }
 
   // Collect credentials
-  if (toolId === 'jira' || toolId === 'confluence') {
+  if (toolId === 'slack') {
+    console.log('\n  Slack MCP Setup:');
+    console.log('  Find your Team ID: open Slack in a browser → URL shows https://app.slack.com/client/T.../...\n');
+    const slackAnswers = await inquirer.prompt([
+      {
+        type: 'password', name: 'botToken', message: 'Slack Bot Token (xoxb-...):', mask: '*',
+        validate: (i: string) => i.startsWith('xoxb-') || 'Bot Token must start with xoxb-',
+      },
+      {
+        type: 'input', name: 'teamId', message: 'Slack Team/Workspace ID (T...):',
+        validate: (i: string) => i.startsWith('T') || 'Team ID must start with T (e.g. T01ABC23DEF)',
+      },
+    ]);
+    envValues['SLACK_BOT_TOKEN'] = slackAnswers.botToken;
+    envValues['SLACK_TEAM_ID'] = slackAnswers.teamId;
+  } else if (toolId === 'jira' || toolId === 'confluence') {
     const atlassianAnswers = await inquirer.prompt([
       { type: 'input', name: 'siteName', message: 'Atlassian site name:', validate: (i: string) => i.length > 0 || 'Site name required.' },
       { type: 'input', name: 'email', message: 'Atlassian account email:', validate: (i: string) => i.includes('@') || 'Valid email required.' },
@@ -266,6 +282,10 @@ export async function runAddTool(toolName: string): Promise<void> {
     await runAddToolOAuthFlow(googleAnswers.clientId, googleAnswers.clientSecret, ['gmail']);
     const tokens = await loadGoogleTokens();
     if (tokens?.refreshToken) {
+      // Write ~/.gmail-mcp/ credential files for file-based auth
+      await writeGmailMcpCredentials(googleAnswers.clientId, googleAnswers.clientSecret, tokens);
+      console.log('  Gmail MCP credential files written to ~/.gmail-mcp/');
+
       envValues['CLIENT_ID'] = googleAnswers.clientId;
       envValues['CLIENT_SECRET'] = googleAnswers.clientSecret;
       envValues['REFRESH_TOKEN'] = tokens.refreshToken;
