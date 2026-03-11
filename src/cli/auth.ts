@@ -60,8 +60,8 @@ export async function runAuthGoogle(options: {
   const server = await startOAuthCallbackServer();
 
   try {
-    // Generate auth URL
-    const authUrl = getGoogleAuthUrl(services, server.redirectUri);
+    // Generate auth URL with PKCE and state
+    const { url: authUrl, codeVerifier, state: expectedState } = getGoogleAuthUrl(services, server.redirectUri);
 
     // Open browser
     console.log('  Opening browser for Google sign-in...');
@@ -70,11 +70,14 @@ export async function runAuthGoogle(options: {
 
     // Wait for callback
     console.log('  Waiting for authorization...');
-    const { code } = await server.waitForCode();
+    const { code, state: returnedState } = await server.waitForCode();
+    if (returnedState !== expectedState) {
+      throw new Error('OAuth state mismatch — possible CSRF attack. Please try again.');
+    }
 
     // Exchange code for tokens
     console.log('  Exchanging authorization code for tokens...');
-    await exchangeGoogleCode(code, services, server.redirectUri);
+    await exchangeGoogleCode(code, services, server.redirectUri, codeVerifier);
 
     console.log(`\n  Google authenticated! (${services.join(', ')})\n`);
   } catch (err) {

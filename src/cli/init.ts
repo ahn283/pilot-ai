@@ -393,14 +393,21 @@ async function setupIntegrations(): Promise<Partial<PilotConfig>> {
 
   if (selected.has('google-oauth') || selected.has('google-drive') || selected.has('gmail') || selected.has('google-calendar')) {
     console.log('\n── Google OAuth2 Setup ──\n');
+    console.log('  Step 0: Configure OAuth Consent Screen');
+    console.log('  ──────────────────────────────────────');
+    console.log('  1. Go to https://console.cloud.google.com/apis/credentials/consent');
+    console.log('  2. Select "External" user type → Create');
+    console.log('  3. Fill in App name, User support email, Developer email');
+    console.log('  4. Add your Google account as a Test user');
+    console.log('  5. Save\n');
     console.log('  Step 1: Create OAuth Client ID');
     console.log('  ─────────────────────────────');
     console.log('  1. Go to https://console.cloud.google.com/apis/credentials');
     console.log('  2. Click "+ CREATE CREDENTIALS" → "OAuth client ID"');
-    console.log('  3. Application type: "Desktop app"');
+    console.log('  ⚠️  3. Application type: MUST be "Desktop app"');
+    console.log('       (NOT "Web application" — this will cause a 400 error)');
     console.log('  4. Name: "Pilot-AI" (or any name you prefer)');
-    console.log('  5. Click "Create" and copy the Client ID & Client Secret');
-    console.log('     (No redirect URI configuration needed — Desktop apps use loopback)\n');
+    console.log('  5. Click "Create" and copy the Client ID & Client Secret\n');
     console.log('  Step 2: Enable Google APIs');
     console.log('  ─────────────────────────');
     console.log('  Enable each API you want to use:');
@@ -475,7 +482,7 @@ async function setupIntegrations(): Promise<Partial<PilotConfig>> {
         installed: {
           client_id: trimmedClientId,
           client_secret: trimmedClientSecret,
-          redirect_uris: ['http://localhost:3000/oauth2callback'],
+          redirect_uris: ['http://127.0.0.1'],
         },
       }), 'utf-8');
     }
@@ -714,16 +721,19 @@ async function runGoogleOAuthFlow(
     const server = await startOAuthCallbackServer();
 
     try {
-      const authUrl = getGoogleAuthUrl(services, server.redirectUri);
+      const { url: authUrl, codeVerifier, state: expectedState } = getGoogleAuthUrl(services, server.redirectUri);
       console.log('  Opening browser for Google sign-in...');
       console.log(`  (If the browser doesn't open, visit: ${authUrl})\n`);
       exec(`open "${authUrl}"`);
 
       console.log('  Waiting for authorization...');
-      const { code } = await server.waitForCode();
+      const { code, state: returnedState } = await server.waitForCode();
+      if (returnedState !== expectedState) {
+        throw new Error('OAuth state mismatch — possible CSRF attack. Please try again.');
+      }
 
       console.log('  Exchanging authorization code for tokens...');
-      const tokens = await exchangeGoogleCode(code, services, server.redirectUri);
+      const tokens = await exchangeGoogleCode(code, services, server.redirectUri, codeVerifier);
 
       const valid = await verifyGoogleTokens(tokens.accessToken);
       if (valid) {

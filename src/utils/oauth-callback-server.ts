@@ -60,7 +60,7 @@ export async function startOAuthCallbackServer(timeoutMs = 120_000): Promise<OAu
 
       const url = new URL(req.url ?? '/', `http://127.0.0.1`);
 
-      if (url.pathname !== '/callback') {
+      if (url.pathname !== '/' && url.pathname !== '/callback') {
         res.writeHead(404, { 'Content-Type': 'text/plain' });
         res.end('Not found');
         return;
@@ -112,7 +112,7 @@ export async function startOAuthCallbackServer(timeoutMs = 120_000): Promise<OAu
       }
 
       const port = addr.port;
-      const redirectUri = `http://127.0.0.1:${port}/callback`;
+      const redirectUri = `http://127.0.0.1:${port}`;
 
       timeoutHandle = setTimeout(() => {
         cleanup();

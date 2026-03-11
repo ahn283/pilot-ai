@@ -237,7 +237,7 @@ export async function runAddTool(toolName: string): Promise<void> {
       installed: {
         client_id: googleAnswers.clientId,
         client_secret: googleAnswers.clientSecret,
-        redirect_uris: ['http://localhost:3000/oauth2callback'],
+        redirect_uris: ['http://127.0.0.1'],
       },
     }), 'utf-8');
 
@@ -516,7 +516,7 @@ async function runAddToolOAuthFlow(
     const server = await startOAuthCallbackServer();
 
     try {
-      const authUrl = getGoogleAuthUrl(services, server.redirectUri);
+      const { url: authUrl, codeVerifier, state: expectedState } = getGoogleAuthUrl(services, server.redirectUri);
       console.log('\n  Step 3: Authenticate with Google');
       console.log('  ────────────────────────────────');
       console.log('  Opening browser for Google sign-in...');
@@ -524,10 +524,13 @@ async function runAddToolOAuthFlow(
       exec(`open "${authUrl}"`);
 
       console.log('  Waiting for authorization...');
-      const { code } = await server.waitForCode();
+      const { code, state: returnedState } = await server.waitForCode();
+      if (returnedState !== expectedState) {
+        throw new Error('OAuth state mismatch — possible CSRF attack. Please try again.');
+      }
 
       console.log('  Exchanging authorization code for tokens...');
-      await exchangeGoogleCode(code, services, server.redirectUri);
+      await exchangeGoogleCode(code, services, server.redirectUri, codeVerifier);
       console.log(`  ✓ Google authenticated! (${services.join(', ')})\n`);
     } finally {
       server.close();

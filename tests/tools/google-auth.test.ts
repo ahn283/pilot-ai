@@ -23,29 +23,40 @@ beforeEach(() => {
 });
 
 describe('google-auth', () => {
-  it('configureGoogle sets config', () => {
+  it('configureGoogle sets config and sanitizes credentials', () => {
     configureGoogle({ clientId: 'test-id', clientSecret: 'test-secret' });
     expect(getGoogleConfig()).toEqual({ clientId: 'test-id', clientSecret: 'test-secret' });
   });
 
-  it('getGoogleAuthUrl generates valid URL with loopback redirect', () => {
-    configureGoogle({ clientId: 'my-client-id', clientSecret: 'my-secret' });
-    const url = getGoogleAuthUrl(['gmail', 'calendar'], 'http://127.0.0.1:12345/callback');
-    expect(url).toContain('client_id=my-client-id');
-    expect(url).toContain('accounts.google.com');
-    expect(url).toContain('access_type=offline');
-    expect(url).toContain('gmail');
-    expect(url).toContain('calendar');
-    expect(url).toContain('redirect_uri=http%3A%2F%2F127.0.0.1%3A12345%2Fcallback');
-    expect(url).not.toContain('oob');
+  it('configureGoogle strips invisible characters', () => {
+    configureGoogle({ clientId: 'test\u200B-id\u00A0', clientSecret: '\uFEFFsecret\u200D' });
+    const cfg = getGoogleConfig();
+    expect(cfg?.clientId).toBe('test-id');
+    expect(cfg?.clientSecret).toBe('secret');
   });
 
-  it('getGoogleAuthUrl throws if not configured', () => {
-    configureGoogle(null as unknown as { clientId: string; clientSecret: string });
-    // Reset to null
-    vi.spyOn({ configureGoogle }, 'configureGoogle');
-    // Actually the function sets config to null-like
-    // Just test with fresh module behavior
+  it('getGoogleAuthUrl returns url, codeVerifier, and state', () => {
+    configureGoogle({ clientId: 'my-client-id', clientSecret: 'my-secret' });
+    const result = getGoogleAuthUrl(['gmail', 'calendar'], 'http://127.0.0.1:12345');
+    expect(result).toHaveProperty('url');
+    expect(result).toHaveProperty('codeVerifier');
+    expect(result).toHaveProperty('state');
+    expect(result.url).toContain('client_id=my-client-id');
+    expect(result.url).toContain('accounts.google.com');
+    expect(result.url).toContain('access_type=offline');
+    expect(result.url).toContain('gmail');
+    expect(result.url).toContain('calendar');
+    expect(result.url).toContain('redirect_uri=http%3A%2F%2F127.0.0.1%3A12345');
+    expect(result.url).toContain('code_challenge=');
+    expect(result.url).toContain('code_challenge_method=S256');
+    expect(result.url).toContain(`state=${result.state}`);
+    expect(result.url).not.toContain('oob');
+    expect(result.codeVerifier.length).toBeGreaterThanOrEqual(43);
+    expect(result.state.length).toBe(32);
+  });
+
+  it('configureGoogle throws on null input', () => {
+    expect(() => configureGoogle(null as unknown as { clientId: string; clientSecret: string })).toThrow();
   });
 
   it('GOOGLE_SCOPES contains expected services', () => {
@@ -59,7 +70,7 @@ describe('google-auth', () => {
 
   it('getGoogleAuthUrl includes drive scopes', () => {
     configureGoogle({ clientId: 'cid', clientSecret: 'cs' });
-    const url = getGoogleAuthUrl(['drive'], 'http://127.0.0.1:9999/callback');
+    const { url } = getGoogleAuthUrl(['drive'], 'http://127.0.0.1:9999');
     expect(url).toContain('drive');
   });
 });

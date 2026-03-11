@@ -6,7 +6,7 @@ describe('oauth-callback-server', () => {
     const server = await startOAuthCallbackServer();
     try {
       expect(server.port).toBeGreaterThan(1023);
-      expect(server.redirectUri).toBe(`http://127.0.0.1:${server.port}/callback`);
+      expect(server.redirectUri).toBe(`http://127.0.0.1:${server.port}`);
     } finally {
       server.close();
     }

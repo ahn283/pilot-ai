@@ -145,7 +145,7 @@ describe('email integration (3.5)', () => {
     expect(typeof googleAuth.exchangeGoogleCode).toBe('function');
 
     googleAuth.configureGoogle({ clientId: 'cid', clientSecret: 'csec' });
-    const url = googleAuth.getGoogleAuthUrl(['gmail'], 'http://127.0.0.1:9999/callback');
+    const { url } = googleAuth.getGoogleAuthUrl(['gmail'], 'http://127.0.0.1:9999');
     expect(url).toContain('accounts.google.com');
     expect(url).toContain('cid');
   });

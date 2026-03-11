@@ -2,6 +2,7 @@
  * Shared Google OAuth2 module for Gmail, Google Calendar, and Google Drive.
  * Manages a single set of OAuth2 tokens with combined scopes.
  */
+import crypto from 'node:crypto';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { getPilotDir } from '../config/store.js';
@@ -21,6 +22,27 @@ export interface GoogleTokens {
 }
 
 const TOKEN_URL = 'https://oauth2.googleapis.com/token';
+
+/**
+ * Removes invisible Unicode characters that can be introduced by copy-paste.
+ */
+function sanitizeCredential(value: string): string {
+  return value.trim().replace(/[\u200B\u200C\u200D\uFEFF\u00A0\u2028\u2029]/g, '');
+}
+
+function generateCodeVerifier(): string {
+  return crypto.randomBytes(32).toString('base64url');
+}
+
+function generateCodeChallenge(verifier: string): string {
+  return crypto.createHash('sha256').update(verifier).digest('base64url');
+}
+
+export interface GoogleAuthUrlResult {
+  url: string;
+  codeVerifier: string;
+  state: string;
+}
 
 export const GOOGLE_SCOPES = {
   gmail: [
@@ -49,7 +71,11 @@ let config: GoogleOAuthConfig | null = null;
 let tokens: GoogleTokens | null = null;
 
 export function configureGoogle(cfg: GoogleOAuthConfig): void {
-  config = cfg;
+  config = {
+    ...cfg,
+    clientId: sanitizeCredential(cfg.clientId),
+    clientSecret: sanitizeCredential(cfg.clientSecret),
+  };
 }
 
 export function getGoogleConfig(): GoogleOAuthConfig | null {
@@ -111,19 +137,37 @@ export async function deleteGoogleTokens(): Promise<void> {
 }
 
 /**
- * Returns the OAuth2 authorization URL for user consent.
- * Requests all enabled scopes at once.
+ * Returns the OAuth2 authorization URL for user consent with PKCE and state.
  *
  * @param services - Google services to request scopes for
- * @param redirectUri - Loopback redirect URI (e.g. http://127.0.0.1:PORT/callback)
+ * @param redirectUri - Loopback redirect URI (e.g. http://127.0.0.1:PORT)
  */
 export function getGoogleAuthUrl(
   services: Array<keyof typeof GOOGLE_SCOPES>,
   redirectUri: string,
-): string {
+): GoogleAuthUrlResult {
   if (!config) throw new Error('Google OAuth not configured. Run "pilot-ai init" first.');
   const scopes = services.flatMap((s) => GOOGLE_SCOPES[s]).join(' ');
-  return `https://accounts.google.com/o/oauth2/v2/auth?client_id=${config.clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=${encodeURIComponent(scopes)}&access_type=offline&prompt=consent`;
+  const codeVerifier = generateCodeVerifier();
+  const codeChallenge = generateCodeChallenge(codeVerifier);
+  const state = crypto.randomBytes(16).toString('hex');
+
+  const params = new URLSearchParams({
+    client_id: config.clientId,
+    redirect_uri: redirectUri,
+    response_type: 'code',
+    scope: scopes,
+    access_type: 'offline',
+    prompt: 'consent',
+    code_challenge: codeChallenge,
+    code_challenge_method: 'S256',
+    state,
+  });
+  return {
+    url: `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`,
+    codeVerifier,
+    state,
+  };
 }
 
 /**
@@ -132,14 +176,15 @@ export function getGoogleAuthUrl(
  * @param code - Authorization code from OAuth callback
  * @param services - Google services to store scopes for
  * @param redirectUri - Must match the redirect URI used in getGoogleAuthUrl
+ * @param codeVerifier - PKCE code verifier used when generating the auth URL
  */
 export async function exchangeGoogleCode(
   code: string,
   services: Array<keyof typeof GOOGLE_SCOPES>,
   redirectUri: string,
+  codeVerifier: string,
 ): Promise<GoogleTokens> {
   if (!config) throw new Error('Google OAuth not configured');
-  const redirect = redirectUri;
 
   const res = await fetch(TOKEN_URL, {
     method: 'POST',
@@ -148,13 +193,42 @@ export async function exchangeGoogleCode(
       code,
       client_id: config.clientId,
       client_secret: config.clientSecret,
-      redirect_uri: redirect,
+      redirect_uri: redirectUri,
       grant_type: 'authorization_code',
+      code_verifier: codeVerifier,
     }),
   });
 
   if (!res.ok) {
     const text = await res.text().catch(() => '');
+
+    if (res.status === 400) {
+      if (text.includes('redirect_uri_mismatch')) {
+        throw new Error(
+          'Google OAuth error: redirect_uri_mismatch\n\n' +
+          '  The redirect URI does not match what is registered in Google Cloud Console.\n' +
+          '  Solutions:\n' +
+          '  1. Verify OAuth client type is "Desktop app" (not "Web application")\n' +
+          '  2. Or add http://127.0.0.1 to Authorized redirect URIs in Console\n',
+        );
+      }
+      if (text.includes('invalid_client')) {
+        throw new Error(
+          'Google OAuth error: invalid_client\n\n' +
+          '  The Client ID or Client Secret is incorrect.\n' +
+          '  Fix: Go to Google Cloud Console → Credentials → Copy correct values\n' +
+          '  Then re-run: pilot-ai auth google\n',
+        );
+      }
+      if (text.includes('invalid_grant')) {
+        throw new Error(
+          'Google OAuth error: invalid_grant\n\n' +
+          '  The authorization code has expired or was already used.\n' +
+          '  Fix: Re-run "pilot-ai auth google" to get a new code\n',
+        );
+      }
+    }
+
     throw new Error(`Google OAuth token exchange failed (HTTP ${res.status}): ${text}`);
   }
 
