@@ -138,7 +138,12 @@ function isNonSecretEnvVar(key: string, value: string): boolean {
   const nonSecretPatterns = [
     'SITE_NAME', 'USER_EMAIL', 'TEAM_ID',
     '_PATH', '_DIR', '_FILE', '_CONFIG',
+    '_PORT',
   ];
+  // Exact non-secret env var names
+  if (upperKey === 'PORT' || upperKey === 'AUTH_SERVER_PORT') {
+    return true;
+  }
   if (nonSecretPatterns.some((p) => upperKey.includes(p))) {
     return true;
   }

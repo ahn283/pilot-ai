@@ -14,7 +14,7 @@ import { buildToolDescriptions } from './tool-descriptions.js';
 import { getMcpConfigPathIfExists } from '../tools/figma-mcp.js';
 import { buildMcpContext, migrateToSecureLaunchers } from './mcp-manager.js';
 import { PilotError } from '../utils/errors.js';
-import { getSession, createSession, touchSession, deleteSession, cleanupSessions } from './session.js';
+import { getSession, createSession, touchSession, deleteSession, cleanupSessions, getRemainingTurns } from './session.js';
 import { updateConversationSummary, getConversationSummaryText, cleanupExpiredSummaries } from './conversation-summary.js';
 import { detectPermissionError, PermissionWatcher } from '../security/permissions.js';
 import { isGhAuthenticated } from '../tools/github.js';
@@ -266,66 +266,30 @@ export class AgentCore {
     const toolDescriptions = buildToolDescriptions();
 
     const systemParts: string[] = [];
-    systemParts.push(`You are Pilot-AI, a personal AI agent running on the user's macOS machine.
-
-CORE PRINCIPLE: You are an AGENT, not a chatbot. NEVER ask the user a question you could answer yourself by using tools. Think harder.
+    systemParts.push(`You are Pilot-AI, a personal AI agent on macOS. You are an AGENT, not a chatbot — NEVER ask questions you can answer by using tools.
 
 RULES:
-1. INVESTIGATE FIRST — Before responding, use Bash, Read, Glob, Grep, WebSearch, and WebFetch to gather information. Run "ls", "find", "gh", "git log", "cat" etc. to explore the filesystem and projects.
-2. NEVER ASK CLARIFYING QUESTIONS if you can figure it out yourself. If the user says "fridgify 배포 내역", search ~/Github for a fridgify repo, then run "gh release list" or "git log --oneline" there. Do NOT ask "which repo?".
-3. CHAIN MULTIPLE TOOLS — One tool call is rarely enough. Read a file, then grep for context, then run a command. Keep going until you have the full answer.
-4. USE THE RIGHT TOOL — For GitHub: use "gh" CLI. For files: use "ls", "cat", "find". For web info: use WebSearch. For Notion: use the Notion API. Think about what tool fits before defaulting to asking the user.
-5. THINK STEP BY STEP — Before acting, plan your approach. "The user wants X. To find X, I need to check Y, which means I should run Z."
-6. COMPLETE THE TASK — Do not stop halfway. If a command fails, try another approach. If you need more info, search for it. Only respond to the user when you have a concrete answer or have completed the action.
-7. BE CONCISE — Report results directly. No filler, no "I'd be happy to help", no restating the question.
-8. CODING TASKS — When asked to write or modify code, follow this workflow: understand → implement → build → test → fix errors → report. You have full access to the filesystem and shell. Write code, run builds, execute tests, and iterate until the task is done. Never say "I can't write code" — you absolutely can.
-9. PROJECT WORKFLOW — When the user requests a new feature, project, or significant piece of work (not a simple one-off fix), follow this structured process:
-   **Phase A: Planning (before writing any code)**
-   a) Gather and clarify requirements from the user's request.
-   b) Write a PRD (Product Requirements Document) — create or update a PRD file (e.g. docs/PRD.md or a project-specific doc) defining what to build, why, and the technical approach.
-   c) Create a checklist — break the PRD into small, testable implementation tasks as a markdown checklist (e.g. docs/checklist.md). Each item should be one commit-sized unit.
-   d) Present the PRD and checklist to the user for confirmation before proceeding.
-   **Phase B: Implementation (repeat per checklist item)**
-   For each checklist item, execute this cycle:
-   a) Implement — write the code for one checklist item.
-   b) Build — run the project's build command and confirm it passes.
-   c) Test — write unit tests and run them. All tests must pass.
-   d) Update checklist — check off the completed item.
-   e) Commit — commit only after steps a-d all pass.
-   Then move to the next checklist item and repeat.
-   **Rules:**
-   - Never start coding before the PRD and checklist are confirmed by the user.
-   - Never commit with failing builds or tests.
-   - If requirements change mid-implementation, update the PRD and checklist first, then resume.
-   - Report progress to the user after completing each checklist item or group of related items.
-
-CREDENTIAL MANAGEMENT:
-You have a credential store at ~/.pilot/credentials/. Use it to store and retrieve API keys, tokens, and service account files.
-- ALWAYS check ~/.pilot/credentials/ first before saying you can't access a service.
-- If a credential exists (e.g. ~/.pilot/credentials/google-play.json), use it directly.
-- If a credential is missing and you need it, ask the user to provide it. Explain exactly what is needed (e.g. "Google Play Developer API 서비스 계정 JSON 키가 필요합니다").
-- When the user provides a credential, save it: write to ~/.pilot/credentials/<service-name> with chmod 600.
-- For JSON keys: save as .json files. For simple tokens: save as plain text files.
-- Common credential paths:
-  google-play.json, firebase.json, aws-credentials, vercel-token,
-  sentry-auth-token, app-store-connect.json, docker-hub-token
-- After saving, immediately proceed with the task using the new credential. Do NOT just say "saved" and stop.
-- NEVER say "I can't access that service" without first checking for credentials and offering to set them up.`);
+1. INVESTIGATE FIRST — Use Bash, Read, Glob, Grep, WebSearch, WebFetch to gather info before responding. Explore the filesystem and projects with "ls", "find", "gh", "git log", etc.
+2. NEVER ASK CLARIFYING QUESTIONS if you can figure it out. Search ~/Github for repos, run "gh" commands, read files — do NOT ask "which repo?" or "where is it?".
+3. CHAIN TOOLS — One tool call is rarely enough. Keep investigating until you have the full answer.
+4. COMPLETE THE TASK — If a command fails, try another approach. Only respond when you have a concrete answer or completed the action.
+5. BE CONCISE — Report results directly. No filler.
+6. CODING — understand → implement → build → test → fix → report. Write code directly; never say "I can't".
+7. CREDENTIALS — Check ~/.pilot/credentials/ first. If missing, ask the user and save with chmod 600.`);
     // MCP server context (installed + available servers)
     const mcpContext = await buildMcpContext();
     if (mcpContext) systemParts.push(mcpContext);
 
-    if (memoryContext) systemParts.push(memoryContext);
-    if (skillsContext) systemParts.push(skillsContext);
-    if (toolDescriptions) systemParts.push(toolDescriptions);
-
-    const systemPrompt = systemParts.join('\n\n');
+    // Truncate optional context to limit system prompt size
+    if (memoryContext) systemParts.push(memoryContext.slice(0, 2000));
+    if (skillsContext) systemParts.push(skillsContext.slice(0, 1000));
+    if (toolDescriptions) systemParts.push(toolDescriptions.slice(0, 1000));
 
     await onStatus?.('⚙️ Processing...');
 
     if (this.config.claude.mode === 'api' && this.config.claude.apiKey) {
       // API mode: inject context into user prompt (no system prompt support)
-      const apiPrompt = `${systemPrompt}\n\n<USER_COMMAND>\n${msg.text}\n</USER_COMMAND>`;
+      const apiPrompt = `${systemParts.join('\n\n')}\n\n<USER_COMMAND>\n${msg.text}\n</USER_COMMAND>`;
       return invokeClaudeApi({
         prompt: apiPrompt,
         apiKey: this.config.claude.apiKey,
@@ -365,6 +329,18 @@ You have a credential store at ~/.pilot/credentials/. Use it to store and retrie
     const conversationSummaryText = await getConversationSummaryText(
       msg.platform, msg.channelId, threadId,
     );
+
+    // Proactive warning when session context is running low
+    if (existingSession) {
+      const remaining = getRemainingTurns(existingSession);
+      if (remaining <= 3) {
+        systemParts.push(
+          `⚠️ Session context is running low (${remaining} turns remaining). Be extra concise. Summarize outputs instead of showing full content.`,
+        );
+      }
+    }
+
+    const systemPrompt = systemParts.join('\n\n');
 
     // For new sessions with prior conversation, inject summary into system prompt
     const fullSystemPrompt = !resumeSessionId && conversationSummaryText
@@ -414,6 +390,7 @@ You have a credential store at ~/.pilot/credentials/. Use it to store and retrie
         onThinking: buildThinkingHandler(),
         sessionId,
         resumeSessionId,
+        maxTurns: 25,
       });
 
       // Save conversation summary after successful response (non-blocking)
@@ -426,13 +403,14 @@ You have a credential store at ~/.pilot/credentials/. Use it to store and retrie
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : String(err);
 
-      // msg_too_long: context overflow — fallback to summary-based fresh session
-      if (errorMsg.includes('msg_too_long') && conversationSummaryText) {
-        log(`msg_too_long: falling back to summary-based fresh session for ${threadId}`);
+      // msg_too_long: context overflow — fallback to fresh session (with or without summary)
+      if (errorMsg.includes('msg_too_long')) {
+        log(`msg_too_long: falling back to fresh session for ${threadId} (summary: ${conversationSummaryText ? 'yes' : 'no'})`);
         await deleteSession(msg.platform, msg.channelId, threadId);
 
-        const fallbackSystemPrompt =
-          `${systemPrompt}\n\n<CONVERSATION_HISTORY>\n${conversationSummaryText}\n</CONVERSATION_HISTORY>`;
+        const fallbackSystemPrompt = conversationSummaryText
+          ? `${systemPrompt}\n\n<CONVERSATION_HISTORY>\n${conversationSummaryText}\n</CONVERSATION_HISTORY>`
+          : systemPrompt;
 
         // Reset thinking state for retry
         thinkingBuffer = '';
@@ -446,6 +424,7 @@ You have a credential store at ~/.pilot/credentials/. Use it to store and retrie
           cliBinary: this.config.claude.cliBinary,
           onToolUse: (status) => onStatus?.(status),
           onThinking: buildThinkingHandler(),
+          maxTurns: 25,
         });
 
         // Create a fresh session for subsequent messages

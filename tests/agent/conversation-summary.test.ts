@@ -59,19 +59,27 @@ describe('conversation-summary', () => {
 
   describe('extractActionSummary', () => {
     it('returns short responses as-is', () => {
-      expect(extractActionSummary('Done.')).toBe('Done.');
+      const result = extractActionSummary('Done.');
+      expect(result).toBe('Done.');
     });
 
     it('truncates long responses', () => {
-      const long = 'A'.repeat(500);
+      const long = 'A'.repeat(1000);
       const result = extractActionSummary(long);
-      expect(result.length).toBeLessThanOrEqual(304); // 300 + "..."
+      expect(result.length).toBeLessThanOrEqual(804); // 800 + "..."
     });
 
-    it('cuts at sentence boundary when possible', () => {
-      const text = 'First sentence done. Second sentence is much longer and continues on for quite a while to exceed the limit. ' + 'X'.repeat(300);
+    it('extracts status lines', () => {
+      const text = 'Checking files...\n\n✅ Build succeeded\n\n❌ Test failed: foo.test.ts';
       const result = extractActionSummary(text);
-      expect(result).toContain('First sentence done.');
+      expect(result).toContain('✅ Build succeeded');
+      expect(result).toContain('❌ Test failed');
+    });
+
+    it('extracts commit messages', () => {
+      const text = 'Made changes.\n\ncommit abc1234 fix: resolve auth issue';
+      const result = extractActionSummary(text);
+      expect(result).toContain('commit abc1234');
     });
   });
 
@@ -122,8 +130,14 @@ describe('conversation-summary', () => {
       expect(decisions).toHaveLength(1);
     });
 
+    it('extracts action verb patterns', () => {
+      const response = 'Created src/agent/token-refresher.ts with hourly checks. Fixed the build error in core.ts.';
+      const decisions = extractKeyDecisions(response);
+      expect(decisions.length).toBeGreaterThanOrEqual(2);
+    });
+
     it('returns empty for no patterns', () => {
-      expect(extractKeyDecisions('Just a normal response.')).toEqual([]);
+      expect(extractKeyDecisions('Just a short note.')).toEqual([]);
     });
   });
 
@@ -149,12 +163,12 @@ describe('conversation-summary', () => {
       expect(summary!.turns).toHaveLength(3);
     });
 
-    it('enforces max 10 turns (FIFO)', async () => {
-      for (let i = 0; i < 12; i++) {
+    it('enforces max 15 turns (FIFO)', async () => {
+      for (let i = 0; i < 17; i++) {
         await updateConversationSummary('slack', 'C1', 'T1', `msg${i}`, `resp${i}`);
       }
       const summary = await loadSummary('slack', 'C1', 'T1');
-      expect(summary!.turns).toHaveLength(10);
+      expect(summary!.turns).toHaveLength(15);
       // First two should have been dropped
       expect(summary!.turns[0].userMessage).toBe('msg2');
     });

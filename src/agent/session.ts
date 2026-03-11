@@ -28,7 +28,7 @@ export interface SessionEntry {
 }
 
 const SESSION_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
-const MAX_SESSION_TURNS = 20; // Force new session after 20 turns to prevent context overflow
+const MAX_SESSION_TURNS = 10; // Force new session after 10 turns to prevent context overflow
 
 function getSessionStorePath(): string {
   return path.join(getPilotDir(), 'sessions.json');
@@ -189,6 +189,13 @@ export async function cleanupSessions(): Promise<number> {
 export async function getSessionCount(): Promise<number> {
   await ensureLoaded();
   return sessions.size;
+}
+
+/**
+ * Returns remaining turns before session expires by turn limit.
+ */
+export function getRemainingTurns(entry: SessionEntry): number {
+  return Math.max(0, MAX_SESSION_TURNS - entry.turnCount);
 }
 
 /**

@@ -469,10 +469,14 @@ async function setupIntegrations(): Promise<Partial<PilotConfig>> {
       await writeGmailMcpCredentials(trimmedClientId, trimmedClientSecret, tokens);
       console.log('  Gmail MCP credential files written to ~/.gmail-mcp/');
 
+      const gmailMcpDir = path.join(os.homedir(), '.gmail-mcp');
       await registerMcpTool('gmail', {
         CLIENT_ID: trimmedClientId,
         CLIENT_SECRET: trimmedClientSecret,
         REFRESH_TOKEN: tokens.refreshToken,
+        PORT: '3456',
+        GMAIL_OAUTH_PATH: path.join(gmailMcpDir, 'gcp-oauth.keys.json'),
+        GMAIL_CREDENTIALS_PATH: path.join(gmailMcpDir, 'credentials.json'),
       });
     }
 
@@ -766,10 +770,13 @@ async function runGoogleOAuthFlow(
       }
 
       // Warn about Testing mode token expiry
-      console.log('  Note: If your Google Cloud OAuth app is in "Testing" mode,');
-      console.log('  refresh tokens expire after 7 days. To avoid this:');
-      console.log('  • Publish the app, or set user type to "Internal" (Google Workspace)');
-      console.log('  • Or re-run "pilot-ai auth google" every 7 days\n');
+      console.log('  ⚠ IMPORTANT: If your Google Cloud OAuth app is in "Testing" mode,');
+      console.log('  refresh tokens expire after 7 days and ALL Google integrations will break.');
+      console.log('  To fix permanently:');
+      console.log('    1. Go to https://console.cloud.google.com/apis/credentials/consent');
+      console.log('    2. Click "PUBLISH APP"');
+      console.log('    3. For personal use (<100 users), no Google review is needed.');
+      console.log('  If you stay in Testing mode, re-run "pilot-ai auth google" every 7 days.\n');
     } finally {
       server.close();
     }

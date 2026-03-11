@@ -35,11 +35,11 @@ export interface ConversationSummary {
   lastUpdated: string;
 }
 
-const MAX_TURNS = 10;
+const MAX_TURNS = 15;
 const MAX_DECISIONS = 20;
 const MAX_FILES = 30;
 const MAX_USER_MSG_LEN = 500;
-const MAX_ACTION_LEN = 300;
+const MAX_ACTION_LEN = 800;
 const SUMMARY_TTL_MS = 48 * 60 * 60 * 1000; // 48 hours
 
 function getConversationsDir(): string {
@@ -86,16 +86,36 @@ export async function saveSummary(summary: ConversationSummary): Promise<void> {
  * Takes the first 300 characters, trimming to the last sentence boundary if possible.
  */
 export function extractActionSummary(agentResponse: string): string {
-  const cleaned = agentResponse.replace(/\n+/g, ' ').trim();
-  if (cleaned.length <= MAX_ACTION_LEN) return cleaned;
+  const sections: string[] = [];
 
-  const truncated = cleaned.slice(0, MAX_ACTION_LEN);
-  // Try to cut at the last sentence boundary
-  const lastPeriod = truncated.lastIndexOf('. ');
-  const lastNewline = truncated.lastIndexOf('。');
-  const cutPoint = Math.max(lastPeriod, lastNewline);
-  if (cutPoint > MAX_ACTION_LEN * 0.5) {
-    return truncated.slice(0, cutPoint + 1);
+  // 1) First paragraph (main conclusion)
+  const firstPara = agentResponse.split('\n\n')[0]?.replace(/\n/g, ' ').trim();
+  if (firstPara) sections.push(firstPara.slice(0, 400));
+
+  // 2) Error/success/warning lines
+  const statusLines = agentResponse.match(/(?:❌|✅|⚠️|Error:|Success:|Failed:|Warning:).*/g);
+  if (statusLines) {
+    for (const line of statusLines.slice(0, 3)) {
+      sections.push(line.trim().slice(0, 150));
+    }
+  }
+
+  // 3) Commit messages
+  const commitLines = agentResponse.match(/commit [0-9a-f]{7,}.*/gi);
+  if (commitLines) {
+    for (const line of commitLines.slice(0, 2)) {
+      sections.push(line.trim().slice(0, 150));
+    }
+  }
+
+  const result = sections.join(' | ');
+  if (result.length <= MAX_ACTION_LEN) return result;
+
+  // Truncate to boundary
+  const truncated = result.slice(0, MAX_ACTION_LEN);
+  const lastSep = truncated.lastIndexOf(' | ');
+  if (lastSep > MAX_ACTION_LEN * 0.5) {
+    return truncated.slice(0, lastSep);
   }
   return truncated + '...';
 }
@@ -134,11 +154,21 @@ export function extractModifiedFiles(agentResponse: string): string[] {
 export function extractKeyDecisions(agentResponse: string): string[] {
   const decisions: string[] = [];
 
-  // Commit messages: "commit abc1234 — fix: ..."
-  const commitPattern = /commit\s+[0-9a-f]+\s*[—–-]\s*(.+)/gi;
-  let match;
-  while ((match = commitPattern.exec(agentResponse)) !== null) {
-    decisions.push(match[1].trim().slice(0, 200));
+  const patterns = [
+    // Commit messages: "commit abc1234 — fix: ..."
+    /commit\s+[0-9a-f]+\s*[—–-]\s*(.+)/gi,
+    // Action verbs: "Created src/foo.ts", "Fixed the build error", "Updated config"
+    /(?:Created|Deleted|Installed|Configured|Updated|Fixed|Removed|Added|Migrated|Refactored)\s+(.{10,100}?)[.!\n]/g,
+  ];
+
+  for (const pattern of patterns) {
+    let match;
+    while ((match = pattern.exec(agentResponse)) !== null) {
+      const decision = match[1].trim().slice(0, 200);
+      if (!decisions.includes(decision)) {
+        decisions.push(decision);
+      }
+    }
   }
 
   return decisions;

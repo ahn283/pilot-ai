@@ -286,9 +286,15 @@ export async function runAddTool(toolName: string): Promise<void> {
       await writeGmailMcpCredentials(googleAnswers.clientId, googleAnswers.clientSecret, tokens);
       console.log('  Gmail MCP credential files written to ~/.gmail-mcp/');
 
+      const { default: osMod2 } = await import('node:os');
+      const { default: pathMod2 } = await import('node:path');
+      const gmailMcpDir = pathMod2.join(osMod2.homedir(), '.gmail-mcp');
       envValues['CLIENT_ID'] = googleAnswers.clientId;
       envValues['CLIENT_SECRET'] = googleAnswers.clientSecret;
       envValues['REFRESH_TOKEN'] = tokens.refreshToken;
+      envValues['PORT'] = '3456';
+      envValues['GMAIL_OAUTH_PATH'] = pathMod2.join(gmailMcpDir, 'gcp-oauth.keys.json');
+      envValues['GMAIL_CREDENTIALS_PATH'] = pathMod2.join(gmailMcpDir, 'credentials.json');
     } else {
       console.log('  ⚠ Could not obtain refresh token. Run "pilot-ai auth google --services gmail" first.\n');
     }

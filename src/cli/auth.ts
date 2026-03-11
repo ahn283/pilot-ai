@@ -90,10 +90,13 @@ export async function runAuthGoogle(options: {
     console.log(`\n  Google authenticated! (${services.join(', ')})\n`);
 
     // Warn about Testing mode token expiry
-    console.log('  Note: If your Google Cloud OAuth app is in "Testing" mode,');
-    console.log('  refresh tokens expire after 7 days. To avoid this:');
-    console.log('  • Publish the app, or set user type to "Internal" (Google Workspace)');
-    console.log('  • Or re-run "pilot-ai auth google" every 7 days\n');
+    console.log('  ⚠ IMPORTANT: If your Google Cloud OAuth app is in "Testing" mode,');
+    console.log('  refresh tokens expire after 7 days and ALL Google integrations will break.');
+    console.log('  To fix permanently:');
+    console.log('    1. Go to https://console.cloud.google.com/apis/credentials/consent');
+    console.log('    2. Click "PUBLISH APP"');
+    console.log('    3. For personal use (<100 users), no Google review is needed.');
+    console.log('  If you stay in Testing mode, re-run "pilot-ai auth google" every 7 days.\n');
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     console.error(`\n  Authentication failed: ${msg}`);

@@ -28,6 +28,8 @@ export interface ClaudeCliOptions {
   resumeSessionId?: string;
   /** Path or name of the Claude CLI binary (default: 'claude') */
   cliBinary?: string;
+  /** Max tool-use turns per invocation (maps to --max-turns) */
+  maxTurns?: number;
 }
 
 export interface ClaudeCliResult {
@@ -133,7 +135,7 @@ export async function invokeClaudeCli(options: ClaudeCliOptions): Promise<Claude
 }
 
 async function invokeClaudeCliInner(options: ClaudeCliOptions): Promise<ClaudeCliResult> {
-  const { prompt, systemPrompt, cwd, allowedTools, mcpConfigPath, timeoutMs = DEFAULT_TIMEOUT_MS, onToolUse, onThinking, sessionId, resumeSessionId, cliBinary = 'claude' } = options;
+  const { prompt, systemPrompt, cwd, allowedTools, mcpConfigPath, timeoutMs = DEFAULT_TIMEOUT_MS, onToolUse, onThinking, sessionId, resumeSessionId, cliBinary = 'claude', maxTurns } = options;
 
   const args: string[] = [];
 
@@ -162,6 +164,10 @@ async function invokeClaudeCliInner(options: ClaudeCliOptions): Promise<ClaudeCl
   // --dangerously-skip-permissions already permits all tools.
   // Combining --allowedTools with bypass mode is buggy (GitHub #12232)
   // and can silently block MCP tools.
+
+  if (maxTurns) {
+    args.push('--max-turns', String(maxTurns));
+  }
 
   if (mcpConfigPath) {
     args.push('--mcp-config', mcpConfigPath);
