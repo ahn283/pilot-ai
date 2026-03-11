@@ -130,8 +130,10 @@ export async function runAddTool(toolName: string): Promise<void> {
       console.log('  3. Add the Integration via "Connections" on your pages/DBs\n');
       break;
     case 'figma':
-      console.log('\n  Figma uses the official remote MCP server (OAuth).');
-      console.log('  No API key needed — authentication happens in your browser.\n');
+      console.log('\n  Figma Personal Access Token Guide:');
+      console.log('  1. Go to https://www.figma.com/settings');
+      console.log('  2. Scroll to "Personal access tokens"');
+      console.log('  3. Click "Generate new token", copy the token (starts with figd_)\n');
       break;
     case 'linear':
       console.log('\n  Linear API Key Guide:');
@@ -190,7 +192,14 @@ export async function runAddTool(toolName: string): Promise<void> {
     const config = await loadConfig();
     await saveConfig({ ...config, notion: { apiKey: '***keychain***' } });
   } else if (toolId === 'figma') {
-    // Figma uses HTTP transport (OAuth) — no credentials to collect
+    const { figmaApiKey } = await inquirer.prompt([{
+      type: 'password', name: 'figmaApiKey', message: 'Figma API Key (figd_...):', mask: '*',
+      validate: (input: string) => input.startsWith('figd_') || 'Token must start with figd_',
+    }]);
+    await setSecret('figma-api-key', figmaApiKey);
+    envValues['FIGMA_API_KEY'] = figmaApiKey;
+    const config = await loadConfig();
+    await saveConfig({ ...config, figma: { personalAccessToken: '***keychain***' } });
   } else if (toolId === 'linear') {
     const { linearApiKey } = await inquirer.prompt([{
       type: 'password', name: 'linearApiKey', message: 'Linear API Key:', mask: '*',
@@ -200,23 +209,69 @@ export async function runAddTool(toolName: string): Promise<void> {
     envValues['LINEAR_API_TOKEN'] = linearApiKey;
     const config = await loadConfig();
     await saveConfig({ ...config, linear: { apiKey: '***keychain***' } });
-  } else if (toolId === 'google-drive') {
+  } else if (toolId === 'google-drive' || toolId === 'google-calendar') {
     console.log('\n  Google OAuth2 Setup Guide:');
     console.log('  1. Go to https://console.cloud.google.com/apis/credentials');
     console.log('  2. Click "+ CREATE CREDENTIALS" → "OAuth client ID"');
     console.log('  3. Application type: "Desktop app", Name: "Pilot-AI"');
-    console.log('  4. Enable Drive API: https://console.cloud.google.com/apis/library/drive.googleapis.com\n');
+    if (toolId === 'google-drive') {
+      console.log('  4. Enable Drive API: https://console.cloud.google.com/apis/library/drive.googleapis.com\n');
+    } else {
+      console.log('  4. Enable Calendar API: https://console.cloud.google.com/apis/library/calendar-json.googleapis.com\n');
+    }
     const googleAnswers = await inquirer.prompt([
       { type: 'password', name: 'clientId', message: 'Google OAuth Client ID:', mask: '*', validate: (i: string) => i.length > 10 || 'Required.' },
       { type: 'password', name: 'clientSecret', message: 'Google OAuth Client Secret:', mask: '*', validate: (i: string) => i.length > 5 || 'Required.' },
     ]);
     await setSecret('google-client-id', googleAnswers.clientId);
     await setSecret('google-client-secret', googleAnswers.clientSecret);
-    envValues['GOOGLE_CLIENT_ID'] = googleAnswers.clientId;
-    envValues['GOOGLE_CLIENT_SECRET'] = googleAnswers.clientSecret;
 
-    // Auto-run OAuth flow for Drive
-    await runAddToolOAuthFlow(googleAnswers.clientId, googleAnswers.clientSecret, ['drive']);
+    // Create OAuth credentials file for the MCP server
+    const { default: fsMod } = await import('node:fs/promises');
+    const { default: pathMod } = await import('node:path');
+    const { default: osMod } = await import('node:os');
+    const credDir = pathMod.join(osMod.homedir(), '.pilot', 'credentials');
+    await fsMod.mkdir(credDir, { recursive: true });
+    const oauthPath = pathMod.join(credDir, 'gcp-oauth.keys.json');
+    await fsMod.writeFile(oauthPath, JSON.stringify({
+      installed: {
+        client_id: googleAnswers.clientId,
+        client_secret: googleAnswers.clientSecret,
+        redirect_uris: ['http://localhost:3000/oauth2callback'],
+      },
+    }), 'utf-8');
+
+    if (toolId === 'google-drive') {
+      envValues['GOOGLE_DRIVE_OAUTH_CREDENTIALS'] = oauthPath;
+    } else {
+      envValues['GOOGLE_OAUTH_CREDENTIALS'] = oauthPath;
+    }
+
+    // Auto-run OAuth flow
+    const service = toolId === 'google-drive' ? 'drive' : 'calendar';
+    await runAddToolOAuthFlow(googleAnswers.clientId, googleAnswers.clientSecret, [service]);
+  } else if (toolId === 'gmail') {
+    console.log('\n  Gmail MCP Setup (Google OAuth):');
+    console.log('  1. Go to https://console.cloud.google.com/apis/credentials');
+    console.log('  2. Click "+ CREATE CREDENTIALS" → "OAuth client ID" (Desktop app)');
+    console.log('  3. Enable Gmail API: https://console.cloud.google.com/apis/library/gmail.googleapis.com\n');
+    const googleAnswers = await inquirer.prompt([
+      { type: 'password', name: 'clientId', message: 'Google OAuth Client ID:', mask: '*', validate: (i: string) => i.length > 10 || 'Required.' },
+      { type: 'password', name: 'clientSecret', message: 'Google OAuth Client Secret:', mask: '*', validate: (i: string) => i.length > 5 || 'Required.' },
+    ]);
+    await setSecret('google-client-id', googleAnswers.clientId);
+    await setSecret('google-client-secret', googleAnswers.clientSecret);
+
+    // Run OAuth to get refresh token
+    await runAddToolOAuthFlow(googleAnswers.clientId, googleAnswers.clientSecret, ['gmail']);
+    const tokens = await loadGoogleTokens();
+    if (tokens?.refreshToken) {
+      envValues['CLIENT_ID'] = googleAnswers.clientId;
+      envValues['CLIENT_SECRET'] = googleAnswers.clientSecret;
+      envValues['REFRESH_TOKEN'] = tokens.refreshToken;
+    } else {
+      console.log('  ⚠ Could not obtain refresh token. Run "pilot-ai auth google --services gmail" first.\n');
+    }
   } else if (entry.envVars) {
     for (const [key, desc] of Object.entries(entry.envVars)) {
       const { value } = await inquirer.prompt([{
@@ -292,6 +347,16 @@ export async function runSyncMcp(): Promise<void> {
         config.mcpServers[serverId] = { command: '__http__', args: [entry.url] };
         configChanged = true;
       }
+    } else if (current.command === '__http__' && entry.transport !== 'http') {
+      // Migrate from HTTP to stdio (e.g. figma OAuth → PAT)
+      const env = current.env ?? {};
+      config.mcpServers[serverId] = {
+        command: 'npx',
+        args: ['-y', entry.npmPackage, ...(entry.args ?? [])],
+        ...(Object.keys(env).length > 0 ? { env } : {}),
+      };
+      configChanged = true;
+      console.log(`  ⚠ ${serverId}: migrated from HTTP OAuth to stdio (PAT). Run "pilot-ai addtool ${serverId}" to set credentials.`);
     } else {
       // Ensure it's a stdio server with the correct package name
       const expectedArgs = ['-y', entry.npmPackage, ...(entry.args ?? [])];

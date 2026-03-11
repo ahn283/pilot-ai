@@ -1,5 +1,8 @@
 import inquirer from 'inquirer';
 import { exec, execFile } from 'node:child_process';
+import fs from 'node:fs/promises';
+import os from 'node:os';
+import path from 'node:path';
 import { promisify } from 'node:util';
 import { checkClaudeCli, checkClaudeCliAuth } from '../agent/claude.js';
 import { saveConfig, ensurePilotDir } from '../config/store.js';
@@ -291,7 +294,7 @@ function getInitToolChoices(): InitToolChoice[] {
   const customTools: InitToolChoice[] = [
     { id: 'github', name: 'GitHub', description: 'Manage repos, issues, PRs (via gh CLI)', category: 'development', type: 'cli' },
     { id: 'obsidian', name: 'Obsidian', description: 'Local Obsidian vault integration', category: 'productivity', type: 'local' },
-    { id: 'google-oauth', name: 'Google (Gmail, Calendar)', description: 'Google OAuth for Gmail and Calendar', category: 'productivity', type: 'local' },
+    { id: 'google-oauth', name: 'Google (Gmail, Calendar, Drive)', description: 'Google OAuth — select services after setup', category: 'productivity', type: 'local' },
   ];
 
   // Merge, dedup by id (custom overrides MCP for github)
@@ -357,7 +360,7 @@ async function setupIntegrations(): Promise<Partial<PilotConfig>> {
     console.log('  Obsidian vault configured.\n');
   }
 
-  if (selected.has('google-oauth') || selected.has('google-drive')) {
+  if (selected.has('google-oauth') || selected.has('google-drive') || selected.has('gmail') || selected.has('google-calendar')) {
     console.log('\n── Google OAuth2 Setup ──\n');
     console.log('  Step 1: Create OAuth Client ID');
     console.log('  ─────────────────────────────');
@@ -397,8 +400,8 @@ async function setupIntegrations(): Promise<Partial<PilotConfig>> {
         name: 'googleServices',
         message: 'Google services:',
         choices: [
-          { name: 'Gmail', value: 'gmail', checked: true },
-          { name: 'Google Calendar', value: 'calendar', checked: true },
+          { name: 'Gmail', value: 'gmail', checked: selected.has('gmail') || selected.has('google-oauth') },
+          { name: 'Google Calendar', value: 'calendar', checked: selected.has('google-calendar') || selected.has('google-oauth') },
           { name: 'Google Drive', value: 'drive', checked: selected.has('google-drive') },
         ],
       },
@@ -409,10 +412,6 @@ async function setupIntegrations(): Promise<Partial<PilotConfig>> {
     await setSecret('google-client-id', trimmedClientId);
     await setSecret('google-client-secret', trimmedClientSecret);
 
-    if ((googleServices as string[]).includes('drive')) {
-      await registerMcpTool('google-drive', { GOOGLE_CLIENT_ID: trimmedClientId, GOOGLE_CLIENT_SECRET: trimmedClientSecret });
-    }
-
     result.google = {
       clientId: '***keychain***',
       clientSecret: '***keychain***',
@@ -422,11 +421,46 @@ async function setupIntegrations(): Promise<Partial<PilotConfig>> {
     // Step 3: Auto-run OAuth authentication flow
     const services = googleServices as Array<keyof typeof GOOGLE_SCOPES>;
     await runGoogleOAuthFlow(trimmedClientId, trimmedClientSecret, services);
+
+    // Step 4: Register Google MCP servers using obtained OAuth tokens
+    const tokens = await loadGoogleTokens();
+
+    if ((googleServices as string[]).includes('gmail') && tokens?.refreshToken) {
+      await registerMcpTool('gmail', {
+        CLIENT_ID: trimmedClientId,
+        CLIENT_SECRET: trimmedClientSecret,
+        REFRESH_TOKEN: tokens.refreshToken,
+      });
+    }
+
+    // Create shared gcp-oauth.keys.json for Calendar/Drive MCP servers
+    const needsOAuthFile = (googleServices as string[]).includes('calendar') || (googleServices as string[]).includes('drive');
+    let oauthCredentialsPath = '';
+    if (needsOAuthFile) {
+      const credDir = path.join(os.homedir(), '.pilot', 'credentials');
+      await fs.mkdir(credDir, { recursive: true });
+      oauthCredentialsPath = path.join(credDir, 'gcp-oauth.keys.json');
+      await fs.writeFile(oauthCredentialsPath, JSON.stringify({
+        installed: {
+          client_id: trimmedClientId,
+          client_secret: trimmedClientSecret,
+          redirect_uris: ['http://localhost:3000/oauth2callback'],
+        },
+      }), 'utf-8');
+    }
+
+    if ((googleServices as string[]).includes('calendar') && oauthCredentialsPath) {
+      await registerMcpTool('google-calendar', { GOOGLE_OAUTH_CREDENTIALS: oauthCredentialsPath });
+    }
+
+    if ((googleServices as string[]).includes('drive') && oauthCredentialsPath) {
+      await registerMcpTool('google-drive', { GOOGLE_DRIVE_OAUTH_CREDENTIALS: oauthCredentialsPath });
+    }
   }
 
   // MCP tools: collect credentials and register
   for (const toolId of selected) {
-    if (['github', 'obsidian', 'google-oauth', 'google-drive'].includes(toolId)) continue;
+    if (['github', 'obsidian', 'google-oauth', 'google-drive', 'gmail', 'google-calendar'].includes(toolId)) continue;
     await collectAndRegisterMcpTool(toolId, result);
   }
 
@@ -460,9 +494,32 @@ async function collectAndRegisterMcpTool(toolId: string, result: Partial<PilotCo
       break;
     }
     case 'figma': {
-      console.log('\n  Figma uses the official Remote MCP server with OAuth.');
-      console.log('  Registering Figma MCP server...\n');
-      // HTTP transport — no env vars needed, OAuth handled by Claude Code + Figma
+      console.log('\n  Figma Personal Access Token Guide:');
+      console.log('  1. Go to https://www.figma.com/settings');
+      console.log('  2. Scroll to "Personal access tokens"');
+      console.log('  3. Click "Generate new token"');
+      console.log('  4. Give it a name (e.g. "Pilot-AI") and copy the token');
+      console.log('  5. Token starts with figd_\n');
+      const { figmaApiKey } = await inquirer.prompt([{
+        type: 'password', name: 'figmaApiKey', message: 'Figma API Key (figd_...):', mask: '*',
+        validate: (input: string) => input.startsWith('figd_') || 'Token must start with figd_',
+      }]);
+      // Verify PAT
+      try {
+        const verifyRes = await fetch('https://api.figma.com/v1/me', {
+          headers: { 'X-Figma-Token': figmaApiKey },
+        });
+        if (verifyRes.ok) {
+          console.log('  ✓ Figma token verified!\n');
+        } else {
+          console.log('  ⚠ Token verification failed. Check your token and try again later.\n');
+        }
+      } catch {
+        console.log('  ⚠ Could not verify token (network error). Continuing anyway.\n');
+      }
+      await setSecret('figma-api-key', figmaApiKey);
+      envValues['FIGMA_API_KEY'] = figmaApiKey;
+      result.figma = { personalAccessToken: '***keychain***' };
       break;
     }
     case 'linear': {
@@ -524,27 +581,7 @@ async function collectAndRegisterMcpTool(toolId: string, result: Partial<PilotCo
     }
   }
 
-  const registered = await registerMcpTool(toolId, envValues);
-
-  // Show OAuth authentication guide for Figma after successful registration
-  if (toolId === 'figma' && registered) {
-    console.log('');
-    console.log('  ┌──────────────────────────────────────────────────────────┐');
-    console.log('  │  Figma OAuth Authentication Guide                        │');
-    console.log('  │                                                          │');
-    console.log('  │  Figma MCP server has been registered.                   │');
-    console.log('  │  To complete OAuth authentication:                       │');
-    console.log('  │                                                          │');
-    console.log('  │  1. Open Claude Code (run: claude)                       │');
-    console.log('  │  2. Type: /mcp                                          │');
-    console.log('  │  3. Select "figma" server                               │');
-    console.log('  │  4. Click "Authenticate" in the browser                 │');
-    console.log('  │  5. Allow access to your Figma account                  │');
-    console.log('  │                                                          │');
-    console.log('  │  Or run: pilot-ai auth figma                            │');
-    console.log('  └──────────────────────────────────────────────────────────┘');
-    console.log('');
-  }
+  await registerMcpTool(toolId, envValues);
 }
 
 /** Register an MCP tool with error handling */

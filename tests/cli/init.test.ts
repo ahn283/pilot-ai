@@ -160,9 +160,11 @@ describe('runInit - MCP registration via checkbox selection', () => {
     }, { skipVerify: true });
   });
 
-  it('selecting Figma registers MCP server (HTTP transport, no token)', async () => {
+  it('selecting Figma registers MCP server with PAT', async () => {
     vi.mocked(checkClaudeCli).mockResolvedValue(true);
     vi.mocked(checkClaudeCliAuth).mockResolvedValue(true);
+    // Mock fetch for PAT verification
+    globalThis.fetch = vi.fn().mockResolvedValue({ ok: true });
     vi.mocked(inquirer.prompt)
       .mockResolvedValueOnce({ useApi: false })
       .mockResolvedValueOnce({ platformChoice: '1' })
@@ -171,16 +173,18 @@ describe('runInit - MCP registration via checkbox selection', () => {
         signingSecret: 'secret123', userId: 'U12345',
       })
       .mockResolvedValueOnce({ selectedTools: ['figma'] }) // Select Figma
-      .mockResolvedValueOnce({ install: false }); // No token prompt — OAuth
+      .mockResolvedValueOnce({ figmaApiKey: 'figd_test_token' }) // PAT prompt
+      .mockResolvedValueOnce({ install: false });
 
     await runInit();
 
-    expect(installMcpServer).toHaveBeenCalledWith('figma', {}, { skipVerify: true });
+    expect(installMcpServer).toHaveBeenCalledWith('figma', { FIGMA_API_KEY: 'figd_test_token' }, { skipVerify: true });
   });
 
   it('selecting multiple tools registers all of them', async () => {
     vi.mocked(checkClaudeCli).mockResolvedValue(true);
     vi.mocked(checkClaudeCliAuth).mockResolvedValue(true);
+    globalThis.fetch = vi.fn().mockResolvedValue({ ok: true });
     vi.mocked(inquirer.prompt)
       .mockResolvedValueOnce({ useApi: false })
       .mockResolvedValueOnce({ platformChoice: '1' })
@@ -190,7 +194,7 @@ describe('runInit - MCP registration via checkbox selection', () => {
       })
       .mockResolvedValueOnce({ selectedTools: ['notion', 'figma'] }) // Multi-select
       .mockResolvedValueOnce({ notionApiKey: 'ntn_test_key' }) // Notion key
-      // Figma: no token prompt (HTTP transport, OAuth)
+      .mockResolvedValueOnce({ figmaApiKey: 'figd_test_token' }) // Figma PAT
       .mockResolvedValueOnce({ install: false });
 
     await runInit();

@@ -37,16 +37,16 @@ describe('loadMcpConfig', () => {
 
 describe('saveMcpConfig', () => {
   it('saves and loads config correctly', async () => {
-    await saveMcpConfig({ mcpServers: { figma: { command: '__http__', args: ['https://mcp.figma.com/mcp'] } } });
+    await saveMcpConfig({ mcpServers: { figma: { command: 'npx', args: ['-y', 'figma-developer-mcp', '--stdio'], env: { FIGMA_API_KEY: 'figd_test' } } } });
     const config = await loadMcpConfig();
     expect(config.mcpServers['figma']).toBeDefined();
-    expect(config.mcpServers['figma'].command).toBe('__http__');
+    expect(config.mcpServers['figma'].command).toBe('npx');
   });
 
   it('preserves existing MCP servers', async () => {
     await saveMcpConfig({ mcpServers: { other: { command: 'other-server' } } });
     const config = await loadMcpConfig();
-    config.mcpServers['figma'] = { command: '__http__', args: ['https://mcp.figma.com/mcp'] };
+    config.mcpServers['figma'] = { command: 'npx', args: ['-y', 'figma-developer-mcp', '--stdio'], env: { FIGMA_API_KEY: 'figd_test' } };
     await saveMcpConfig(config);
 
     const updated = await loadMcpConfig();
@@ -62,7 +62,7 @@ describe('getMcpConfigPathIfExists', () => {
   });
 
   it('returns path when servers exist', async () => {
-    await saveMcpConfig({ mcpServers: { figma: { command: '__http__' } } });
+    await saveMcpConfig({ mcpServers: { figma: { command: 'npx' } } });
     const result = await getMcpConfigPathIfExists();
     expect(result).toContain('mcp-config.json');
   });

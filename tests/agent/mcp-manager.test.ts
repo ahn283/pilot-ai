@@ -75,13 +75,14 @@ describe('mcp-manager', () => {
     expect(needed).toHaveLength(0);
   });
 
-  it('installMcpServer adds figma as HTTP transport', async () => {
-    const result = await installMcpServer('figma', {}, { skipVerify: true });
+  it('installMcpServer adds figma as stdio with PAT', async () => {
+    const result = await installMcpServer('figma', { FIGMA_API_KEY: 'figd_test' }, { skipVerify: true });
     expect(result.success).toBe(true);
     expect(mockMcpConfig.mcpServers).toHaveProperty('figma');
-    const figmaConfig = mockMcpConfig.mcpServers['figma'] as { command: string; args: string[] };
-    expect(figmaConfig.command).toBe('__http__');
-    expect(figmaConfig.args).toContain('https://mcp.figma.com/mcp');
+    const figmaConfig = mockMcpConfig.mcpServers['figma'] as { command: string; args: string[]; env: Record<string, string> };
+    expect(figmaConfig.command).toBe('npx');
+    expect(figmaConfig.args).toContain('figma-developer-mcp');
+    expect(figmaConfig.env?.FIGMA_API_KEY).toBe('figd_test');
   });
 
   it('installMcpServer returns error for unknown server', async () => {
@@ -120,13 +121,12 @@ describe('mcp-manager', () => {
 
   it('installMcpServer registers google-drive with correct config', async () => {
     await installMcpServer('google-drive', {
-      GOOGLE_CLIENT_ID: 'client-id',
-      GOOGLE_CLIENT_SECRET: 'client-secret',
+      GOOGLE_DRIVE_OAUTH_CREDENTIALS: '/path/to/creds.json',
     }, { skipVerify: true });
     const driveConfig = mockMcpConfig.mcpServers['google-drive'] as { command: string; args: string[]; env: Record<string, string> };
     expect(driveConfig.command).toBe('npx');
-    expect(driveConfig.args).toContain('@modelcontextprotocol/server-gdrive');
-    expect(driveConfig.env?.GOOGLE_CLIENT_ID).toBe('client-id');
+    expect(driveConfig.args).toContain('@piotr-agier/google-drive-mcp');
+    expect(driveConfig.env?.GOOGLE_DRIVE_OAUTH_CREDENTIALS).toBe('/path/to/creds.json');
   });
 
   it('uninstallMcpServer removes server from config', async () => {

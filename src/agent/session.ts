@@ -28,6 +28,7 @@ export interface SessionEntry {
 }
 
 const SESSION_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
+const MAX_SESSION_TURNS = 20; // Force new session after 20 turns to prevent context overflow
 
 function getSessionStorePath(): string {
   return path.join(getPilotDir(), 'sessions.json');
@@ -91,6 +92,13 @@ export async function getSession(
     return null;
   }
 
+  // Check turn count limit — force new session to prevent context overflow
+  if (entry.turnCount >= MAX_SESSION_TURNS) {
+    sessions.delete(key);
+    await save();
+    return null;
+  }
+
   return entry;
 }
 
@@ -138,6 +146,21 @@ export async function touchSession(
     entry.turnCount++;
     await save();
   }
+}
+
+/**
+ * Deletes a specific session. Used for error recovery (e.g. msg_too_long).
+ */
+export async function deleteSession(
+  platform: string,
+  channelId: string,
+  threadId: string,
+): Promise<boolean> {
+  await ensureLoaded();
+  const key = threadKey(platform, channelId, threadId);
+  const deleted = sessions.delete(key);
+  if (deleted) await save();
+  return deleted;
 }
 
 /**

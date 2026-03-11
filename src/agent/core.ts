@@ -14,7 +14,7 @@ import { buildToolDescriptions } from './tool-descriptions.js';
 import { getMcpConfigPathIfExists } from '../tools/figma-mcp.js';
 import { buildMcpContext } from './mcp-manager.js';
 import { PilotError } from '../utils/errors.js';
-import { getSession, createSession, touchSession, cleanupSessions } from './session.js';
+import { getSession, createSession, touchSession, deleteSession, cleanupSessions } from './session.js';
 import { detectPermissionError, PermissionWatcher } from '../security/permissions.js';
 import { isGhAuthenticated } from '../tools/github.js';
 import { configureGoogle } from '../tools/google-auth.js';
@@ -193,7 +193,13 @@ export class AgentCore {
 
         // Determine user-friendly message based on error type
         let displayMsg: string;
-        if (err instanceof PilotError) {
+        if (errorMsg.includes('msg_too_long')) {
+          // Context overflow — delete the broken session so next message starts fresh
+          const threadId = msg.threadId ?? msg.channelId;
+          await deleteSession(msg.platform, msg.channelId, threadId);
+          displayMsg = '❌ Conversation too long. Session has been reset — please send your message again.';
+          log(`Session deleted due to msg_too_long for ${msg.platform}:${msg.channelId}:${threadId}`);
+        } else if (err instanceof PilotError) {
           displayMsg = `❌ ${err.userMessage}`;
         } else {
           // Check if this is a macOS permission error and provide actionable guidance
@@ -310,7 +316,9 @@ You have a credential store at ~/.pilot/credentials/. Use it to store and retrie
     }
 
     // Session continuity: map messenger threads to Claude sessions
-    const threadId = msg.threadId ?? msg.channelId;
+    // DM (no threadId) → each message gets a new session to prevent infinite context accumulation
+    const isDm = !msg.threadId;
+    const threadId = msg.threadId ?? `dm-${Date.now()}`;
     const existingSession = await getSession(msg.platform, msg.channelId, threadId);
 
     let sessionId: string | undefined;

@@ -88,26 +88,22 @@ export async function runAuthGoogle(options: {
 }
 
 /**
- * Show Figma OAuth authentication guide and check registration status.
+ * Show Figma PAT authentication guide and check registration status.
  */
 export async function runAuthFigma(): Promise<void> {
-  console.log('\n  Figma OAuth Authentication Guide\n');
-  console.log('  Figma uses OAuth via the official Remote MCP server.');
-  console.log('  Authentication must be completed in an interactive Claude Code session.\n');
-  console.log('  Steps:');
-  console.log('  1. Open Claude Code (run: claude)');
-  console.log('  2. Type: /mcp');
-  console.log('  3. Select "figma" server');
-  console.log('  4. Click "Authenticate" in the browser');
-  console.log('  5. Allow access to your Figma account\n');
+  console.log('\n  Figma Personal Access Token Guide\n');
+  console.log('  1. Go to https://www.figma.com/settings');
+  console.log('  2. Scroll to "Personal access tokens"');
+  console.log('  3. Click "Generate new token"');
+  console.log('  4. Give it a name (e.g. "Pilot-AI") and copy the token');
+  console.log('  5. Token starts with figd_\n');
+  console.log('  To reconfigure, run: pilot-ai init (select Figma)\n');
 
   const synced = await checkClaudeCodeSync('figma');
   if (synced) {
-    console.log('  ✓ Figma MCP server is registered in Claude Code.');
-    console.log('  If tools are not working, re-authenticate via /mcp in Claude Code.\n');
+    console.log('  ✓ Figma MCP server is registered in Claude Code.\n');
   } else {
     console.log('  ✗ Figma MCP server is NOT registered.');
-    console.log('  Run: pilot-ai init (select Figma) or:');
-    console.log('  claude mcp add --transport http -s user figma https://mcp.figma.com/mcp\n');
+    console.log('  Run: pilot-ai init (select Figma) or: pilot-ai addtool figma\n');
   }
 }
