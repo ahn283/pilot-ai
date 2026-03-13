@@ -12,7 +12,7 @@ import { analyzeProjectIfNew } from './project-analyzer.js';
 import { buildSkillsContext } from './skills.js';
 import { buildToolDescriptions } from './tool-descriptions.js';
 import { getMcpConfigPathIfExists } from '../tools/figma-mcp.js';
-import { buildMcpContext, migrateToSecureLaunchers } from './mcp-manager.js';
+import { buildMcpContext, migrateToSecureLaunchers, checkAllMcpServerStatus } from './mcp-manager.js';
 import { PilotError } from '../utils/errors.js';
 import { getSession, createSession, touchSession, deleteSession, cleanupSessions, getRemainingTurns } from './session.js';
 import { updateConversationSummary, getConversationSummaryText, cleanupExpiredSummaries } from './conversation-summary.js';
@@ -117,6 +117,21 @@ export class AgentCore {
         log('Google tokens found but no MCP servers registered. Skipping token refresher.');
       } else {
         log('Google OAuth configured but not active on this device.');
+      }
+    }
+
+    // MCP server credential status summary
+    const mcpStatuses = await checkAllMcpServerStatus();
+    if (mcpStatuses.length > 0) {
+      const summary = mcpStatuses.map(s => `${s.serverId}(${s.status})`).join(', ');
+      log(`MCP servers: ${summary}`);
+
+      const authRequired = mcpStatuses.filter(s => s.status === 'auth_required');
+      if (authRequired.length > 0) {
+        for (const s of authRequired) {
+          log(`  ⚠ ${s.serverId}: ${s.message}`);
+        }
+        log(`Run 'pilot-ai addtool <name>' to re-authenticate.`);
       }
     }
   }

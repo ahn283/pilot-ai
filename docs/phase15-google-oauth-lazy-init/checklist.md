@@ -55,7 +55,7 @@
   - 빌드 확인
   - 테스트 작성: credential 누락 시 'auth_required' 반환되는지
 
-- [ ] **C2. startup MCP 상태 요약 로그 + actionable 에러**
+- [x] **C2. startup MCP 상태 요약 로그 + actionable 에러**
   - `src/agent/core.ts` — `start()` 끝에 `checkAllMcpServerStatus()` 호출
   - 상태 요약 로그: `"MCP servers: gmail(ready), notion(auth_required), ..."`
   - `auth_required` 서버가 있으면 `"Run 'pilot-ai addtool <name>' to re-authenticate"` 안내
