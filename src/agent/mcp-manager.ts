@@ -11,6 +11,7 @@ import { getSecret, setSecret } from '../config/keychain.js';
 import { getPilotDir } from '../config/store.js';
 import { syncToClaudeCode, removeFromClaudeCode } from '../config/claude-code-sync.js';
 import { generateLauncherScript, removeLauncherScript, classifyEnvVars, getLauncherPath } from './mcp-launcher.js';
+import fs from 'node:fs/promises';
 import path from 'node:path';
 
 const execFileAsync = promisify(execFile);
@@ -347,4 +348,89 @@ export async function migrateToSecureLaunchers(): Promise<{ migrated: string[]; 
   }
 
   return { migrated, skipped };
+}
+
+// --- C1: MCP Server Health Check ---
+
+export type McpServerStatus = 'ready' | 'connecting' | 'auth_required' | 'not_registered' | 'error';
+
+export interface McpServerStatusResult {
+  serverId: string;
+  status: McpServerStatus;
+  message?: string;
+}
+
+/**
+ * Parses a launcher script to extract keychain keys used for secrets.
+ * Returns the raw keychain keys (without the "pilot-ai:" service prefix).
+ */
+export async function getSecretKeysForServer(launcherPath: string): Promise<string[]> {
+  try {
+    const script = await fs.readFile(launcherPath, 'utf-8');
+    // Match: security find-generic-password -s "pilot-ai:<key>" -a "pilot-ai" -w
+    const regex = /security find-generic-password -s "pilot-ai:([^"]+)" -a "pilot-ai" -w/g;
+    const keys: string[] = [];
+    let match: RegExpExecArray | null;
+    while ((match = regex.exec(script)) !== null) {
+      keys.push(match[1]);
+    }
+    return keys;
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Checks the credential status of all registered MCP servers.
+ * For launcher-based servers, verifies that all required Keychain entries exist.
+ * For direct/HTTP servers, reports as ready (credentials are inline or managed externally).
+ */
+export async function checkAllMcpServerStatus(): Promise<McpServerStatusResult[]> {
+  const config = await loadMcpConfig();
+  const results: McpServerStatusResult[] = [];
+
+  for (const [serverId, serverConfig] of Object.entries(config.mcpServers)) {
+    // HTTP transport servers — auth managed by Claude Code
+    if (serverConfig.command === '__http__') {
+      results.push({ serverId, status: 'ready', message: 'HTTP transport (auth managed by Claude Code)' });
+      continue;
+    }
+
+    // Launcher-based servers — check Keychain credentials
+    if (serverConfig.command === 'bash' && serverConfig.args?.[0]?.includes('mcp-launchers/')) {
+      const launcherPath = serverConfig.args[0];
+      const keychainKeys = await getSecretKeysForServer(launcherPath);
+
+      if (keychainKeys.length === 0) {
+        // Launcher exists but has no secrets (unusual but ok)
+        results.push({ serverId, status: 'ready', message: 'No secrets required' });
+        continue;
+      }
+
+      // Check each keychain key
+      const missingKeys: string[] = [];
+      for (const key of keychainKeys) {
+        const value = await getSecret(key);
+        if (!value) {
+          missingKeys.push(key);
+        }
+      }
+
+      if (missingKeys.length > 0) {
+        results.push({
+          serverId,
+          status: 'auth_required',
+          message: `Missing Keychain credentials: ${missingKeys.join(', ')}`,
+        });
+      } else {
+        results.push({ serverId, status: 'ready' });
+      }
+      continue;
+    }
+
+    // Direct npx/env servers (legacy, pre-migration)
+    results.push({ serverId, status: 'ready', message: 'Legacy direct config' });
+  }
+
+  return results;
 }

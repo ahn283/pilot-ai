@@ -51,6 +51,17 @@ vi.mock('../../src/agent/mcp-launcher.js', () => ({
   }),
 }));
 
+// Mock node:fs/promises for launcher script reading
+vi.mock('node:fs/promises', () => ({
+  default: {
+    readFile: vi.fn(),
+    mkdir: vi.fn().mockResolvedValue(undefined),
+    writeFile: vi.fn().mockResolvedValue(undefined),
+    unlink: vi.fn().mockResolvedValue(undefined),
+    access: vi.fn().mockResolvedValue(undefined),
+  },
+}));
+
 import {
   getInstalledServers,
   detectNeededServers,
@@ -60,9 +71,12 @@ import {
   buildApprovalMessage,
   buildMcpContext,
   migrateToSecureLaunchers,
+  checkAllMcpServerStatus,
+  getSecretKeysForServer,
 } from '../../src/agent/mcp-manager.js';
-import { setSecret } from '../../src/config/keychain.js';
+import { setSecret, getSecret } from '../../src/config/keychain.js';
 import { generateLauncherScript, removeLauncherScript } from '../../src/agent/mcp-launcher.js';
+import fs from 'node:fs/promises';
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -247,6 +261,102 @@ describe('mcp-manager', () => {
       };
       const result = await migrateToSecureLaunchers();
       expect(result.skipped).toContain('puppeteer');
+    });
+  });
+
+  describe('checkAllMcpServerStatus', () => {
+    const mockGetSecret = vi.mocked(getSecret);
+    const mockReadFile = vi.mocked(fs.readFile);
+
+    it('returns empty array when no servers registered', async () => {
+      mockMcpConfig.mcpServers = {};
+      const results = await checkAllMcpServerStatus();
+      expect(results).toEqual([]);
+    });
+
+    it('returns ready for HTTP transport servers', async () => {
+      mockMcpConfig.mcpServers = {
+        figma: { command: '__http__', args: ['https://example.com'] },
+      };
+      const results = await checkAllMcpServerStatus();
+      expect(results).toHaveLength(1);
+      expect(results[0].serverId).toBe('figma');
+      expect(results[0].status).toBe('ready');
+    });
+
+    it('returns ready when all Keychain credentials exist for launcher server', async () => {
+      mockMcpConfig.mcpServers = {
+        slack: { command: 'bash', args: ['/home/.pilot/mcp-launchers/slack.sh'] },
+      };
+      mockReadFile.mockResolvedValueOnce(
+        'export SLACK_BOT_TOKEN=$(security find-generic-password -s "pilot-ai:mcp-slack-slack-bot-token" -a "pilot-ai" -w 2>/dev/null)\n'
+      );
+      mockGetSecret.mockResolvedValueOnce('xoxb-test-token');
+
+      const results = await checkAllMcpServerStatus();
+      expect(results).toHaveLength(1);
+      expect(results[0].serverId).toBe('slack');
+      expect(results[0].status).toBe('ready');
+    });
+
+    it('returns auth_required when Keychain credential is missing', async () => {
+      mockMcpConfig.mcpServers = {
+        notion: { command: 'bash', args: ['/home/.pilot/mcp-launchers/notion.sh'] },
+      };
+      mockReadFile.mockResolvedValueOnce(
+        'export OPENAPI_MCP_HEADERS=$(security find-generic-password -s "pilot-ai:mcp-notion-openapi-mcp-headers" -a "pilot-ai" -w 2>/dev/null)\n'
+      );
+      mockGetSecret.mockResolvedValueOnce(null);
+
+      const results = await checkAllMcpServerStatus();
+      expect(results).toHaveLength(1);
+      expect(results[0].serverId).toBe('notion');
+      expect(results[0].status).toBe('auth_required');
+      expect(results[0].message).toContain('mcp-notion-openapi-mcp-headers');
+    });
+
+    it('returns ready for legacy direct config servers', async () => {
+      mockMcpConfig.mcpServers = {
+        memory: { command: 'npx', args: ['-y', '@some/memory-server'] },
+      };
+      const results = await checkAllMcpServerStatus();
+      expect(results).toHaveLength(1);
+      expect(results[0].status).toBe('ready');
+    });
+  });
+
+  describe('getSecretKeysForServer', () => {
+    const mockReadFile = vi.mocked(fs.readFile);
+
+    it('extracts keychain keys from launcher script', async () => {
+      mockReadFile.mockResolvedValueOnce(
+        '#!/bin/bash\n' +
+        'export SLACK_TEAM_ID="T123"\n' +
+        'export SLACK_BOT_TOKEN=$(security find-generic-password -s "pilot-ai:mcp-slack-slack-bot-token" -a "pilot-ai" -w 2>/dev/null)\n'
+      );
+      const keys = await getSecretKeysForServer('/path/to/slack.sh');
+      expect(keys).toEqual(['mcp-slack-slack-bot-token']);
+    });
+
+    it('returns empty array when script has no secrets', async () => {
+      mockReadFile.mockResolvedValueOnce('#!/bin/bash\nexec npx -y some-server\n');
+      const keys = await getSecretKeysForServer('/path/to/server.sh');
+      expect(keys).toEqual([]);
+    });
+
+    it('returns empty array when file does not exist', async () => {
+      mockReadFile.mockRejectedValueOnce(new Error('ENOENT'));
+      const keys = await getSecretKeysForServer('/nonexistent.sh');
+      expect(keys).toEqual([]);
+    });
+
+    it('extracts multiple keychain keys', async () => {
+      mockReadFile.mockResolvedValueOnce(
+        'export KEY1=$(security find-generic-password -s "pilot-ai:mcp-jira-user-email" -a "pilot-ai" -w 2>/dev/null)\n' +
+        'export KEY2=$(security find-generic-password -s "pilot-ai:mcp-jira-api-token" -a "pilot-ai" -w 2>/dev/null)\n'
+      );
+      const keys = await getSecretKeysForServer('/path/to/jira.sh');
+      expect(keys).toEqual(['mcp-jira-user-email', 'mcp-jira-api-token']);
     });
   });
 });

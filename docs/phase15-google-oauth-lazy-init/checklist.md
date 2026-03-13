@@ -46,7 +46,7 @@
 
 ## Phase C: 통합 Health Check + 진단
 
-- [ ] **C1. startup 시 전체 MCP credential 검증**
+- [x] **C1. startup 시 전체 MCP credential 검증**
   - `src/agent/mcp-manager.ts` — `checkAllMcpServerStatus()` 함수 추가
   - `McpServerStatus` 타입 정의: `'ready' | 'connecting' | 'auth_required' | 'not_registered' | 'error'`
   - 각 서버별 Keychain credential 존재 확인 (`getSecretKeysForServer()` 헬퍼)
@@ -74,7 +74,7 @@
   - 빌드 확인
   - 테스트 작성: 불일치 감지 시 올바른 recommendation 출력하는지
 
-- [ ] **C4. 서버 상태에 `connecting` 추가**
+- [x] **C4. 서버 상태에 `connecting` 추가**
   - `src/agent/mcp-manager.ts` — `McpServerStatus`에 `'connecting'` 추가 (C1에서 함께 작업)
   - MCP 서버 프로세스 시작 중 상태 표현
   - 빌드 확인
