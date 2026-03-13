@@ -111,7 +111,7 @@
 
 ## Phase E: Multi-Device
 
-- [ ] **E1. config.json sync side-effect 전면 차단**
+- [x] **E1. config.json sync side-effect 전면 차단**
   - A1에서 Google 해결, B3에서 GitHub 해결 확인
   - 나머지 통합(Notion, Figma, Linear 등)이 config.json만으로 startup side-effect 유발하지 않는지 코드 리뷰
   - config 필드 존재만으로 외부 API 호출/프로세스 시작하는 코드가 있으면 guard 추가
@@ -119,12 +119,12 @@
 
 ## 검증
 
-- [ ] `npm run build` 성공
-- [ ] 기존 테스트 통과
-- [ ] **시나리오 1**: Google 미등록 기기에서 `pilot-ai start` → OAuth 팝업 없음 확인
-- [ ] **시나리오 2**: Google 등록 기기에서 토큰 만료 → 알림 전송, OAuth 팝업 없음 확인
-- [ ] **시나리오 3**: 정상 기기에서 TokenRefresher 정상 동작 확인
-- [ ] **시나리오 4**: `pilot-ai addtool gmail` → interactive OAuth 정상 표시 확인
-- [ ] **시나리오 5**: Notion Keychain 삭제 → startup 시 `auth_required` 상태, 에러 없음 확인
-- [ ] **시나리오 7**: config.json만 동기화된 새 기기 → 어떤 인증 시도도 없이 정상 시작 확인
-- [ ] **시나리오 6**: `pilot-ai doctor` → 3-layer 일관성 진단 정상 출력 확인
+- [x] `npm run build` 성공
+- [x] 기존 테스트 통과
+- [x] **시나리오 1**: Google 미등록 기기에서 `pilot-ai start` → OAuth 팝업 없음 확인
+- [x] **시나리오 2**: Google 등록 기기에서 토큰 만료 → 알림 전송, OAuth 팝업 없음 확인
+- [x] **시나리오 3**: 정상 기기에서 TokenRefresher 정상 동작 확인
+- [x] **시나리오 4**: `pilot-ai addtool gmail` → interactive OAuth 정상 표시 확인
+- [x] **시나리오 5**: Notion Keychain 삭제 → startup 시 `auth_required` 상태, 에러 없음 확인
+- [x] **시나리오 7**: config.json만 동기화된 새 기기 → 어떤 인증 시도도 없이 정상 시작 확인
+- [x] **시나리오 6**: `pilot-ai doctor` → 3-layer 일관성 진단 정상 출력 확인
