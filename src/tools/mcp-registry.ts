@@ -202,7 +202,7 @@ export const MCP_REGISTRY: McpServerEntry[] = [
       ATLASSIAN_USER_EMAIL: 'Atlassian account email',
       ATLASSIAN_API_TOKEN: 'Atlassian API Token',
     },
-    keywords: ['confluence', 'confluence page', 'confluence space', 'atlassian wiki'],
+    keywords: ['confluence', 'confluence page', 'confluence space', 'atlassian wiki', 'wiki'],
     category: 'productivity',
   },
   {
@@ -256,12 +256,30 @@ export function parseAtlassianSiteName(input: string): string {
 /**
  * Finds registry entries matching any of the given keywords.
  * Uses case-insensitive partial matching.
+ * Results are sorted by match specificity (longer keyword match = higher priority).
  */
 export function findMatchingServers(text: string): McpServerEntry[] {
   const lower = text.toLowerCase();
-  return MCP_REGISTRY.filter((entry) =>
-    entry.keywords.some((kw) => lower.includes(kw.toLowerCase())),
-  );
+
+  type ScoredEntry = { entry: McpServerEntry; maxKeywordLen: number };
+  const scored: ScoredEntry[] = [];
+
+  for (const entry of MCP_REGISTRY) {
+    let maxLen = 0;
+    for (const kw of entry.keywords) {
+      const kwLower = kw.toLowerCase();
+      if (lower.includes(kwLower) && kwLower.length > maxLen) {
+        maxLen = kwLower.length;
+      }
+    }
+    if (maxLen > 0) {
+      scored.push({ entry, maxKeywordLen: maxLen });
+    }
+  }
+
+  // Sort by longest matching keyword first (more specific match wins)
+  scored.sort((a, b) => b.maxKeywordLen - a.maxKeywordLen);
+  return scored.map((s) => s.entry);
 }
 
 /**

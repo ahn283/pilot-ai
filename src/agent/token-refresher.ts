@@ -93,6 +93,12 @@ async function syncRefreshedTokensToMcp(
   clientSecret: string,
   tokens: GoogleTokens,
 ): Promise<void> {
+  // Guard: only sync when we have a complete token set
+  if (!tokens.accessToken || !tokens.refreshToken) {
+    log('Skipping MCP sync: incomplete token set');
+    return;
+  }
+
   try {
     // Update ~/.gmail-mcp/ files
     await writeGmailMcpCredentials(clientId, clientSecret, tokens);
@@ -137,9 +143,12 @@ async function runHealthCheck(): Promise<void> {
           `\u26a0\ufe0f Google OAuth token expired. Run \`pilot-ai auth google\` to re-authenticate.`,
         ).catch(() => {});
       }
+      // Stop refresher to prevent repeated failed attempts
+      stopTokenRefresher();
       break;
     case 'not_configured':
-      // Silent — user may not have Google configured
+      log('Health check: Google not configured on this device. Stopping refresher.');
+      stopTokenRefresher();
       break;
   }
 }

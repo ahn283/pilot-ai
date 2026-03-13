@@ -18,8 +18,9 @@ import { getSession, createSession, touchSession, deleteSession, cleanupSessions
 import { updateConversationSummary, getConversationSummaryText, cleanupExpiredSummaries } from './conversation-summary.js';
 import { detectPermissionError, PermissionWatcher } from '../security/permissions.js';
 import { isGhAuthenticated } from '../tools/github.js';
-import { configureGoogle } from '../tools/google-auth.js';
+import { configureGoogle, loadGoogleTokens } from '../tools/google-auth.js';
 import { startTokenRefresher, stopTokenRefresher } from './token-refresher.js';
+import { loadMcpConfig } from '../tools/figma-mcp.js';
 
 function log(message: string): void {
   console.log(`[${new Date().toISOString()}] ${message}`);
@@ -87,17 +88,30 @@ export class AgentCore {
       log(`Migrated MCP servers to secure launchers: ${migration.migrated.join(', ')}`);
     }
 
-    // Start periodic Google OAuth token health checker
+    // Start periodic Google OAuth token health checker (only if tokens exist AND MCP servers registered)
     if (this.config.google) {
-      const users = this.config.messenger.platform === 'slack'
-        ? this.config.security.allowedUsers.slack
-        : this.config.security.allowedUsers.telegram;
-      const notifyChannel = users.length > 0 ? users[0] : undefined;
-      startTokenRefresher(
-        notifyChannel ? this.messenger : undefined,
-        notifyChannel,
-      );
-      log('Google token refresher started.');
+      const tokens = await loadGoogleTokens();
+      const mcpConfig = await loadMcpConfig();
+      const googleServerIds = ['gmail', 'google-calendar', 'google-drive'];
+      const hasGoogleMcp = googleServerIds.some(id => id in mcpConfig.mcpServers);
+
+      if (tokens && hasGoogleMcp) {
+        const users = this.config.messenger.platform === 'slack'
+          ? this.config.security.allowedUsers.slack
+          : this.config.security.allowedUsers.telegram;
+        const notifyChannel = users.length > 0 ? users[0] : undefined;
+        startTokenRefresher(
+          notifyChannel ? this.messenger : undefined,
+          notifyChannel,
+        );
+        log('Google token refresher started.');
+      } else if (!tokens && hasGoogleMcp) {
+        log('Google MCP servers registered but no tokens found. Run "pilot-ai auth google".');
+      } else if (tokens && !hasGoogleMcp) {
+        log('Google tokens found but no MCP servers registered. Skipping token refresher.');
+      } else {
+        log('Google OAuth configured but not active on this device.');
+      }
     }
   }
 

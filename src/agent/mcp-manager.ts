@@ -62,7 +62,7 @@ export async function installMcpServer(
   // HTTP transport servers (e.g. Figma remote) use `claude mcp add --transport http`
   if (entry.transport === 'http' && entry.url) {
     const { syncHttpToClaudeCode, checkClaudeCodeSync } = await import('../config/claude-code-sync.js');
-    const syncResult = await syncHttpToClaudeCode(serverId, entry.url);
+    const syncResult = await syncHttpToClaudeCode(serverId, entry.url, 'claude', { interactive: true });
     if (syncResult.success) {
       // Verify the server was actually registered in Claude Code
       const verified = await checkClaudeCodeSync(serverId);

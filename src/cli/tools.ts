@@ -105,6 +105,23 @@ export async function runAddTool(toolName: string): Promise<void> {
     return;
   }
 
+  // Handle "wiki" alias — prompt user to choose between Confluence and MediaWiki
+  if (toolId === 'wiki') {
+    const { wikiChoice } = await inquirer.prompt([{
+      type: 'list',
+      name: 'wikiChoice',
+      message: 'Which wiki service do you want to set up?',
+      choices: [
+        { name: 'Confluence (Atlassian) — most common for teams', value: 'confluence' },
+        { name: 'MediaWiki (Wikipedia, self-hosted wikis)', value: 'wiki' },
+      ],
+    }]);
+    if (wikiChoice === 'confluence') {
+      return runAddTool('confluence');
+    }
+    // else continue with 'wiki' (MediaWiki)
+  }
+
   // Find in MCP registry
   const entry = MCP_REGISTRY.find((e) => e.id === toolId);
   if (!entry) {
@@ -425,7 +442,7 @@ export async function runSyncMcp(): Promise<void> {
     let result: { success: boolean; error?: string };
 
     if (serverConfig.command === '__http__' && serverConfig.args?.[0]) {
-      result = await syncHttpToClaudeCode(serverId, serverConfig.args[0]);
+      result = await syncHttpToClaudeCode(serverId, serverConfig.args[0], 'claude', { interactive: true });
     } else {
       result = await syncToClaudeCode(serverId, serverConfig);
     }

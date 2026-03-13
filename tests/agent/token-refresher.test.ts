@@ -6,6 +6,7 @@ vi.mock('../../src/tools/google-auth.js', () => ({
   getGoogleAccessToken: vi.fn(),
   verifyGoogleTokens: vi.fn(),
   writeGmailMcpCredentials: vi.fn(),
+  writeGoogleMcpTokens: vi.fn(),
   configureGoogle: vi.fn(),
   getGoogleConfig: vi.fn(),
 }));
@@ -37,12 +38,14 @@ import {
   loadGoogleTokens,
   getGoogleAccessToken,
   verifyGoogleTokens,
+  writeGmailMcpCredentials,
   getGoogleConfig,
 } from '../../src/tools/google-auth.js';
 
 const mockLoadGoogleTokens = vi.mocked(loadGoogleTokens);
 const mockGetGoogleAccessToken = vi.mocked(getGoogleAccessToken);
 const mockVerifyGoogleTokens = vi.mocked(verifyGoogleTokens);
+const mockWriteGmailMcpCredentials = vi.mocked(writeGmailMcpCredentials);
 const mockGetGoogleConfig = vi.mocked(getGoogleConfig);
 
 const baseTokens = {
@@ -120,6 +123,31 @@ describe('token-refresher', () => {
       expect(result.status).toBe('expired');
       expect(result.message).toContain('invalid_grant');
     });
+
+    it('skips MCP sync when refreshed tokens have empty accessToken', async () => {
+      // Token near expiry triggers refresh
+      mockLoadGoogleTokens
+        .mockResolvedValueOnce({ ...baseTokens, expiresAt: Date.now() + 30 * 60 * 1000 })
+        // After refresh, loadGoogleTokens returns tokens with empty accessToken
+        .mockResolvedValueOnce({ ...baseTokens, accessToken: '', refreshToken: 'rt' });
+      mockGetGoogleAccessToken.mockResolvedValueOnce('');
+
+      const result = await checkGoogleTokenHealth();
+      expect(result.status).toBe('refreshed');
+      // writeGmailMcpCredentials should NOT be called because accessToken is empty
+      expect(mockWriteGmailMcpCredentials).not.toHaveBeenCalled();
+    });
+
+    it('skips MCP sync when refreshed tokens have empty refreshToken', async () => {
+      mockLoadGoogleTokens
+        .mockResolvedValueOnce({ ...baseTokens, expiresAt: Date.now() + 30 * 60 * 1000 })
+        .mockResolvedValueOnce({ ...baseTokens, accessToken: 'at', refreshToken: '' });
+      mockGetGoogleAccessToken.mockResolvedValueOnce('at');
+
+      const result = await checkGoogleTokenHealth();
+      expect(result.status).toBe('refreshed');
+      expect(mockWriteGmailMcpCredentials).not.toHaveBeenCalled();
+    });
   });
 
   describe('startTokenRefresher / stopTokenRefresher', () => {
@@ -140,6 +168,32 @@ describe('token-refresher', () => {
 
       stopTokenRefresher();
       expect(isTokenRefresherRunning()).toBe(false);
+    });
+
+    it('auto-stops when health check returns not_configured', async () => {
+      mockLoadGoogleTokens.mockResolvedValue(null); // not_configured
+      startTokenRefresher();
+      expect(isTokenRefresherRunning()).toBe(true);
+
+      // Wait for the immediate runHealthCheck() to complete
+      await vi.waitFor(() => {
+        expect(isTokenRefresherRunning()).toBe(false);
+      });
+    });
+
+    it('auto-stops when health check returns expired', async () => {
+      mockLoadGoogleTokens.mockResolvedValue({
+        ...baseTokens,
+        expiresAt: Date.now() - 1000, // expired
+      });
+      mockGetGoogleAccessToken.mockRejectedValue(new Error('invalid_grant'));
+
+      startTokenRefresher();
+      expect(isTokenRefresherRunning()).toBe(true);
+
+      await vi.waitFor(() => {
+        expect(isTokenRefresherRunning()).toBe(false);
+      });
     });
   });
 });

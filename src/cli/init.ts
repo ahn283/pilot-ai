@@ -317,8 +317,8 @@ interface InitToolChoice {
 }
 
 function getInitToolChoices(): InitToolChoice[] {
-  // MCP tools from registry (exclude ones not useful for init: filesystem, memory, puppeteer, sqlite)
-  const skipMcp = new Set(['filesystem', 'memory', 'puppeteer', 'sqlite']);
+  // MCP tools from registry (exclude ones not useful for init or handled by google-oauth custom entry)
+  const skipMcp = new Set(['filesystem', 'memory', 'puppeteer', 'sqlite', 'google-drive', 'google-calendar', 'gmail']);
   const mcpTools: InitToolChoice[] = MCP_REGISTRY
     .filter((e) => !skipMcp.has(e.id))
     .map((e) => ({ id: e.id, name: e.name, description: e.description, category: e.category, type: 'mcp' as const }));

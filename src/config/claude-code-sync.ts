@@ -104,7 +104,7 @@ export async function syncAllToClaudeCode(
     // HTTP transport servers use a different sync path
     let result: { success: boolean; error?: string };
     if (config.command === '__http__' && config.args?.[0]) {
-      result = await syncHttpToClaudeCode(serverId, config.args[0], binary);
+      result = await syncHttpToClaudeCode(serverId, config.args[0], binary, { interactive: false });
     } else {
       result = await syncToClaudeCode(serverId, config, binary);
     }
@@ -121,12 +121,18 @@ export async function syncAllToClaudeCode(
 /**
  * Register a remote HTTP MCP server in Claude Code.
  * Runs: claude mcp add --transport http -s user <name> <url>
+ *
+ * @param interactive - When true (CLI mode: init, addtool), uses stdio:'inherit'
+ *   so OAuth browser prompts are visible. When false (daemon, migration, refresher),
+ *   uses stdio:'pipe' to prevent OAuth popups in background processes.
  */
 export async function syncHttpToClaudeCode(
   serverId: string,
   url: string,
   binary: string = 'claude',
+  options: { interactive?: boolean } = {},
 ): Promise<{ success: boolean; error?: string }> {
+  const { interactive = false } = options;
   const cliExists = await checkClaudeCli(binary);
   if (!cliExists) {
     return { success: false, error: 'Claude Code CLI not installed' };
@@ -134,7 +140,7 @@ export async function syncHttpToClaudeCode(
 
   // HTTP transport MCP servers (e.g. Figma) may trigger OAuth in the browser,
   // so we need a longer timeout to allow the user to complete the flow.
-  const httpTimeoutMs = 180_000; // 3 minutes
+  const httpTimeoutMs = interactive ? 180_000 : 30_000; // 3 min interactive, 30s daemon
 
   try {
     // Remove existing server first (handles updates)
@@ -142,7 +148,10 @@ export async function syncHttpToClaudeCode(
       timeout: TIMEOUT_MS,
     }).catch(() => {});
 
-    // Use spawn with stdio: 'inherit' so OAuth browser prompts are visible to the user
+    // interactive: inherit stdio so OAuth browser prompts are visible
+    // daemon: pipe stdio to prevent OAuth popups in background
+    const stdioMode = interactive ? 'inherit' as const : 'pipe' as const;
+
     await new Promise<void>((resolve, reject) => {
       const child = spawn(binary, [
         'mcp', 'add',
@@ -150,7 +159,7 @@ export async function syncHttpToClaudeCode(
         '-s', 'user',
         serverId,
         url,
-      ], { stdio: 'inherit' });
+      ], { stdio: stdioMode });
 
       const timer = setTimeout(() => {
         child.kill();
