@@ -61,7 +61,7 @@
   - `auth_required` 서버가 있으면 `"Run 'pilot-ai addtool <name>' to re-authenticate"` 안내
   - 빌드 확인
 
-- [ ] **C3. `pilot-ai doctor` 명령**
+- [x] **C3. `pilot-ai doctor` 명령**
   - `src/cli/doctor.ts` — 신규 파일 생성
   - 3-layer 일관성 진단:
     - config.json에 설정된 통합 목록

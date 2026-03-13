@@ -4,6 +4,11 @@ import { accessSync, constants as fsConstants } from 'node:fs';
 import { checkClaudeCli, checkClaudeCliAuth } from '../agent/claude.js';
 import { isGhAuthenticated } from '../tools/github.js';
 import { getSecret } from '../config/keychain.js';
+import { checkAllMcpServerStatus } from '../agent/mcp-manager.js';
+import { loadMcpConfig } from '../tools/figma-mcp.js';
+import { checkClaudeCodeSync } from '../config/claude-code-sync.js';
+import { loadConfig } from '../config/store.js';
+import { getRegistryEntry } from '../tools/mcp-registry.js';
 
 const execFileAsync = promisify(execFile);
 
@@ -39,6 +44,9 @@ export async function runDoctor(): Promise<void> {
       console.log(`       Fix: ${r.fix}`);
     }
   }
+
+  // 3-layer MCP consistency check
+  await runMcpDiagnosis();
 
   const failed = results.filter(r => !r.ok);
   if (failed.length === 0) {
@@ -253,4 +261,93 @@ function checkFullDiskAccessPermission(): CheckResult {
       fix: 'System Settings > Privacy & Security > Full Disk Access — add node binary. This resolves most "access data from other apps" popups.',
     };
   }
+}
+
+/**
+ * 3-layer MCP consistency diagnosis:
+ * 1. config.json — configured integrations
+ * 2. mcp-config.json — registered MCP servers
+ * 3. Keychain — stored credentials
+ * + Claude Code sync status
+ */
+async function runMcpDiagnosis(): Promise<void> {
+  console.log('\n── MCP Integration Diagnosis ──\n');
+
+  // Layer 1: config.json integrations
+  let configuredIntegrations: string[] = [];
+  try {
+    const config = await loadConfig();
+    if (config.google) configuredIntegrations.push('google');
+    if (config.github?.enabled) configuredIntegrations.push('github');
+  } catch {
+    console.log('  [!!] Could not load config.json');
+    return;
+  }
+
+  // Layer 2: mcp-config.json registered servers
+  const mcpConfig = await loadMcpConfig();
+  const registeredServers = Object.keys(mcpConfig.mcpServers);
+
+  // Layer 3: Keychain credential status
+  const statuses = await checkAllMcpServerStatus();
+
+  if (registeredServers.length === 0) {
+    console.log('  No MCP servers registered. Run "pilot-ai addtool <name>" to add tools.\n');
+    return;
+  }
+
+  // Print per-server status table
+  console.log('  Server              Status          Claude Code');
+  console.log('  ─────────────────── ─────────────── ───────────');
+
+  for (const serverId of registeredServers) {
+    const status = statuses.find(s => s.serverId === serverId);
+    const statusStr = status?.status ?? 'unknown';
+    const claudeSynced = await checkClaudeCodeSync(serverId);
+    const syncStr = claudeSynced ? 'synced' : 'not synced';
+
+    const name = getRegistryEntry(serverId)?.name ?? serverId;
+    const displayName = `${name}`.padEnd(19);
+    const displayStatus = statusStr.padEnd(15);
+
+    const icon = statusStr === 'ready' && claudeSynced ? '  [ok]' : '  [!!]';
+    console.log(`${icon} ${displayName} ${displayStatus} ${syncStr}`);
+  }
+
+  // Recommendations
+  const recommendations: string[] = [];
+
+  const authRequired = statuses.filter(s => s.status === 'auth_required');
+  if (authRequired.length > 0) {
+    for (const s of authRequired) {
+      recommendations.push(`Run "pilot-ai addtool ${s.serverId}" to re-authenticate ${s.serverId}`);
+    }
+  }
+
+  const notSynced: string[] = [];
+  for (const serverId of registeredServers) {
+    const synced = await checkClaudeCodeSync(serverId);
+    if (!synced) notSynced.push(serverId);
+  }
+  if (notSynced.length > 0) {
+    recommendations.push(`Run "pilot-ai sync-mcp" to sync ${notSynced.join(', ')} to Claude Code`);
+  }
+
+  // Check config.json ↔ mcp-config.json consistency
+  if (configuredIntegrations.includes('google')) {
+    const googleServers = ['gmail', 'google-calendar', 'google-drive'];
+    const hasAnyGoogle = googleServers.some(id => registeredServers.includes(id));
+    if (!hasAnyGoogle) {
+      recommendations.push('Google OAuth is configured but no Google MCP servers registered. Run "pilot-ai addtool gmail"');
+    }
+  }
+
+  if (recommendations.length > 0) {
+    console.log('\n  Recommendations:');
+    for (const rec of recommendations) {
+      console.log(`    → ${rec}`);
+    }
+  }
+
+  console.log('');
 }
