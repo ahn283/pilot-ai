@@ -92,9 +92,12 @@ describe('mcp-launcher', () => {
       expect(content).toContain('pilot-ai:mcp-gmail-refresh-token');
       expect(content).toContain('export CLIENT_ID=');
       expect(content).toContain('export REFRESH_TOKEN=');
-      expect(content).toContain('exec npx -y "@shinzolabs/gmail-mcp"');
+      // exec line uses absolute npx path (or fallback 'npx'), may be quoted
+      expect(content).toMatch(/exec .+npx" -y "@shinzolabs\/gmail-mcp"/);
       // Should NOT contain actual secret values
       expect(content).not.toContain('actual-secret');
+      // Should include PATH export for launchd
+      expect(content).toContain('export PATH=');
     });
 
     it('includes non-secret env vars directly', async () => {
@@ -121,7 +124,7 @@ describe('mcp-launcher', () => {
       );
 
       const content = await fs.readFile(scriptPath, 'utf-8');
-      expect(content).toContain('exec npx -y "figma-developer-mcp" "--stdio"');
+      expect(content).toMatch(/exec .+npx" -y "figma-developer-mcp" "--stdio"/);
     });
   });
 

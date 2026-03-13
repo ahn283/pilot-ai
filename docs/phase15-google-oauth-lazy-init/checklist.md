@@ -81,28 +81,28 @@
 
 ## Phase D: Credential 보안
 
-- [ ] **D1. legacy 평문 sync 정리**
+- [x] **D1. legacy 평문 sync 정리**
   - `src/agent/mcp-manager.ts` — `cleanupLegacyPlaintextSync()` 함수 추가
   - `migrateToSecureLaunchers()` 실행 후, launcher로 전환된 서버를 Claude Code에 재등록
   - 기존 `~/.claude.json`의 평문 env var 엔트리를 launcher 버전으로 덮어쓰기
   - 빌드 확인
   - 테스트 작성: migration 후 Claude Code sync가 launcher 경로만 포함하는지
 
-- [ ] **D2. Atlassian credential 설정 시 검증**
+- [x] **D2. Atlassian credential 설정 시 검증**
   - `src/cli/tools.ts` — `addtool jira`/`addtool confluence` 시 API 호출로 credential 유효성 검증
   - Atlassian REST API `/rest/api/3/myself` (Jira) 또는 `/wiki/rest/api/user/current` (Confluence) 호출
   - 실패 시 에러 메시지 + 재입력 안내
   - 빌드 확인
   - 테스트 작성: 잘못된 credential일 때 설치 중단되는지
 
-- [ ] **D3. Slack SLACK_TEAM_ID 매핑 수정**
+- [x] **D3. Slack SLACK_TEAM_ID 매핑 수정**
   - `src/cli/init.ts` — Slack 설정 시 `auth.test` API로 Team ID 자동 조회
   - `src/cli/tools.ts` — `addtool slack`에도 동일 적용
   - fallback: 수동 입력 시 `T`로 시작하는지 검증
   - 빌드 확인
   - 테스트 작성: Bot Token으로부터 Team ID 자동 추출되는지
 
-- [ ] **D4. launcher script PATH 하드코딩 + 절대경로 npx**
+- [x] **D4. launcher script PATH 하드코딩 + 절대경로 npx**
   - `src/agent/mcp-launcher.ts` — 생성되는 script에 `export PATH="/usr/local/bin:/usr/bin:/bin"` 추가
   - `exec npx` → `exec /usr/local/bin/npx` (또는 `which npx` 결과 사용)
   - 기존 launcher script가 있는 경우 `migrateToSecureLaunchers()` 시 재생성

@@ -183,20 +183,41 @@ export async function runAddTool(toolName: string): Promise<void> {
 
   // Collect credentials
   if (toolId === 'slack') {
-    console.log('\n  Slack MCP Setup:');
-    console.log('  Find your Team ID: open Slack in a browser → URL shows https://app.slack.com/client/T.../...\n');
-    const slackAnswers = await inquirer.prompt([
-      {
-        type: 'password', name: 'botToken', message: 'Slack Bot Token (xoxb-...):', mask: '*',
-        validate: (i: string) => i.startsWith('xoxb-') || 'Bot Token must start with xoxb-',
-      },
-      {
+    console.log('\n  Slack MCP Setup:\n');
+    const { botToken } = await inquirer.prompt([{
+      type: 'password', name: 'botToken', message: 'Slack Bot Token (xoxb-...):', mask: '*',
+      validate: (i: string) => i.startsWith('xoxb-') || 'Bot Token must start with xoxb-',
+    }]);
+
+    // Auto-fetch Team ID via Slack auth.test API
+    let teamId = '';
+    try {
+      const resp = await fetch('https://slack.com/api/auth.test', {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${botToken}`, 'Content-Type': 'application/x-www-form-urlencoded' },
+        signal: AbortSignal.timeout(10_000),
+      });
+      const data = await resp.json() as { ok: boolean; team_id?: string; error?: string };
+      if (data.ok && data.team_id) {
+        teamId = data.team_id;
+        console.log(`  ✓ Team ID auto-detected: ${teamId}`);
+      } else {
+        console.log(`  ⚠ Could not auto-detect Team ID (${data.error ?? 'unknown'}). Please enter manually.`);
+      }
+    } catch {
+      console.log('  ⚠ Could not auto-detect Team ID (network error). Please enter manually.');
+    }
+
+    if (!teamId) {
+      const ans = await inquirer.prompt([{
         type: 'input', name: 'teamId', message: 'Slack Team/Workspace ID (T...):',
         validate: (i: string) => i.startsWith('T') || 'Team ID must start with T (e.g. T01ABC23DEF)',
-      },
-    ]);
-    envValues['SLACK_BOT_TOKEN'] = slackAnswers.botToken;
-    envValues['SLACK_TEAM_ID'] = slackAnswers.teamId;
+      }]);
+      teamId = ans.teamId;
+    }
+
+    envValues['SLACK_BOT_TOKEN'] = botToken;
+    envValues['SLACK_TEAM_ID'] = teamId;
   } else if (toolId === 'jira' || toolId === 'confluence') {
     const atlassianAnswers = await inquirer.prompt([
       {
@@ -209,6 +230,27 @@ export async function runAddTool(toolName: string): Promise<void> {
     ]);
     const siteName = parseAtlassianSiteName(atlassianAnswers.siteUrl);
     console.log(`  → Site name: ${siteName}`);
+
+    // Verify credentials via Atlassian REST API
+    const verifyEndpoint = toolId === 'jira'
+      ? `https://${siteName}.atlassian.net/rest/api/3/myself`
+      : `https://${siteName}.atlassian.net/wiki/rest/api/user/current`;
+    const authHeader = 'Basic ' + Buffer.from(`${atlassianAnswers.email}:${atlassianAnswers.apiToken}`).toString('base64');
+    try {
+      const resp = await fetch(verifyEndpoint, {
+        headers: { 'Authorization': authHeader, 'Accept': 'application/json' },
+        signal: AbortSignal.timeout(10_000),
+      });
+      if (!resp.ok) {
+        console.log(`  ⚠ Credential verification failed (HTTP ${resp.status}). Check your email and API token.`);
+        console.log(`  Saving anyway — you can re-run "pilot-ai addtool ${toolId}" to fix.\n`);
+      } else {
+        console.log('  ✓ Credentials verified successfully.');
+      }
+    } catch {
+      console.log('  ⚠ Could not verify credentials (network error). Saving anyway.');
+    }
+
     envValues['ATLASSIAN_SITE_NAME'] = siteName;
     envValues['ATLASSIAN_USER_EMAIL'] = atlassianAnswers.email;
     envValues['ATLASSIAN_API_TOKEN'] = atlassianAnswers.apiToken;
