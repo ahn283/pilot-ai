@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { findMatchingServers, getRegistryEntry, MCP_REGISTRY } from '../../src/tools/mcp-registry.js';
+import { findMatchingServers, getRegistryEntry, MCP_REGISTRY, parseAtlassianSiteName } from '../../src/tools/mcp-registry.js';
 
 describe('mcp-registry', () => {
   it('MCP_REGISTRY contains known servers', () => {
@@ -42,6 +42,36 @@ describe('mcp-registry', () => {
   it('findMatchingServers can match multiple servers', () => {
     const results = findMatchingServers('search slack channel and check github pr');
     expect(results.length).toBeGreaterThanOrEqual(2);
+  });
+
+  describe('parseAtlassianSiteName', () => {
+    it('extracts site name from standard Atlassian Cloud URL', () => {
+      expect(parseAtlassianSiteName('https://mycompany.atlassian.net')).toBe('mycompany');
+    });
+
+    it('extracts site name from URL with path', () => {
+      expect(parseAtlassianSiteName('https://mycompany.atlassian.net/wiki/spaces')).toBe('mycompany');
+    });
+
+    it('extracts site name from domain without protocol', () => {
+      expect(parseAtlassianSiteName('mycompany.atlassian.net')).toBe('mycompany');
+    });
+
+    it('returns raw site name as-is for backward compatibility', () => {
+      expect(parseAtlassianSiteName('mycompany')).toBe('mycompany');
+    });
+
+    it('returns full hostname for custom domains', () => {
+      expect(parseAtlassianSiteName('https://jira.custom-domain.com')).toBe('jira.custom-domain.com');
+    });
+
+    it('trims whitespace from input', () => {
+      expect(parseAtlassianSiteName('  mycompany  ')).toBe('mycompany');
+    });
+
+    it('handles hyphenated site names', () => {
+      expect(parseAtlassianSiteName('https://acme-corp.atlassian.net')).toBe('acme-corp');
+    });
   });
 
   it('every entry has required fields', () => {

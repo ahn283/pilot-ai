@@ -18,7 +18,7 @@
 
 ---
 
-Pilot-AI is a local AI agent that lives on your Mac. Send it natural-language commands from **Slack** or **Telegram**, and it autonomously controls your browser, files, shell, GitHub, Notion, and more — powered by [Claude Code](https://code.claude.com/) CLI.
+Pilot-AI is a local AI agent that lives on your Mac. Send it natural-language commands from **Slack** or **Telegram**, and it autonomously controls your browser, files, shell, GitHub, Notion, Figma, Google Workspace, and more — powered by [Claude Code](https://code.claude.com/) CLI.
 
 ## How it works
 
@@ -27,17 +27,20 @@ Pilot-AI is a local AI agent that lives on your Mac. Send it natural-language co
 │  Slack / Telegram │────▶│   Pilot-AI Agent │────▶│   Claude Code CLI     │
 │  (your phone/PC)  │◀────│   (local daemon) │◀────│   (agentic reasoning) │
 └──────────────────┘     └────────┬────────┘     └──────────────────────┘
-                                  │
-                    ┌─────────────┼─────────────┐
-                    ▼             ▼             ▼
-              🌐 Browser    📁 Files      🔧 Shell
-              (Playwright)  (Read/Write)  (Bash/Git/gh)
-                    ▼             ▼             ▼
-              📝 Notion     🔗 GitHub     📋 Linear
-              (API)         (CLI)         (API)
-                    ▼             ▼             ▼
-              📧 Gmail      📅 Calendar  📁 Google Drive
-              (OAuth2)      (OAuth2)      (OAuth2)
+                                 │
+                   ┌─────────────┼─────────────┐
+                   ▼             ▼             ▼
+             🌐 Browser    📁 Files      🔧 Shell
+             (Playwright)  (Read/Write)  (Bash/Git/gh)
+                   ▼             ▼             ▼
+             📝 Notion     🔗 GitHub     📋 Linear
+             (MCP)         (CLI/MCP)     (MCP)
+                   ▼             ▼             ▼
+             📧 Gmail      📅 Calendar  📁 Google Drive
+             (OAuth2/MCP)  (OAuth2/MCP)  (OAuth2/MCP)
+                   ▼             ▼             ▼
+             🎨 Figma      🐛 Jira      📖 Confluence
+             (MCP)         (MCP)         (MCP)
 ```
 
 - **Runs locally** — your data never leaves your machine
@@ -51,15 +54,20 @@ Pilot-AI is a local AI agent that lives on your Mac. Send it natural-language co
 - **Browser automation** — navigate, click, screenshot, fill forms via Playwright
 - **File & shell access** — read, write, search files and run shell commands
 - **GitHub integration** — releases, PRs, issues via `gh` CLI
-- **Notion integration** — search, create, update pages and databases
-- **Google integration** — Gmail, Google Calendar, and Google Drive via OAuth2
+- **Notion integration** — search, create, update pages and databases via MCP
+- **Google integration** — Gmail, Google Calendar, and Google Drive via OAuth2 with automatic token sync
+- **Figma integration** — access designs, components, variables, and comments via MCP
+- **Atlassian integration** — Jira issues/sprints and Confluence pages via MCP
 - **MCP auto-discovery** — agent detects needed MCP servers and proposes installation with one-click approval
+- **Claude Code MCP sync** — auto-registers MCP servers to `~/.claude.json` for native Claude Code access
+- **Keychain-backed secrets** — MCP server credentials stored securely in macOS Keychain with launcher scripts
 - **Coding agent** — writes code, runs builds, executes tests, and iterates until the task is done
-- **Session continuity** — messages in the same thread share a Claude session with full conversation context
+- **Session continuity** — messages in the same thread share a Claude session with conversation summary buffer
 - **Scheduled tasks** — cron-like jobs with natural language scheduling
 - **Skills system** — teach the agent reusable procedures
 - **Project awareness** — resolves projects, remembers context per project
-- **Live status updates** — see what the agent is doing in real-time (🔍 Searching code... ⚡ Running command...)
+- **Live status updates** — see what the agent is doing in real-time
+- **Token health checker** — automatically refreshes and monitors OAuth token validity
 - **Credential management** — agent can request and store API keys via chat
 - **Safety controls** — dangerous actions require explicit approval via messenger buttons
 
@@ -91,7 +99,7 @@ The interactive wizard guides you through:
 
 1. **Claude connection** — detects CLI auth or configures API key
 2. **Messenger** — choose Slack or Telegram, enter tokens
-3. **Integrations** — optionally connect Google (Gmail, Calendar, Drive), Notion, Obsidian, Figma, Linear
+3. **Integrations** — optionally connect Google (Gmail, Calendar, Drive), Notion, Figma, Linear, Jira, Confluence
 4. **Browser** — installs Playwright Chromium
 5. **Permissions** — requests macOS permissions (Accessibility, Automation, etc.)
 
@@ -125,6 +133,7 @@ Just message your agent in Slack or Telegram:
 | `Check my Google Calendar for today's schedule` | Reads Google Calendar events and summarizes |
 | `Send a draft email to john@example.com` | Composes a Gmail draft with the given content |
 | `List files in my Google Drive "Projects" folder` | Browses Google Drive and lists folder contents |
+| `Show me the latest Figma designs for the homepage` | Fetches Figma file data and component details |
 
 ### Coding Sessions
 
@@ -199,14 +208,31 @@ The agent writes a PRD and checklist before touching any code, gets your confirm
 ## CLI Reference
 
 ```bash
-pilot-ai init          # Interactive setup wizard
-pilot-ai start [-f]    # Start agent daemon (-f to follow logs)
-pilot-ai stop          # Stop agent daemon
-pilot-ai status        # Check if agent is running
-pilot-ai logs [-f]     # View agent logs
+# Core
+pilot-ai init                   # Interactive setup wizard
+pilot-ai start [-f]             # Start agent daemon (-f to follow logs)
+pilot-ai stop                   # Stop agent daemon
+pilot-ai status                 # Check if agent is running
+pilot-ai logs [-f]              # View agent logs
+pilot-ai doctor                 # Diagnose system requirements and macOS permissions
+
+# User management
 pilot-ai adduser <platform> <userId>     # Authorize a user
 pilot-ai removeuser <platform> <userId>  # Remove a user
-pilot-ai listusers     # List authorized users
+pilot-ai listusers                       # List authorized users
+
+# Tool / MCP management
+pilot-ai tools                  # List all available tools with active/inactive status
+pilot-ai addtool <name>         # Add and configure a tool (e.g. notion, figma, gmail)
+pilot-ai removetool <name>      # Remove a tool
+pilot-ai sync-mcp               # Sync MCP servers to Claude Code native settings
+
+# Authentication
+pilot-ai auth google [--services gmail,calendar,drive]  # Google OAuth login
+pilot-ai auth google --revoke                           # Revoke Google tokens
+pilot-ai auth figma                                     # Figma authentication guide
+
+# Project management
 pilot-ai project add <name> <path>       # Register a project
 pilot-ai project list                    # List projects
 pilot-ai project remove <name>           # Remove a project
@@ -259,15 +285,19 @@ Enable the following APIs for your project:
 
 Run `pilot-ai init` and select **Yes** when asked about Google integration. Enter your Client ID and Client Secret, and choose which services to enable.
 
+Alternatively, use the CLI:
+```bash
+pilot-ai auth google --services gmail,calendar,drive
+```
+
 ### 5. Authorize on First Use
 
 When you first ask the agent to access Gmail, Calendar, or Drive, it will:
-1. Send you an OAuth authorization URL via Slack/Telegram
-2. You open the URL in a browser and grant permissions
-3. Copy the authorization code back to the agent
-4. The agent stores the tokens securely and proceeds with the task
+1. Open a local OAuth loopback server and launch your browser
+2. You grant permissions in the browser
+3. The agent stores the tokens securely in macOS Keychain and proceeds with the task
 
-After initial authorization, tokens refresh automatically — no further action needed.
+After initial authorization, tokens refresh automatically — the token health checker monitors validity and refreshes as needed.
 
 ### Supported Commands
 
@@ -277,70 +307,121 @@ After initial authorization, tokens refresh automatically — no further action 
 | **Google Calendar** | `What's on my calendar today?`, `Schedule a meeting tomorrow at 2pm`, `Find free time this week` |
 | **Google Drive** | `List files in my Drive`, `Search for "budget" in Drive`, `Read the contents of "Meeting Notes"` |
 
-## MCP Server Auto-Discovery
+## MCP Server Management
 
-Pilot-AI includes a built-in registry of 13+ MCP (Model Context Protocol) servers. Instead of manually configuring each integration, the agent **automatically detects** when a task needs an MCP server and proposes installation.
+Pilot-AI includes a built-in registry of 18+ MCP (Model Context Protocol) servers. Instead of manually configuring each integration, the agent **automatically detects** when a task needs an MCP server and proposes installation.
 
 ### How it works
 
 1. You ask the agent to do something (e.g., "Check my Sentry errors")
 2. The agent detects that the Sentry MCP server would help
 3. It sends you an approval message via Slack/Telegram:
-   > 🔌 **MCP Server: Sentry** — View and manage Sentry error tracking issues
-   > Package: `@modelcontextprotocol/server-sentry`
+   > **MCP Server: Sentry** — View and manage Sentry error tracking issues
+   > Package: `@sentry/mcp-server`
    > Required: SENTRY_AUTH_TOKEN
 4. You approve and provide the required credentials
-5. The server is installed and immediately available
+5. The server is installed, credentials stored in Keychain, and immediately available
 
 ### Built-in Registry
 
 | Category | Servers |
 |----------|---------|
 | **Design** | Figma |
-| **Development** | GitHub, Sentry, Puppeteer, Filesystem |
-| **Productivity** | Notion, Google Drive, Memory, Brave Search |
-| **Communication** | Slack |
+| **Development** | GitHub, Sentry, Puppeteer, Filesystem, Jira |
+| **Productivity** | Notion, Google Drive, Google Calendar, Memory, Brave Search, Confluence, Wiki (MediaWiki) |
+| **Communication** | Slack, Gmail |
 | **Data** | PostgreSQL, SQLite |
 
-You can also manually manage MCP servers by telling the agent: `List MCP servers`, `Install the GitHub MCP server`, or `Remove the Slack MCP server`.
+### CLI Management
+
+```bash
+pilot-ai tools                  # List all tools with status
+pilot-ai addtool notion         # Install and configure Notion MCP
+pilot-ai removetool notion      # Remove Notion MCP
+pilot-ai sync-mcp               # Sync to Claude Code native settings
+```
+
+You can also manage MCP servers conversationally: `Install the GitHub MCP server`, `Remove the Slack MCP server`, or `List MCP servers`.
 
 ## Architecture
 
 ```
 src/
-├── index.ts              # CLI entry point (commander.js)
-├── cli/                  # CLI subcommands (init, start, stop, status, logs, project, user)
+├── index.ts                    # CLI entry point (commander.js)
+├── cli/                        # CLI subcommands
+│   ├── init.ts                 #   Interactive setup wizard
+│   ├── start.ts / stop.ts      #   Daemon lifecycle
+│   ├── status.ts / logs.ts     #   Monitoring
+│   ├── doctor.ts               #   System diagnostics
+│   ├── tools.ts                #   MCP tool management (addtool/removetool/sync-mcp)
+│   ├── auth.ts                 #   OAuth authentication (google/figma)
+│   ├── user.ts                 #   User allowlist management
+│   ├── project.ts              #   Project registry
+│   └── connection-test.ts      #   Connection verification
 ├── agent/
-│   ├── core.ts           # Main agent loop: message → auth → Claude → response
-│   ├── claude.ts         # Claude Code CLI subprocess with streaming JSONL parsing
-│   ├── heartbeat.ts      # Cron scheduler + approval flow
-│   ├── skills.ts         # Teachable skill engine
-│   ├── memory.ts         # Per-project memory context
-│   └── safety.ts         # Dangerous action approval manager
+│   ├── core.ts                 # Main agent loop: message → auth → Claude → response
+│   ├── claude.ts               # Claude Code CLI subprocess with streaming JSONL parsing
+│   ├── session.ts              # Thread-to-session mapping
+│   ├── conversation-summary.ts # Conversation summary buffer for thread continuity
+│   ├── heartbeat.ts            # Cron scheduler + approval flow
+│   ├── skills.ts               # Teachable skill engine
+│   ├── memory.ts               # Per-project memory context
+│   ├── safety.ts               # Dangerous action approval manager
+│   ├── planner.ts              # PRD/checklist-driven development workflow
+│   ├── mcp-manager.ts          # MCP server lifecycle management
+│   ├── mcp-launcher.ts         # Keychain-backed MCP launcher scripts
+│   ├── token-refresher.ts      # OAuth token health monitoring and auto-refresh
+│   ├── project.ts              # Project resolution and analysis
+│   ├── project-analyzer.ts     # Project structure analysis
+│   ├── queue.ts                # Message queue
+│   ├── pipeline.ts             # Message processing pipeline
+│   ├── multi-agent.ts          # Multi-agent coordination
+│   ├── worktree.ts             # Git worktree management
+│   └── tool-descriptions.ts    # Tool description registry
 ├── messenger/
-│   ├── adapter.ts        # MessengerAdapter interface
-│   ├── slack.ts          # Slack Bolt SDK (Socket Mode)
-│   └── telegram.ts       # Telegraf (Long Polling)
-├── tools/                # Tool wrappers (browser, notion, github, filesystem, shell, etc.)
+│   ├── adapter.ts              # MessengerAdapter interface
+│   ├── factory.ts              # Messenger factory
+│   ├── slack.ts                # Slack Bolt SDK (Socket Mode)
+│   ├── telegram.ts             # Telegraf (Long Polling)
+│   └── split.ts                # Long message splitting
+├── tools/                      # Tool wrappers and MCP integrations
+│   ├── mcp-registry.ts         #   Built-in MCP server registry (18+ servers)
+│   ├── google-auth.ts          #   Shared Google OAuth module
+│   ├── browser.ts              #   Playwright browser automation
+│   ├── filesystem.ts           #   File read/write/search
+│   ├── shell.ts                #   Shell command execution
+│   ├── github.ts               #   GitHub CLI integration
+│   ├── notion.ts               #   Notion API
+│   ├── figma.ts / figma-mcp.ts #   Figma integration
+│   ├── email.ts                #   Gmail
+│   ├── google-calendar.ts      #   Google Calendar
+│   ├── google-drive.ts         #   Google Drive
+│   ├── linear.ts               #   Linear
+│   └── ...                     #   clipboard, image, notification, obsidian, voice, vscode
 ├── security/
-│   ├── auth.ts           # User allowlist check
-│   ├── permissions.ts    # macOS TCC permission management + auto-approver
-│   ├── audit.ts          # Audit logging
-│   └── sandbox.ts        # Filesystem sandbox
+│   ├── auth.ts                 # User allowlist check
+│   ├── permissions.ts          # macOS TCC permission management
+│   ├── audit.ts                # Audit logging
+│   ├── prompt-guard.ts         # Prompt injection detection
+│   └── sandbox.ts              # Filesystem sandbox
 └── config/
-    ├── schema.ts         # Config schema (zod)
-    ├── store.ts          # ~/.pilot/ config + credentials store
-    └── keychain.ts       # macOS Keychain integration
+    ├── schema.ts               # Config schema (zod)
+    ├── store.ts                # ~/.pilot/ config + credentials store
+    ├── keychain.ts             # macOS Keychain integration
+    ├── claude-code-sync.ts     # Sync MCP config to ~/.claude.json
+    └── claude-code-sync.test.ts
 ```
 
 ## How It Stays Secure
 
 - **User allowlist** — only authorized Slack/Telegram user IDs can interact
 - **Approval flow** — dangerous actions (file deletion, shell commands, etc.) prompt for confirmation via messenger buttons
-- **macOS Keychain** — all tokens and API keys are stored encrypted
+- **macOS Keychain** — all tokens, API keys, and MCP secrets are stored encrypted in Keychain
+- **Keychain-backed launchers** — MCP servers receive secrets via launcher scripts that read from Keychain at runtime, never from disk
 - **Filesystem sandbox** — configurable allowed/blocked paths
 - **Audit log** — every command and result is logged to `~/.pilot/logs/audit.jsonl`
-- **Prompt injection guard** — basic detection for prompt injection attempts
+- **Prompt injection guard** — detection for prompt injection attempts
+- **Token health monitoring** — OAuth tokens are automatically validated and refreshed
 
 ## Configuration
 
@@ -350,6 +431,8 @@ All config lives in `~/.pilot/`:
 ~/.pilot/
 ├── config.json       # Main configuration
 ├── credentials/      # Service API keys (chmod 700)
+├── mcp-config.json   # MCP server configuration
+├── mcp-launchers/    # Keychain-backed MCP launcher scripts
 ├── memory/           # Agent memory per project
 ├── skills/           # Registered skills
 └── logs/             # Agent and audit logs

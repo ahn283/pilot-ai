@@ -1,6 +1,6 @@
 import inquirer from 'inquirer';
 import { exec } from 'node:child_process';
-import { MCP_REGISTRY } from '../tools/mcp-registry.js';
+import { MCP_REGISTRY, parseAtlassianSiteName } from '../tools/mcp-registry.js';
 import { getInstalledServers, installMcpServer, uninstallMcpServer } from '../agent/mcp-manager.js';
 import { setSecret } from '../config/keychain.js';
 import { isGhAuthenticated } from '../tools/github.js';
@@ -148,7 +148,7 @@ export async function runAddTool(toolName: string): Promise<void> {
       console.log(`\n  Atlassian ${toolLabel} Setup Guide:`);
       console.log('  1. Go to https://id.atlassian.com/manage-profile/security/api-tokens');
       console.log('  2. Click "Create API token" and copy it');
-      console.log('  3. Note your site name (e.g. "mycompany" from mycompany.atlassian.net)\n');
+      console.log('  3. Copy your Atlassian URL (e.g. https://mycompany.atlassian.net)\n');
       break;
     }
     case 'wiki':
@@ -182,11 +182,17 @@ export async function runAddTool(toolName: string): Promise<void> {
     envValues['SLACK_TEAM_ID'] = slackAnswers.teamId;
   } else if (toolId === 'jira' || toolId === 'confluence') {
     const atlassianAnswers = await inquirer.prompt([
-      { type: 'input', name: 'siteName', message: 'Atlassian site name:', validate: (i: string) => i.length > 0 || 'Site name required.' },
+      {
+        type: 'input', name: 'siteUrl',
+        message: 'Atlassian URL (e.g. https://mycompany.atlassian.net):',
+        validate: (i: string) => i.length > 0 || 'URL required.',
+      },
       { type: 'input', name: 'email', message: 'Atlassian account email:', validate: (i: string) => i.includes('@') || 'Valid email required.' },
       { type: 'password', name: 'apiToken', message: 'Atlassian API Token:', mask: '*', validate: (i: string) => i.length > 5 || 'Valid token required.' },
     ]);
-    envValues['ATLASSIAN_SITE_NAME'] = atlassianAnswers.siteName;
+    const siteName = parseAtlassianSiteName(atlassianAnswers.siteUrl);
+    console.log(`  → Site name: ${siteName}`);
+    envValues['ATLASSIAN_SITE_NAME'] = siteName;
     envValues['ATLASSIAN_USER_EMAIL'] = atlassianAnswers.email;
     envValues['ATLASSIAN_API_TOKEN'] = atlassianAnswers.apiToken;
     await setSecret(`atlassian-api-token-${toolId}`, atlassianAnswers.apiToken);

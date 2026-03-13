@@ -11,7 +11,7 @@ import type { PilotConfig } from '../config/schema.js';
 import { defaultConfig } from '../config/schema.js';
 import { testSlackConnection, testTelegramConnection } from './connection-test.js';
 import { installMcpServer } from '../agent/mcp-manager.js';
-import { MCP_REGISTRY, type McpServerEntry } from '../tools/mcp-registry.js';
+import { MCP_REGISTRY, type McpServerEntry, parseAtlassianSiteName } from '../tools/mcp-registry.js';
 import { requestPermissions, triggerBulkAutomationPermissions } from '../security/permissions.js';
 import { isGhAuthenticated } from '../tools/github.js';
 import {
@@ -595,13 +595,19 @@ async function collectAndRegisterMcpTool(toolId: string, result: Partial<PilotCo
       console.log(`\n  Atlassian ${toolLabel} Setup Guide:`);
       console.log('  1. Go to https://id.atlassian.com/manage-profile/security/api-tokens');
       console.log('  2. Click "Create API token" and copy it');
-      console.log('  3. Note your site name (e.g. "mycompany" from mycompany.atlassian.net)\n');
+      console.log('  3. Copy your Atlassian URL (e.g. https://mycompany.atlassian.net)\n');
       const atlassianAnswers = await inquirer.prompt([
-        { type: 'input', name: 'siteName', message: 'Atlassian site name:', validate: (i: string) => i.length > 0 || 'Site name required.' },
+        {
+          type: 'input', name: 'siteUrl',
+          message: 'Atlassian URL (e.g. https://mycompany.atlassian.net):',
+          validate: (i: string) => i.length > 0 || 'URL required.',
+        },
         { type: 'input', name: 'email', message: 'Atlassian account email:', validate: (i: string) => i.includes('@') || 'Valid email required.' },
         { type: 'password', name: 'apiToken', message: 'Atlassian API Token:', mask: '*', validate: (i: string) => i.length > 5 || 'Valid token required.' },
       ]);
-      envValues['ATLASSIAN_SITE_NAME'] = atlassianAnswers.siteName;
+      const siteName = parseAtlassianSiteName(atlassianAnswers.siteUrl);
+      console.log(`  → Site name: ${siteName}`);
+      envValues['ATLASSIAN_SITE_NAME'] = siteName;
       envValues['ATLASSIAN_USER_EMAIL'] = atlassianAnswers.email;
       envValues['ATLASSIAN_API_TOKEN'] = atlassianAnswers.apiToken;
       await setSecret(`atlassian-api-token-${toolId}`, atlassianAnswers.apiToken);

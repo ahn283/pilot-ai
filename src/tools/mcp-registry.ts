@@ -185,7 +185,7 @@ export const MCP_REGISTRY: McpServerEntry[] = [
     description: 'Manage Jira issues, boards, and sprints',
     npmPackage: '@aashari/mcp-server-atlassian-jira',
     envVars: {
-      ATLASSIAN_SITE_NAME: 'Atlassian site name (e.g. mycompany from mycompany.atlassian.net)',
+      ATLASSIAN_SITE_NAME: 'Atlassian site name (extracted from URL)',
       ATLASSIAN_USER_EMAIL: 'Atlassian account email',
       ATLASSIAN_API_TOKEN: 'Atlassian API Token',
     },
@@ -198,7 +198,7 @@ export const MCP_REGISTRY: McpServerEntry[] = [
     description: 'Search, read, and create Confluence pages and spaces',
     npmPackage: '@aashari/mcp-server-atlassian-confluence',
     envVars: {
-      ATLASSIAN_SITE_NAME: 'Atlassian site name (e.g. mycompany from mycompany.atlassian.net)',
+      ATLASSIAN_SITE_NAME: 'Atlassian site name (extracted from URL)',
       ATLASSIAN_USER_EMAIL: 'Atlassian account email',
       ATLASSIAN_API_TOKEN: 'Atlassian API Token',
     },
@@ -217,6 +217,41 @@ export const MCP_REGISTRY: McpServerEntry[] = [
     category: 'productivity',
   },
 ];
+
+/**
+ * Extracts the Atlassian site name from a URL or raw site name input.
+ * Accepts:
+ *   - Full URL: https://mycompany.atlassian.net or https://mycompany.atlassian.net/...
+ *   - Domain: mycompany.atlassian.net
+ *   - Site name only: mycompany
+ * Returns the site name (e.g. "mycompany").
+ */
+export function parseAtlassianSiteName(input: string): string {
+  const trimmed = input.trim();
+
+  // Try to parse as URL or domain
+  try {
+    // Add protocol if missing to make URL parsing work
+    const urlStr = trimmed.includes('://') ? trimmed : `https://${trimmed}`;
+    const url = new URL(urlStr);
+    const hostname = url.hostname;
+
+    // Standard Atlassian Cloud: mycompany.atlassian.net
+    if (hostname.endsWith('.atlassian.net')) {
+      return hostname.replace('.atlassian.net', '');
+    }
+
+    // Custom domain or full hostname — return the full hostname
+    // so users with custom domains get a meaningful value
+    if (hostname.includes('.')) {
+      return hostname;
+    }
+  } catch {
+    // Not a URL, treat as raw site name
+  }
+
+  return trimmed;
+}
 
 /**
  * Finds registry entries matching any of the given keywords.

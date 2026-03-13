@@ -136,7 +136,7 @@ function isNonSecretEnvVar(key: string, value: string): boolean {
 
   // Known non-secret env var patterns
   const nonSecretPatterns = [
-    'SITE_NAME', 'USER_EMAIL', 'TEAM_ID',
+    'SITE_NAME', 'SITE_URL', 'USER_EMAIL', 'TEAM_ID',
     '_PATH', '_DIR', '_FILE', '_CONFIG',
     '_PORT',
   ];
