@@ -75,11 +75,17 @@ export class AgentCore {
     log('Permission watcher started.');
 
     // Check GitHub auth status on startup and periodically (every hour)
-    this.checkGitHubAuth().catch(() => {});
+    // Only if github MCP server is registered in mcp-config.json
     if (this.config.github?.enabled) {
-      this.githubCheckInterval = setInterval(() => {
+      const mcpConfigForGh = await loadMcpConfig();
+      if ('github' in mcpConfigForGh.mcpServers) {
         this.checkGitHubAuth().catch(() => {});
-      }, 60 * 60 * 1000);
+        this.githubCheckInterval = setInterval(() => {
+          this.checkGitHubAuth().catch(() => {});
+        }, 60 * 60 * 1000);
+      } else {
+        log('GitHub enabled in config but not registered as MCP server. Skipping auth check.');
+      }
     }
 
     // Migrate existing MCP servers to secure Keychain-backed launchers
