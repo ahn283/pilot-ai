@@ -1,6 +1,6 @@
 <p align="center">
   <a href="https://github.com/ahn283/pilot-ai">
-    <img src="https://raw.githubusercontent.com/ahn283/pilot-ai/main/design/logo_light.svg" alt="Pilot-AI Logo" width="360" />
+    <img src="https://raw.githubusercontent.com/ahn283/pilot-ai/main/design/pilot_ai.png" alt="Pilot-AI Logo" width="480" />
   </a>
 </p>
 
