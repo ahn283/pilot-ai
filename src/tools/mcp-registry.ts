@@ -19,7 +19,7 @@ export interface McpServerEntry {
   /** Keywords that trigger auto-discovery */
   keywords: string[];
   /** Category for grouping */
-  category: 'design' | 'productivity' | 'development' | 'data' | 'communication';
+  category: 'design' | 'productivity' | 'development' | 'data' | 'communication' | 'qa';
   /** Transport type: 'stdio' (default, npx) or 'http' (remote URL) */
   transport?: 'stdio' | 'http';
   /** Remote URL for http transport servers */
@@ -215,6 +215,18 @@ export const MCP_REGISTRY: McpServerEntry[] = [
     },
     keywords: ['wiki', 'mediawiki', 'wikipedia', 'wiki page'],
     category: 'productivity',
+  },
+  {
+    id: 'sentinel-ai',
+    name: 'Sentinel AI',
+    description: 'QA automation — run Playwright/Maestro E2E tests, manage test cases, and generate reports',
+    npmPackage: 'sentinel-ai',
+    envVars: {
+      SENTINEL_REGISTRY_DIR: 'App registry directory path (optional)',
+      SENTINEL_REPORTS_DIR: 'Report output directory path (optional)',
+    },
+    keywords: ['test', 'qa', 'testing', 'playwright', 'maestro', 'e2e', 'sentinel', 'test runner', 'analytics', 'data log'],
+    category: 'qa',
   },
 ];
 

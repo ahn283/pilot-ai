@@ -10,7 +10,8 @@ import { setSecret } from '../config/keychain.js';
 import type { PilotConfig } from '../config/schema.js';
 import { defaultConfig } from '../config/schema.js';
 import { testSlackConnection, testTelegramConnection } from './connection-test.js';
-import { installMcpServer } from '../agent/mcp-manager.js';
+import { installMcpServer, registerSentinelAi } from '../agent/mcp-manager.js';
+import { addSentinelAi } from './tools.js';
 import { MCP_REGISTRY, type McpServerEntry, parseAtlassianSiteName } from '../tools/mcp-registry.js';
 import { requestPermissions, triggerBulkAutomationPermissions } from '../security/permissions.js';
 import { isGhAuthenticated } from '../tools/github.js';
@@ -341,7 +342,7 @@ function getInitToolChoices(): InitToolChoice[] {
   }
 
   // Sort by category
-  const catOrder: Record<string, number> = { design: 0, productivity: 1, development: 2, data: 3, communication: 4 };
+  const catOrder: Record<string, number> = { design: 0, productivity: 1, development: 2, data: 3, communication: 4, qa: 5 };
   result.sort((a, b) => (catOrder[a.category] ?? 99) - (catOrder[b.category] ?? 99));
   return result;
 }
@@ -354,8 +355,9 @@ async function setupIntegrations(): Promise<Partial<PilotConfig>> {
   // Group by category for display
   let lastCat = '';
   const choices = tools.map((t) => {
+    const catLabel = t.category === 'qa' ? 'QA / Testing' : t.category.charAt(0).toUpperCase() + t.category.slice(1);
     const separator = t.category !== lastCat
-      ? new inquirer.Separator(`\n  ${t.category.charAt(0).toUpperCase() + t.category.slice(1)}`)
+      ? new inquirer.Separator(`\n  ${catLabel}`)
       : undefined;
     lastCat = t.category;
     const choice = { name: `${t.name} — ${t.description}`, value: t.id };
@@ -525,6 +527,12 @@ async function setupIntegrations(): Promise<Partial<PilotConfig>> {
 async function collectAndRegisterMcpTool(toolId: string, result: Partial<PilotConfig>): Promise<void> {
   const entry = MCP_REGISTRY.find((e) => e.id === toolId);
   if (!entry) return;
+
+  // Sentinel AI has its own setup flow with mode selection
+  if (toolId === 'sentinel-ai') {
+    await addSentinelAi();
+    return;
+  }
 
   const envValues: Record<string, string> = {};
 

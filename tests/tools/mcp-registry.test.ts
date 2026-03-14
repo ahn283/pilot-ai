@@ -74,6 +74,21 @@ describe('mcp-registry', () => {
     });
   });
 
+  it('sentinel-ai has qa category and envVars', () => {
+    const entry = getRegistryEntry('sentinel-ai');
+    expect(entry).toBeDefined();
+    expect(entry!.category).toBe('qa');
+    expect(entry!.envVars).toHaveProperty('SENTINEL_REGISTRY_DIR');
+    expect(entry!.envVars).toHaveProperty('SENTINEL_REPORTS_DIR');
+    expect(entry!.keywords).toContain('playwright');
+    expect(entry!.keywords).toContain('qa');
+  });
+
+  it('category type includes qa', () => {
+    const categories = new Set(MCP_REGISTRY.map((e) => e.category));
+    expect(categories.has('qa')).toBe(true);
+  });
+
   it('every entry has required fields', () => {
     for (const entry of MCP_REGISTRY) {
       expect(entry.id).toBeTruthy();

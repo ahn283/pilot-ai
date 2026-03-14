@@ -1,7 +1,7 @@
 import inquirer from 'inquirer';
 import { exec } from 'node:child_process';
 import { MCP_REGISTRY, parseAtlassianSiteName } from '../tools/mcp-registry.js';
-import { getInstalledServers, installMcpServer, uninstallMcpServer } from '../agent/mcp-manager.js';
+import { getInstalledServers, installMcpServer, uninstallMcpServer, registerSentinelAi } from '../agent/mcp-manager.js';
 import { setSecret } from '../config/keychain.js';
 import { isGhAuthenticated } from '../tools/github.js';
 import { loadConfig, saveConfig } from '../config/store.js';
@@ -102,6 +102,10 @@ export async function runAddTool(toolName: string): Promise<void> {
   }
   if (toolId === 'google-oauth' || toolId === 'google') {
     await addGoogleOAuth();
+    return;
+  }
+  if (toolId === 'sentinel-ai' || toolId === 'sentinel') {
+    await addSentinelAi();
     return;
   }
 
@@ -583,6 +587,94 @@ async function addGoogleOAuth(): Promise<void> {
 /**
  * Runs OAuth flow during addtool. Non-fatal on failure.
  */
+/**
+ * Sentinel AI setup — supports npx and local build modes.
+ * Exported for reuse in init.ts.
+ */
+export async function addSentinelAi(): Promise<boolean> {
+  // Check if already installed
+  const installed = await getInstalledServers();
+  if (installed.includes('sentinel-ai')) {
+    const { reconfigure } = await inquirer.prompt([{
+      type: 'confirm', name: 'reconfigure',
+      message: 'Sentinel AI is already registered. Reconfigure?',
+      default: false,
+    }]);
+    if (!reconfigure) return true;
+  }
+
+  console.log('\n  ── Sentinel AI Setup ──\n');
+  console.log('  Sentinel AI is a QA automation infrastructure that runs Playwright/Maestro tests.');
+  console.log('  Docs: https://github.com/eodin/sentinel-ai\n');
+
+  const { mode } = await inquirer.prompt([{
+    type: 'list', name: 'mode',
+    message: 'Installation mode:',
+    choices: [
+      { name: 'npx (recommended — uses published npm package)', value: 'npx' },
+      { name: 'Local build (use a local clone of sentinel-ai)', value: 'local' },
+    ],
+  }]);
+
+  let localPath: string | undefined;
+  if (mode === 'local') {
+    console.log('\n  Make sure you have built sentinel-ai first: cd sentinel-ai && npm run build\n');
+    const { entryPath } = await inquirer.prompt([{
+      type: 'input', name: 'entryPath',
+      message: 'Path to sentinel-ai MCP server entry point:',
+      validate: async (input: string) => {
+        if (!input.trim()) return 'Path is required.';
+        const resolved = input.startsWith('~')
+          ? input.replace('~', (await import('node:os')).default.homedir())
+          : input;
+        const { default: fsMod } = await import('node:fs');
+        if (!fsMod.existsSync(resolved)) return `File not found: ${resolved}`;
+        return true;
+      },
+    }]);
+    localPath = entryPath.startsWith('~')
+      ? entryPath.replace('~', (await import('node:os')).default.homedir())
+      : entryPath;
+  }
+
+  // Optional environment variables
+  const env: Record<string, string> = {};
+  const { configEnv } = await inquirer.prompt([{
+    type: 'confirm', name: 'configEnv',
+    message: 'Configure optional environment variables? (registry/reports directory)',
+    default: false,
+  }]);
+
+  if (configEnv) {
+    const { registryDir } = await inquirer.prompt([{
+      type: 'input', name: 'registryDir',
+      message: 'SENTINEL_REGISTRY_DIR (app registry directory, press Enter to skip):',
+    }]);
+    if (registryDir.trim()) env['SENTINEL_REGISTRY_DIR'] = registryDir.trim();
+
+    const { reportsDir } = await inquirer.prompt([{
+      type: 'input', name: 'reportsDir',
+      message: 'SENTINEL_REPORTS_DIR (report output directory, press Enter to skip):',
+    }]);
+    if (reportsDir.trim()) env['SENTINEL_REPORTS_DIR'] = reportsDir.trim();
+  }
+
+  const result = await registerSentinelAi({
+    mode: mode as 'npx' | 'local',
+    localPath,
+    env: Object.keys(env).length > 0 ? env : undefined,
+  });
+
+  if (result.success) {
+    const via = mode === 'npx' ? 'npx sentinel-ai' : `local build (${localPath})`;
+    console.log(`\n  ✓ Sentinel AI registered via ${via}.\n`);
+    return true;
+  } else {
+    console.log(`\n  ✗ Failed to register Sentinel AI: ${result.error}\n`);
+    return false;
+  }
+}
+
 async function runAddToolOAuthFlow(
   clientId: string,
   clientSecret: string,
