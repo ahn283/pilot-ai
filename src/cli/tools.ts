@@ -104,7 +104,7 @@ export async function runAddTool(toolName: string): Promise<void> {
     await addGoogleOAuth();
     return;
   }
-  if (toolId === 'sentinel-ai' || toolId === 'sentinel') {
+  if (toolId === 'sentinel-qa' || toolId === 'sentinel') {
     await addSentinelAi();
     return;
   }
@@ -594,7 +594,7 @@ async function addGoogleOAuth(): Promise<void> {
 export async function addSentinelAi(): Promise<boolean> {
   // Check if already installed
   const installed = await getInstalledServers();
-  if (installed.includes('sentinel-ai')) {
+  if (installed.includes('sentinel-qa')) {
     const { reconfigure } = await inquirer.prompt([{
       type: 'confirm', name: 'reconfigure',
       message: 'Sentinel AI is already registered. Reconfigure?',
@@ -605,23 +605,23 @@ export async function addSentinelAi(): Promise<boolean> {
 
   console.log('\n  ── Sentinel AI Setup ──\n');
   console.log('  Sentinel AI is a QA automation infrastructure that runs Playwright/Maestro tests.');
-  console.log('  Docs: https://github.com/eodin/sentinel-ai\n');
+  console.log('  Docs: https://github.com/eodin/sentinel-qa\n');
 
   const { mode } = await inquirer.prompt([{
     type: 'list', name: 'mode',
     message: 'Installation mode:',
     choices: [
       { name: 'npx (recommended — uses published npm package)', value: 'npx' },
-      { name: 'Local build (use a local clone of sentinel-ai)', value: 'local' },
+      { name: 'Local build (use a local clone of sentinel-qa)', value: 'local' },
     ],
   }]);
 
   let localPath: string | undefined;
   if (mode === 'local') {
-    console.log('\n  Make sure you have built sentinel-ai first: cd sentinel-ai && npm run build\n');
+    console.log('\n  Make sure you have built sentinel-qa first: cd sentinel-qa && npm run build\n');
     const { entryPath } = await inquirer.prompt([{
       type: 'input', name: 'entryPath',
-      message: 'Path to sentinel-ai MCP server entry point:',
+      message: 'Path to sentinel-qa MCP server entry point:',
       validate: async (input: string) => {
         if (!input.trim()) return 'Path is required.';
         const resolved = input.startsWith('~')
@@ -666,7 +666,7 @@ export async function addSentinelAi(): Promise<boolean> {
   });
 
   if (result.success) {
-    const via = mode === 'npx' ? 'npx sentinel-ai' : `local build (${localPath})`;
+    const via = mode === 'npx' ? 'npx sentinel-qa' : `local build (${localPath})`;
     console.log(`\n  ✓ Sentinel AI registered via ${via}.\n`);
     return true;
   } else {

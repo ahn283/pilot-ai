@@ -217,10 +217,10 @@ export const MCP_REGISTRY: McpServerEntry[] = [
     category: 'productivity',
   },
   {
-    id: 'sentinel-ai',
+    id: 'sentinel-qa',
     name: 'Sentinel AI',
     description: 'QA automation — run Playwright/Maestro E2E tests, manage test cases, and generate reports',
-    npmPackage: 'sentinel-ai',
+    npmPackage: 'sentinel-qa',
     envVars: {
       SENTINEL_REGISTRY_DIR: 'App registry directory path (optional)',
       SENTINEL_REPORTS_DIR: 'Report output directory path (optional)',

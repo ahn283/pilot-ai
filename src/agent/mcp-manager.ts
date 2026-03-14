@@ -203,11 +203,11 @@ export async function listAvailableServers(): Promise<Array<McpServerEntry & { i
 }
 
 /**
- * Registers the sentinel-ai MCP server with support for both npx and local build modes.
+ * Registers the sentinel-qa MCP server with support for both npx and local build modes.
  */
 export interface SentinelAiOptions {
   mode: 'npx' | 'local';
-  /** Absolute path to the sentinel-ai MCP server entry point (local mode only) */
+  /** Absolute path to the sentinel-qa MCP server entry point (local mode only) */
   localPath?: string;
   /** Optional environment variables (SENTINEL_REGISTRY_DIR, SENTINEL_REPORTS_DIR) */
   env?: Record<string, string>;
@@ -216,7 +216,7 @@ export interface SentinelAiOptions {
 export async function registerSentinelAi(options: SentinelAiOptions): Promise<{ success: boolean; error?: string }> {
   try {
     const serverConfig: McpConfig['mcpServers'][string] = options.mode === 'npx'
-      ? { command: 'npx', args: ['-y', 'sentinel-ai'] }
+      ? { command: 'npx', args: ['-y', 'sentinel-qa'] }
       : { command: 'node', args: [options.localPath!] };
 
     if (options.env && Object.keys(options.env).length > 0) {
@@ -225,11 +225,11 @@ export async function registerSentinelAi(options: SentinelAiOptions): Promise<{ 
 
     // Save to mcp-config.json
     const mcpConfig = await loadMcpConfig();
-    mcpConfig.mcpServers['sentinel-ai'] = serverConfig;
+    mcpConfig.mcpServers['sentinel-qa'] = serverConfig;
     await saveMcpConfig(mcpConfig);
 
     // Sync to Claude Code
-    await syncToClaudeCode('sentinel-ai', serverConfig).catch(() => {});
+    await syncToClaudeCode('sentinel-qa', serverConfig).catch(() => {});
 
     return { success: true };
   } catch (err) {

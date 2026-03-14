@@ -327,38 +327,38 @@ describe('mcp-manager', () => {
   });
 
   describe('registerSentinelAi', () => {
-    it('registers sentinel-ai in npx mode', async () => {
+    it('registers sentinel-qa in npx mode', async () => {
       const result = await registerSentinelAi({ mode: 'npx' });
       expect(result.success).toBe(true);
-      const config = mockMcpConfig.mcpServers['sentinel-ai'] as { command: string; args: string[]; env?: Record<string, string> };
+      const config = mockMcpConfig.mcpServers['sentinel-qa'] as { command: string; args: string[]; env?: Record<string, string> };
       expect(config.command).toBe('npx');
-      expect(config.args).toEqual(['-y', 'sentinel-ai']);
+      expect(config.args).toEqual(['-y', 'sentinel-qa']);
       expect(config.env).toBeUndefined();
     });
 
-    it('registers sentinel-ai in local build mode', async () => {
-      const localPath = '/Users/test/sentinel-ai/packages/mcp-server/dist/index.js';
+    it('registers sentinel-qa in local build mode', async () => {
+      const localPath = '/Users/test/sentinel-qa/packages/mcp-server/dist/index.js';
       const result = await registerSentinelAi({ mode: 'local', localPath });
       expect(result.success).toBe(true);
-      const config = mockMcpConfig.mcpServers['sentinel-ai'] as { command: string; args: string[] };
+      const config = mockMcpConfig.mcpServers['sentinel-qa'] as { command: string; args: string[] };
       expect(config.command).toBe('node');
       expect(config.args).toEqual([localPath]);
     });
 
-    it('registers sentinel-ai with environment variables', async () => {
+    it('registers sentinel-qa with environment variables', async () => {
       const result = await registerSentinelAi({
         mode: 'npx',
         env: { SENTINEL_REPORTS_DIR: '/tmp/reports' },
       });
       expect(result.success).toBe(true);
-      const config = mockMcpConfig.mcpServers['sentinel-ai'] as { command: string; args: string[]; env?: Record<string, string> };
+      const config = mockMcpConfig.mcpServers['sentinel-qa'] as { command: string; args: string[]; env?: Record<string, string> };
       expect(config.env).toEqual({ SENTINEL_REPORTS_DIR: '/tmp/reports' });
     });
 
     it('does not set env field when env is empty', async () => {
       const result = await registerSentinelAi({ mode: 'npx', env: {} });
       expect(result.success).toBe(true);
-      const config = mockMcpConfig.mcpServers['sentinel-ai'] as { command: string; env?: Record<string, string> };
+      const config = mockMcpConfig.mcpServers['sentinel-qa'] as { command: string; env?: Record<string, string> };
       expect(config.env).toBeUndefined();
     });
   });

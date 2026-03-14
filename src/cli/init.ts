@@ -529,7 +529,7 @@ async function collectAndRegisterMcpTool(toolId: string, result: Partial<PilotCo
   if (!entry) return;
 
   // Sentinel AI has its own setup flow with mode selection
-  if (toolId === 'sentinel-ai') {
+  if (toolId === 'sentinel-qa') {
     await addSentinelAi();
     return;
   }

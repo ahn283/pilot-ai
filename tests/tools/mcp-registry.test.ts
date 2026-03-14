@@ -74,8 +74,8 @@ describe('mcp-registry', () => {
     });
   });
 
-  it('sentinel-ai has qa category and envVars', () => {
-    const entry = getRegistryEntry('sentinel-ai');
+  it('sentinel-qa has qa category and envVars', () => {
+    const entry = getRegistryEntry('sentinel-qa');
     expect(entry).toBeDefined();
     expect(entry!.category).toBe('qa');
     expect(entry!.envVars).toHaveProperty('SENTINEL_REGISTRY_DIR');
