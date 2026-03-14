@@ -1,4 +1,4 @@
-# sentinel-ai × pilot-ai 연동 가이드
+# sentinel-qa × pilot-ai 연동 가이드
 
 > 작성일: 2026-03-14
 > 대상: pilot-ai 개발팀
@@ -7,11 +7,11 @@
 
 ## 1. 개요
 
-sentinel-ai는 pilot-ai의 QA 실행 인프라입니다.
-pilot-ai가 PRD에서 테스트케이스를 생성하면, sentinel-ai가 이를 Playwright(웹) / Maestro(Flutter)로 실행하고 결과를 반환합니다.
+sentinel-qa는 pilot-ai의 QA 실행 인프라입니다.
+pilot-ai가 PRD에서 테스트케이스를 생성하면, sentinel-qa가 이를 Playwright(웹) / Maestro(Flutter)로 실행하고 결과를 반환합니다.
 
 ```
-pilot-ai (LLM) ──stdio──▶ sentinel-ai (MCP 서버)
+pilot-ai (LLM) ──stdio──▶ sentinel-qa (MCP 서버)
                               ├─ Playwright (웹 E2E)
                               ├─ Maestro (Flutter, 예정)
                               └─ Data Log QA (analytics 검증, 예정)
@@ -23,11 +23,11 @@ pilot-ai (LLM) ──stdio──▶ sentinel-ai (MCP 서버)
 
 ### 개발 환경 (로컬 빌드)
 
-sentinel-ai 레포를 클론하고 빌드한 뒤 로컬 경로로 등록합니다.
+sentinel-qa 레포를 클론하고 빌드한 뒤 로컬 경로로 등록합니다.
 
 ```bash
-git clone https://github.com/eodin/sentinel-ai.git
-cd sentinel-ai
+git clone https://github.com/eodin/sentinel-qa.git
+cd sentinel-qa
 npm install
 npm run build
 ```
@@ -37,9 +37,9 @@ npm run build
 ```json
 {
   "mcpServers": {
-    "sentinel-ai": {
+    "sentinel-qa": {
       "command": "node",
-      "args": ["/absolute/path/to/sentinel-ai/packages/mcp-server/dist/index.js"]
+      "args": ["/absolute/path/to/sentinel-qa/packages/mcp-server/dist/index.js"]
     }
   }
 }
@@ -52,9 +52,9 @@ npm 배포 후에는 `npx`로 실행합니다.
 ```json
 {
   "mcpServers": {
-    "sentinel-ai": {
+    "sentinel-qa": {
       "command": "npx",
-      "args": ["sentinel-ai"]
+      "args": ["sentinel-qa"]
     }
   }
 }
@@ -62,12 +62,12 @@ npm 배포 후에는 `npx`로 실행합니다.
 
 ### 환경 변수
 
-sentinel-ai는 **API 키가 필요 없습니다**. 선택적 환경 변수:
+sentinel-qa는 **API 키가 필요 없습니다**. 선택적 환경 변수:
 
 | 변수 | 설명 | 기본값 |
 |------|------|--------|
-| `SENTINEL_REGISTRY_DIR` | 앱 레지스트리 디렉토리 경로 | sentinel-ai 내 `registry/` |
-| `SENTINEL_REPORTS_DIR` | 리포트 저장 디렉토리 경로 | sentinel-ai 내 `reports/` |
+| `SENTINEL_REGISTRY_DIR` | 앱 레지스트리 디렉토리 경로 | sentinel-qa 내 `registry/` |
+| `SENTINEL_REPORTS_DIR` | 리포트 저장 디렉토리 경로 | sentinel-qa 내 `reports/` |
 | `DEBUG` | 디버그 로그 활성화 | (미설정) |
 
 ### 리포트 저장 구조
@@ -104,7 +104,7 @@ reports/
 
 ## 3. MCP 도구 스펙
 
-sentinel-ai는 5개의 MCP 도구를 제공합니다.
+sentinel-qa는 5개의 MCP 도구를 제공합니다.
 
 ### 3.1. `list_apps`
 
@@ -140,7 +140,7 @@ sentinel-ai는 5개의 MCP 도구를 제공합니다.
 
 ### 3.3. `save_tests`
 
-생성된 테스트케이스를 sentinel-ai에 저장합니다.
+생성된 테스트케이스를 sentinel-qa에 저장합니다.
 
 **Input**:
 ```json
@@ -217,7 +217,7 @@ sentinel-ai는 5개의 MCP 도구를 제공합니다.
       "screenshotPath": "/tmp/screenshot-1.png"
     }
   ],
-  "report_path": "/path/to/sentinel-ai/reports/arden-web/2026-03-14T10-30-00-000Z/report.md"
+  "report_path": "/path/to/sentinel-qa/reports/arden-web/2026-03-14T10-30-00-000Z/report.md"
 }
 ```
 
@@ -305,7 +305,7 @@ pilot-ai가 "테스트 돌려줘" 명령을 받았을 때의 권장 플로우:
 3. [pilot-ai LLM] PRD + selectors → Playwright 테스트 코드 생성
 
 4. save_tests({ app_id: "arden-web", test_cases: [...] })
-   → 생성된 테스트 코드를 sentinel-ai에 저장
+   → 생성된 테스트 코드를 sentinel-qa에 저장
 
 5. run_tests({ app_id: "arden-web", platform: "web" })
    → Playwright 테스트 실행 (수 초~수 분 소요)
@@ -320,10 +320,10 @@ pilot-ai가 "테스트 돌려줘" 명령을 받았을 때의 권장 플로우:
 
 ## 6. 연동 검증
 
-sentinel-ai 레포에 포함된 검증 스크립트로 전체 플로우를 테스트할 수 있습니다.
+sentinel-qa 레포에 포함된 검증 스크립트로 전체 플로우를 테스트할 수 있습니다.
 
 ```bash
-cd sentinel-ai
+cd sentinel-qa
 npm run build
 node scripts/verify-mcp-flow.mjs
 ```
@@ -342,11 +342,11 @@ Results: 6 passed, 0 failed
 
 ---
 
-## 7. sentinel-ai 업데이트 시 pilot-ai 대응 가이드
+## 7. sentinel-qa 업데이트 시 pilot-ai 대응 가이드
 
 ### 업데이트 분류
 
-sentinel-ai의 변경 사항은 3가지 수준으로 분류됩니다:
+sentinel-qa의 변경 사항은 3가지 수준으로 분류됩니다:
 
 | 수준 | 예시 | pilot-ai 대응 |
 |------|------|---------------|
@@ -359,7 +359,7 @@ sentinel-ai의 변경 사항은 3가지 수준으로 분류됩니다:
 #### 로컬 개발 환경
 
 ```bash
-cd sentinel-ai
+cd sentinel-qa
 git pull
 npm install
 npm run build
@@ -369,51 +369,51 @@ npm run build
 #### npm 배포 환경
 
 ```bash
-# sentinel-ai 측
-cd sentinel-ai
+# sentinel-qa 측
+cd sentinel-qa
 npm version patch  # 또는 minor, major
 npm publish
 
 # pilot-ai 측
 # npx는 자동으로 최신 버전을 사용하므로 별도 작업 불필요
 # 단, npx 캐시 갱신이 필요할 수 있음:
-npx --yes sentinel-ai@latest
+npx --yes sentinel-qa@latest
 ```
 
 ### 파괴적 변경 대응 체크리스트
 
-sentinel-ai에서 파괴적 변경이 발생할 경우 pilot-ai 팀이 확인할 항목:
+sentinel-qa에서 파괴적 변경이 발생할 경우 pilot-ai 팀이 확인할 항목:
 
 1. **`CHANGELOG.md` 확인** — 어떤 도구/필드가 변경되었는지 파악
 2. **Zod 스키마 변경 확인** — `packages/mcp-server/src/schemas/tools.ts`에서 입력 스키마 변경 확인
-3. **pilot-ai 코드 수정** — LLM 프롬프트에서 sentinel-ai 도구 호출 부분 업데이트
+3. **pilot-ai 코드 수정** — LLM 프롬프트에서 sentinel-qa 도구 호출 부분 업데이트
 4. **검증 스크립트 실행** — `node scripts/verify-mcp-flow.mjs`로 연동 확인
 5. **회귀 테스트** — pilot-ai에서 "테스트 돌려줘" 전체 플로우 확인
 
 ### 버전 호환성 관리 원칙
 
-- sentinel-ai는 **Semantic Versioning (semver)** 을 따릅니다
+- sentinel-qa는 **Semantic Versioning (semver)** 을 따릅니다
 - 파괴적 변경은 반드시 **major 버전 업**과 함께 진행합니다
 - 파괴적 변경 전에 **deprecation 경고**를 먼저 추가합니다 (1 minor 버전 이상 유지)
-- pilot-ai의 `mcp-registry.ts`에 sentinel-ai npmPackage 버전을 명시하여 안정적 버전 고정 가능:
+- pilot-ai의 `mcp-registry.ts`에 sentinel-qa npmPackage 버전을 명시하여 안정적 버전 고정 가능:
   ```typescript
   {
-    id: 'sentinel-ai',
-    npmPackage: 'sentinel-ai@^0.2.0', // major 범위 내 자동 업데이트
+    id: 'sentinel-qa',
+    npmPackage: 'sentinel-qa@^0.2.0', // major 범위 내 자동 업데이트
   }
   ```
 
 ### MCP 프로토콜 수준 호환성
 
 MCP 프로토콜 자체의 변경은 드물지만, 발생 시:
-- sentinel-ai와 pilot-ai 모두 `@modelcontextprotocol/sdk` 버전을 맞춰야 합니다
+- sentinel-qa와 pilot-ai 모두 `@modelcontextprotocol/sdk` 버전을 맞춰야 합니다
 - `protocolVersion` 필드 (현재 `2024-11-05`)가 변경되면 양측 업데이트 필요
 
 ---
 
 ## 8. 향후 로드맵 (pilot-ai 영향)
 
-| 단계 | sentinel-ai 변경 | pilot-ai 영향 |
+| 단계 | sentinel-qa 변경 | pilot-ai 영향 |
 |------|-----------------|---------------|
 | 4단계: Maestro 브릿지 | `run_tests`가 `platform: "ios"/"android"`에 실제 실행 지원 | pilot-ai에서 Maestro YAML 코드 생성 로직 추가 필요 |
 | 5단계: 데이터 로그 QA | `run_tests`에 `validate_events` 옵션 추가 | pilot-ai에서 이벤트 검증 활성화 옵션 전달 |
@@ -424,5 +424,5 @@ MCP 프로토콜 자체의 변경은 드물지만, 발생 시:
 
 ## 9. 문의
 
-- sentinel-ai 이슈: https://github.com/eodin/sentinel-ai/issues
-- 내부 Slack: #sentinel-ai
+- sentinel-qa 이슈: https://github.com/eodin/sentinel-qa/issues
+- 내부 Slack: #sentinel-qa
