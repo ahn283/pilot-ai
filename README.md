@@ -41,6 +41,9 @@ Pilot-AI is a local AI agent that lives on your Mac. Send it natural-language co
                    ▼             ▼             ▼
              🎨 Figma      🐛 Jira      📖 Confluence
              (MCP)         (MCP)         (MCP)
+                   ▼
+             🧪 Sentinel AI
+             (QA Automation / MCP)
 ```
 
 - **Runs locally** — your data never leaves your machine
@@ -68,6 +71,7 @@ Pilot-AI is a local AI agent that lives on your Mac. Send it natural-language co
 - **Project awareness** — resolves projects, remembers context per project
 - **Live status updates** — see what the agent is doing in real-time
 - **Token health checker** — automatically refreshes and monitors OAuth token validity
+- **QA automation** — generate, save, and run E2E tests via Sentinel AI MCP (Playwright/Maestro), with Markdown reports
 - **Multi-device safe** — config sync across devices never triggers auth popups or side effects; credentials are device-local
 - **MCP startup diagnostics** — logs credential status for every registered MCP server on startup
 - **Credential management** — agent can request and store API keys via chat
@@ -136,6 +140,7 @@ Just message your agent in Slack or Telegram:
 | `Send a draft email to john@example.com` | Composes a Gmail draft with the given content |
 | `List files in my Google Drive "Projects" folder` | Browses Google Drive and lists folder contents |
 | `Show me the latest Figma designs for the homepage` | Fetches Figma file data and component details |
+| `Run QA tests for arden-web` | Executes Playwright E2E tests via Sentinel AI and reports results |
 
 ### Coding Sessions
 
@@ -333,6 +338,7 @@ Pilot-AI includes a built-in registry of 18+ MCP (Model Context Protocol) server
 | **Productivity** | Notion, Google Drive, Google Calendar, Memory, Brave Search, Confluence, Wiki (MediaWiki) |
 | **Communication** | Slack, Gmail |
 | **Data** | PostgreSQL, SQLite |
+| **QA / Testing** | Sentinel AI (Playwright/Maestro E2E) |
 
 ### CLI Management
 
