@@ -68,6 +68,8 @@ Pilot-AI is a local AI agent that lives on your Mac. Send it natural-language co
 - **Project awareness** — resolves projects, remembers context per project
 - **Live status updates** — see what the agent is doing in real-time
 - **Token health checker** — automatically refreshes and monitors OAuth token validity
+- **Multi-device safe** — config sync across devices never triggers auth popups or side effects; credentials are device-local
+- **MCP startup diagnostics** — logs credential status for every registered MCP server on startup
 - **Credential management** — agent can request and store API keys via chat
 - **Safety controls** — dangerous actions require explicit approval via messenger buttons
 
@@ -214,7 +216,7 @@ pilot-ai start [-f]             # Start agent daemon (-f to follow logs)
 pilot-ai stop                   # Stop agent daemon
 pilot-ai status                 # Check if agent is running
 pilot-ai logs [-f]              # View agent logs
-pilot-ai doctor                 # Diagnose system requirements and macOS permissions
+pilot-ai doctor                 # 3-layer MCP consistency diagnosis (config ↔ mcp-config ↔ Keychain ↔ Claude Code)
 
 # User management
 pilot-ai adduser <platform> <userId>     # Authorize a user
