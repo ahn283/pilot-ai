@@ -18,7 +18,7 @@ describe('parseClaudeJsonOutput', () => {
     expect(parseClaudeJsonOutput(output)).toBe('안녕하세요\n도움이 필요하신가요?');
   });
 
-  it('여러 줄의 JSONL을 처리한다', () => {
+  it('여러 줄의 JSONL에서 result를 우선 반환한다', () => {
     const lines = [
       JSON.stringify({ type: 'system', message: 'init' }),
       JSON.stringify({ type: 'assistant', content: [{ type: 'text', text: '분석 중...' }] }),
@@ -26,8 +26,8 @@ describe('parseClaudeJsonOutput', () => {
     ];
     const output = lines.join('\n');
     const result = parseClaudeJsonOutput(output);
-    expect(result).toContain('분석 중...');
-    expect(result).toContain('완료');
+    // result 타입이 있으면 그것만 반환 (중간 assistant 메시지는 제외)
+    expect(result).toBe('완료');
   });
 
   it('빈 content 배열을 처리한다', () => {
@@ -78,16 +78,25 @@ describe('parseClaudeJsonOutput - stream-json format', () => {
     expect(parseClaudeJsonOutput(output)).toBe('Done via stream');
   });
 
-  it('handles mixed legacy and stream-json lines', () => {
+  it('handles mixed legacy and stream-json lines — returns only final result', () => {
     const lines = [
       JSON.stringify({ type: 'assistant', content: [{ type: 'text', text: 'legacy line' }] }),
       JSON.stringify({ type: 'assistant', message: { content: [{ type: 'text', text: 'stream line' }] } }),
       JSON.stringify({ type: 'result', result: 'final' }),
     ];
     const result = parseClaudeJsonOutput(lines.join('\n'));
-    expect(result).toContain('legacy line');
-    expect(result).toContain('stream line');
-    expect(result).toContain('final');
+    // Only the result message is returned, not intermediate assistant messages
+    expect(result).toBe('final');
+  });
+
+  it('falls back to last assistant text when no result message', () => {
+    const lines = [
+      JSON.stringify({ type: 'assistant', content: [{ type: 'text', text: 'first' }] }),
+      JSON.stringify({ type: 'assistant', message: { content: [{ type: 'text', text: 'last answer' }] } }),
+    ];
+    const result = parseClaudeJsonOutput(lines.join('\n'));
+    // Without a result message, returns the last assistant text
+    expect(result).toBe('last answer');
   });
 });
 

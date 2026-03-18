@@ -184,11 +184,23 @@ export class SlackAdapter implements MessengerAdapter {
   async updateText(channelId: string, messageId: string, text: string, threadId?: string): Promise<void> {
     const chunks = splitMessage(text, MAX_MESSAGE_LENGTH.slack);
     // Update the original message with the first chunk
-    await this.app.client.chat.update({
-      channel: channelId,
-      ts: messageId,
-      text: chunks[0],
-    });
+    try {
+      await this.app.client.chat.update({
+        channel: channelId,
+        ts: messageId,
+        text: chunks[0],
+      });
+    } catch (err) {
+      // If chat.update fails (e.g. msg_too_long, message_not_found), fall back to posting new message
+      const errMsg = err instanceof Error ? err.message : String(err);
+      console.error(`[Slack] chat.update failed: ${errMsg}. Falling back to postMessage.`);
+      await this.rateLimiter.acquire();
+      await this.app.client.chat.postMessage({
+        channel: channelId,
+        text: chunks[0],
+        thread_ts: threadId ?? messageId,
+      });
+    }
     // Send remaining chunks as new messages in the same thread
     for (let i = 1; i < chunks.length; i++) {
       await this.rateLimiter.acquire();

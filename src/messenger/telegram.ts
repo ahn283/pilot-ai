@@ -122,20 +122,44 @@ export class TelegramAdapter implements MessengerAdapter {
 
   async updateText(channelId: string, messageId: string, text: string, _threadId?: string): Promise<void> {
     const msgId = parseInt(messageId, 10);
-    if (text.length <= MAX_MESSAGE_LENGTH.telegram) {
-      await this.bot.telegram.editMessageText(
-        channelId, msgId, undefined, text, { parse_mode: 'Markdown' },
-      );
-    } else {
-      // Edit original with first chunk, send remaining as new messages
-      const chunks = splitMessage(text, MAX_MESSAGE_LENGTH.telegram);
+    const chunks = splitMessage(text, MAX_MESSAGE_LENGTH.telegram);
+
+    // Edit original with first chunk, with fallback for errors
+    try {
       await this.bot.telegram.editMessageText(
         channelId, msgId, undefined, chunks[0], { parse_mode: 'Markdown' },
       );
-      for (let i = 1; i < chunks.length; i++) {
-        await this.rateLimiter.acquire();
+    } catch (err) {
+      const errMsg = err instanceof Error ? err.message : String(err);
+      // "message is not modified" is harmless (same content); others need fallback
+      if (!errMsg.includes('message is not modified')) {
+        console.error(`[Telegram] editMessageText failed: ${errMsg}. Falling back to sendMessage.`);
+        try {
+          // Retry without parse_mode in case Markdown formatting caused the error
+          await this.bot.telegram.editMessageText(
+            channelId, msgId, undefined, chunks[0],
+          );
+        } catch {
+          // Last resort: send as new message
+          await this.rateLimiter.acquire();
+          await this.bot.telegram.sendMessage(channelId, chunks[0], {
+            reply_parameters: { message_id: msgId },
+          });
+        }
+      }
+    }
+
+    // Send remaining chunks as new messages
+    for (let i = 1; i < chunks.length; i++) {
+      await this.rateLimiter.acquire();
+      try {
         await this.bot.telegram.sendMessage(channelId, chunks[i], {
           parse_mode: 'Markdown',
+          reply_parameters: { message_id: msgId },
+        });
+      } catch {
+        // Retry without Markdown if formatting fails
+        await this.bot.telegram.sendMessage(channelId, chunks[i], {
           reply_parameters: { message_id: msgId },
         });
       }

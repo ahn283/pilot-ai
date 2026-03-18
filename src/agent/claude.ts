@@ -283,48 +283,51 @@ export function parseStreamEvent(
 /**
  * Parses Claude CLI stream-json output and extracts the final text result.
  * Supports both legacy json format and stream-json format.
+ *
+ * IMPORTANT: Only returns the final result, NOT intermediate assistant messages.
+ * In multi-turn agentic tasks (stream-json with --max-turns), the output contains
+ * ALL intermediate assistant messages. Concatenating them all produces a response
+ * many times larger than the actual answer, causing msg_too_long errors on Slack/Telegram.
  */
 export function parseClaudeJsonOutput(output: string): string {
   const lines = output.trim().split('\n').filter(Boolean);
-  const texts: string[] = [];
+  let resultText = '';
+  let lastAssistantText = '';
 
   for (const line of lines) {
     try {
       const msg: ClaudeJsonMessage = JSON.parse(line);
 
-      // Legacy json format: assistant messages with content blocks
-      if (msg.type === 'assistant' && Array.isArray(msg.content)) {
-        for (const block of msg.content) {
-          if (block.type === 'text' && block.text) {
-            texts.push(block.text);
-          }
-        }
-      }
+      // Track last assistant message text (used as fallback if no result message)
+      if (msg.type === 'assistant') {
+        const content = Array.isArray(msg.content)
+          ? msg.content
+          : ((msg.message as Record<string, unknown>)?.content as Array<{ type: string; text?: string }> | undefined);
 
-      // stream-json format: assistant message wrapper
-      if (msg.type === 'assistant' && msg.message) {
-        const message = msg.message as Record<string, unknown>;
-        const content = message.content as Array<{ type: string; text?: string }> | undefined;
         if (Array.isArray(content)) {
+          const textParts: string[] = [];
           for (const block of content) {
             if (block.type === 'text' && block.text) {
-              texts.push(block.text);
+              textParts.push(block.text);
             }
+          }
+          if (textParts.length > 0) {
+            lastAssistantText = textParts.join('\n');
           }
         }
       }
 
-      // Result message (both formats)
+      // Result message — this is the definitive final answer
       if (msg.type === 'result' && typeof msg.result === 'string') {
-        texts.push(msg.result);
+        resultText = msg.result;
       }
     } catch {
-      // On JSON parse failure, treat as raw text
-      texts.push(line);
+      // On JSON parse failure, treat as raw text (only if no structured output found)
     }
   }
 
-  return texts.join('\n') || output;
+  // Prefer result message, fall back to last assistant text, then raw output
+  return resultText || lastAssistantText || output;
 }
 
 /**

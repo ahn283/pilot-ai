@@ -21,6 +21,7 @@ import { isGhAuthenticated } from '../tools/github.js';
 import { configureGoogle, loadGoogleTokens } from '../tools/google-auth.js';
 import { startTokenRefresher, stopTokenRefresher } from './token-refresher.js';
 import { loadMcpConfig } from '../tools/figma-mcp.js';
+import { downloadImage } from '../tools/image.js';
 
 function log(message: string): void {
   console.log(`[${new Date().toISOString()}] ${message}`);
@@ -232,8 +233,20 @@ export class AgentCore {
         await this.messenger.removeReaction?.(msg.channelId, incomingTs, 'gear');
         await this.messenger.addReaction?.(msg.channelId, incomingTs, 'white_check_mark');
 
-        // updateText now handles splitting internally
-        await this.messenger.updateText(msg.channelId, statusMsgId, response, msg.threadId);
+        // Send response — updateText handles splitting internally
+        try {
+          await this.messenger.updateText(msg.channelId, statusMsgId, response, msg.threadId);
+        } catch (sendErr) {
+          // Messenger send failure — NOT a Claude context error.
+          // Log but don't reset session since the Claude response was generated successfully.
+          const sendErrMsg = sendErr instanceof Error ? sendErr.message : String(sendErr);
+          log(`Messenger send error: ${sendErrMsg}. Attempting fallback send.`);
+          try {
+            await this.messenger.sendText(msg.channelId, response, msg.threadId);
+          } catch (fallbackErr) {
+            log(`Fallback send also failed: ${fallbackErr instanceof Error ? fallbackErr.message : String(fallbackErr)}`);
+          }
+        }
 
         await writeAuditLog({
           timestamp: new Date().toISOString(),
@@ -243,6 +256,7 @@ export class AgentCore {
           content: response,
         });
       } catch (err) {
+        // This catch only handles Claude CLI / invokeClaudeWithContext errors
         const errorMsg = err instanceof Error ? err.message : String(err);
         log(`Claude error: ${errorMsg}`);
         await this.messenger.removeReaction?.(msg.channelId, incomingTs, 'gear');
@@ -386,6 +400,20 @@ RULES:
     cleanupSessions().catch(() => {});
     cleanupExpiredSummaries().catch(() => {});
 
+    // Download attached images and build prompt with file paths
+    const imagePaths: string[] = [];
+    if (msg.images && msg.images.length > 0) {
+      for (const img of msg.images) {
+        try {
+          const localPath = await downloadImage(img);
+          imagePaths.push(localPath);
+          log(`Downloaded image: ${localPath}`);
+        } catch (err) {
+          log(`Failed to download image: ${err instanceof Error ? err.message : String(err)}`);
+        }
+      }
+    }
+
     const mcpConfigPath = await getMcpConfigPathIfExists() ?? undefined;
     log(`MCP config: ${mcpConfigPath ?? 'none'}`);
 
@@ -414,9 +442,18 @@ RULES:
       };
     };
 
+    // Build prompt: include image file paths so Claude can read them with the Read tool
+    let prompt = msg.text;
+    if (imagePaths.length > 0) {
+      const imageInstructions = imagePaths
+        .map((p) => `- ${p}`)
+        .join('\n');
+      prompt = `${msg.text}\n\n[Attached images — use the Read tool to view them]\n${imageInstructions}`;
+    }
+
     try {
       const result = await invokeClaudeCli({
-        prompt: msg.text,
+        prompt,
         systemPrompt: resumeSessionId ? undefined : fullSystemPrompt,
         cwd: projectPath,
         mcpConfigPath,
@@ -452,7 +489,7 @@ RULES:
         lastThinkingReport = 0;
 
         const retryResult = await invokeClaudeCli({
-          prompt: msg.text,
+          prompt,
           systemPrompt: fallbackSystemPrompt,
           cwd: projectPath,
           mcpConfigPath,
