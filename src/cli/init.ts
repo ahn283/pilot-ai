@@ -402,8 +402,21 @@ async function setupIntegrations(): Promise<Partial<PilotConfig>> {
     console.log('  1. Go to https://console.cloud.google.com/apis/credentials/consent');
     console.log('  2. Select "External" user type → Create');
     console.log('  3. Fill in App name, User support email, Developer email');
-    console.log('  4. Add your Google account as a Test user');
-    console.log('  5. Save\n');
+    console.log('  4. Save');
+    console.log('');
+    console.log('  ⚠ IMPORTANT: Publish your OAuth app to Production!');
+    console.log('  ─────────────────────────────────────────────────');
+    console.log('  By default, your OAuth app is in "Testing" mode.');
+    console.log('  In Testing mode, refresh tokens expire after 7 days,');
+    console.log('  which means you\'ll need to re-authenticate every week.');
+    console.log('');
+    console.log('  To avoid this:');
+    console.log('    1. Go to https://console.cloud.google.com/apis/credentials/consent');
+    console.log('    2. Click "PUBLISH APP" button');
+    console.log('    3. Confirm the dialog');
+    console.log('');
+    console.log('  Note: For personal use (<100 users), no Google review is needed.');
+    console.log('  The app will work immediately after publishing.\n');
     console.log('  Step 1: Create OAuth Client ID');
     console.log('  ─────────────────────────────');
     console.log('  1. Go to https://console.cloud.google.com/apis/credentials');
@@ -790,14 +803,18 @@ async function runGoogleOAuthFlow(
         console.log(`  ⚠ Tokens saved but verification failed. Try: pilot-ai auth google\n`);
       }
 
-      // Warn about Testing mode token expiry
-      console.log('  ⚠ IMPORTANT: If your Google Cloud OAuth app is in "Testing" mode,');
-      console.log('  refresh tokens expire after 7 days and ALL Google integrations will break.');
-      console.log('  To fix permanently:');
-      console.log('    1. Go to https://console.cloud.google.com/apis/credentials/consent');
-      console.log('    2. Click "PUBLISH APP"');
-      console.log('    3. For personal use (<100 users), no Google review is needed.');
-      console.log('  If you stay in Testing mode, re-run "pilot-ai auth google" every 7 days.\n');
+      // Check if the user has published the app and remind if not
+      console.log('  ────────────────────────────────────────────────────────');
+      console.log('  ⚠ Did you publish your OAuth app to Production?');
+      console.log('');
+      console.log('  If your app is still in "Testing" mode:');
+      console.log('    • Refresh tokens expire after 7 days');
+      console.log('    • ALL Google integrations (Gmail, Calendar, Drive) will stop working');
+      console.log('    • You\'ll see automatic Google login popups every time Claude Code starts');
+      console.log('');
+      console.log('  → Fix: https://console.cloud.google.com/apis/credentials/consent');
+      console.log('    Click "PUBLISH APP" — no Google review needed for personal use (<100 users).');
+      console.log('  ────────────────────────────────────────────────────────\n');
     } finally {
       server.close();
     }
