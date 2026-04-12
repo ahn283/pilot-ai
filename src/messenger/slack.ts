@@ -50,6 +50,23 @@ export class SlackAdapter implements MessengerAdapter {
     return false;
   }
 
+  private extractImages(files?: Array<{ url_private: string; mimetype: string; name: string }>): ImageAttachment[] {
+    const images: ImageAttachment[] = [];
+    if (files) {
+      for (const file of files) {
+        if (file.mimetype?.startsWith('image/')) {
+          images.push({
+            url: file.url_private,
+            mimeType: file.mimetype,
+            filename: file.name,
+            authHeader: `Bearer ${this.botToken}`,
+          });
+        }
+      }
+    }
+    return images;
+  }
+
   private setupListeners(): void {
     // Receive incoming messages
     this.app.message(async ({ message }) => {
@@ -74,26 +91,21 @@ export class SlackAdapter implements MessengerAdapter {
       if (!msg.user) return;
       if (!msg.text && !msg.files?.length) return;
 
+      // In channels, only respond to @mentions (handled by app_mention event).
+      // DMs (channel_type === 'im') are always responded to.
+      const channelType = (message as { channel_type?: string }).channel_type;
+      if (channelType !== 'im') {
+        console.log(`[${new Date().toISOString()}] Slack: ignoring non-DM message in channel (channel_type=${channelType}), waiting for app_mention`);
+        return;
+      }
+
       // Dedup: skip if already handled (e.g. via app_mention)
       if (this.isDuplicate(msg.ts ?? '')) {
         console.log(`[${new Date().toISOString()}] Slack: skipping duplicate message ts=${msg.ts}`);
         return;
       }
 
-      // Extract image attachments from Slack files (requires files:read scope)
-      const images: ImageAttachment[] = [];
-      if (msg.files) {
-        for (const file of msg.files) {
-          if (file.mimetype?.startsWith('image/')) {
-            images.push({
-              url: file.url_private,
-              mimeType: file.mimetype,
-              filename: file.name,
-              authHeader: `Bearer ${this.botToken}`,
-            });
-          }
-        }
-      }
+      const images = this.extractImages(msg.files);
 
       await this.messageHandler({
         platform: 'slack',
@@ -121,12 +133,16 @@ export class SlackAdapter implements MessengerAdapter {
       const text = (event.text ?? '').replace(/<@[A-Z0-9]+>/g, '').trim();
       if (!text || !event.user) return;
 
+      const files = (event as { files?: Array<{ url_private: string; mimetype: string; name: string }> }).files;
+      const images = this.extractImages(files);
+
       await this.messageHandler({
         platform: 'slack',
         userId: event.user as string,
         channelId: event.channel,
         threadId: event.thread_ts ?? event.ts,
         text,
+        images: images.length > 0 ? images : undefined,
         timestamp: new Date(parseFloat(event.ts) * 1000),
       });
     });

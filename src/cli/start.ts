@@ -41,7 +41,7 @@ export function buildPlist(nodePath: string, scriptPath: string, logDir: string)
   <key>EnvironmentVariables</key>
   <dict>
     <key>PATH</key>
-    <string>/usr/local/bin:/usr/bin:/bin:/opt/homebrew/bin</string>
+    <string>/usr/local/bin:/usr/bin:/bin:/opt/homebrew/bin:${process.env.HOME}/.local/bin</string>
   </dict>
 </dict>
 </plist>`;
